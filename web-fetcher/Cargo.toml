@@ -1,0 +1,10 @@
+[package]
+name = "web-fetcher"
+version = "0.1.0"
+authors = ["Reto Habluetzel <rethab@protonmail.ch>"]
+edition = "2018"
+
+[dependencies]
+postgres = { version = "0.17.0-alpha.2", features = ["with-chrono-0_4"] } 
+rss = { version = "1.8.0", features = ["from_url"] }
+chrono = "0.4"
