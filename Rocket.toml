@@ -1,0 +1,2 @@
+[global.databases]
+digester = { url = "postgres://postgres@localhost:5432/postgres"}
