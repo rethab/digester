@@ -1,5 +1,5 @@
 [package]
-name = "digester-web-backend"
+name = "web-backend"
 version = "0.1.0"
 authors = ["rethab"]
 edition = "2018"
