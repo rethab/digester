@@ -1,5 +1,7 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
+extern crate backend;
+
 #[macro_use]
 extern crate rocket;
 #[macro_use]
@@ -9,18 +11,20 @@ extern crate serde_derive;
 
 extern crate url;
 
+use backend::db;
+
 use rocket::http::Status as HttpStatus;
 use rocket::request::Request;
 use rocket::response::status::Custom;
 use rocket::response::{self, Responder};
 
-use rocket_contrib::databases::postgres;
+use rocket_contrib::databases::diesel::PgConnection;
 use rocket_contrib::json::{Json, JsonValue};
 
 use url::Url;
 
 #[database("digester")]
-struct DigesterDbConn(postgres::Connection);
+struct DigesterDbConn(PgConnection);
 
 #[derive(Deserialize, Debug, PartialEq)]
 struct NewBlog {
@@ -47,15 +51,15 @@ impl<'r> Responder<'r> for JsonResponse {
 }
 
 #[post("/blogs/add", data = "<new_blog>")]
-fn add_blog(conn: DigesterDbConn, new_blog: Json<NewBlog>) -> JsonResponse {
+fn add_blog(db: DigesterDbConn, new_blog: Json<NewBlog>) -> JsonResponse {
     match validate_blog(new_blog.0) {
         Ok(valid) => {
-            match insert_blog(conn, valid) {
+            match insert_blog(db, valid) {
                 // todo log
-                Err(InsertError::Duplicate) => {
+                Err(db::InsertError::Duplicate) => {
                     JsonResponse::BadRequest("blog already exists".to_owned())
                 }
-                Err(InsertError::Unknown) => JsonResponse::InternalServerError,
+                Err(db::InsertError::Unknown) => JsonResponse::InternalServerError,
                 Ok(_id) => JsonResponse::Ok(json!({ "added": true })),
             }
         }
@@ -76,21 +80,13 @@ fn validate_blog(mut new_blog: NewBlog) -> Result<ValidBlog, String> {
     }
 }
 
-enum InsertError {
-    Duplicate,
-    Unknown,
-}
-
-fn insert_blog(conn: DigesterDbConn, valid_blog: ValidBlog) -> Result<u64, InsertError> {
-    conn.execute("INSERT INTO blogs (url) VALUES ($1)", &[&valid_blog.0.url])
-        .map_err(|err| {
-            if err.code() == Some(&postgres::error::UNIQUE_VIOLATION) {
-                InsertError::Duplicate
-            } else {
-                InsertError::Unknown
-                // todo log
-            }
-        })
+fn insert_blog(db: DigesterDbConn, valid_blog: ValidBlog) -> Result<(), db::InsertError> {
+    db::blogs_insert(
+        &db.0,
+        db::NewBlog {
+            url: valid_blog.0.url,
+        },
+    )
 }
 
 fn sanitize_blog_url(url: String) -> Result<String, String> {

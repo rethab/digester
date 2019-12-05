@@ -1,71 +1,40 @@
+extern crate backend;
+
+use backend::db;
+use backend::db::{Blog, Post};
 use chrono::{DateTime, Duration, Utc};
-use postgres::{Client, NoTls};
 use rss::Channel;
 use std::env;
-
-struct Blog {
-    id: i32,
-    url: String,
-    last_fetched: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug)]
-struct Post {
-    blog_id: i32,
-    title: String,
-    author: Option<String>,
-    url: String,
-    created: DateTime<Utc>,
-}
 
 fn main() -> Result<(), String> {
     let fetch_frequency = Duration::hours(6);
 
-    let mut db_conn = setup_connection()?;
-    let blogs = find_due_blogs(fetch_frequency, &mut db_conn)?;
+    let db_conn = setup_connection()?;
+    let blogs = find_due_blogs(fetch_frequency, &db_conn)?;
 
     if blogs.is_empty() {
         println!("Found no blogs to update")
     }
 
     for blog in blogs {
-        let res = fetch_articles(&blog, &mut db_conn);
-        update_last_sync(&blog, res, &mut db_conn)?;
+        let res = fetch_articles(&blog, &db_conn);
+        update_last_sync(&blog, res, &db_conn)?;
     }
 
     Ok(())
 }
 
-fn setup_connection() -> Result<Client, String> {
+fn setup_connection() -> Result<db::Connection, String> {
     let connection_string = env::var("DATABASE_CONNECTION")
         .map_err(|_err| "Missing connection string in env variable".to_owned())?;
-    Client::connect(connection_string.as_str(), NoTls)
-        .map_err(|err| format!("could not connect to db: {:?}", err))
+    db::connect(connection_string.as_str())
 }
 
-fn find_due_blogs(fetch_frequency: Duration, client: &mut Client) -> Result<Vec<Blog>, String> {
-    let mut blogs = Vec::new();
-    let since_last_fetched = Utc::now() - fetch_frequency;
-    for row in client
-        .query(
-            "SELECT id, url, last_fetched FROM blogs WHERE last_fetched < $1 OR last_fetched IS NULL",
-            &[&since_last_fetched],
-        )
-        .map_err(|err| format!("failed to run query in find_due_blogs: {:?}", err))?
-    {
-        let id: i32 = row.get(0);
-        let url: String = row.get(1);
-        let last_fetched: Option<DateTime<Utc>> = row.get(2);
-        blogs.push(Blog {
-            id,
-            url,
-            last_fetched,
-        });
-    }
-    Ok(blogs)
+fn find_due_blogs(fetch_frequency: Duration, conn: &db::Connection) -> Result<Vec<Blog>, String> {
+    db::blogs_find_by_last_fetched(conn, fetch_frequency)
 }
 
-fn fetch_articles(blog: &Blog, client: &mut Client) -> Result<(), String> {
+fn fetch_articles(blog: &Blog, conn: &db::Connection) -> Result<(), String> {
     let channel = Channel::from_url(&blog.url)
         .map_err(|err| format!("failed to fetch blog from url '{}': {:?}", blog.url, err))?;
     println!(
@@ -105,12 +74,7 @@ fn fetch_articles(blog: &Blog, client: &mut Client) -> Result<(), String> {
         if already_seen {
             println!("Ignoring known post{}", post.title);
         } else {
-            client
-                .execute(
-                    "INSERT INTO posts (blog_id, title, author, url) VALUES ($1, $2, $3, $4)",
-                    &[&post.blog_id, &post.title, &post.author, &post.url],
-                )
-                .map_err(|err| format!("failed to insert new post: {:?}", err))?;
+            db::posts_insert_new(&conn, post)?;
         }
     }
     Ok(())
@@ -119,7 +83,7 @@ fn fetch_articles(blog: &Blog, client: &mut Client) -> Result<(), String> {
 fn update_last_sync(
     blog: &Blog,
     sync_result: Result<(), String>,
-    client: &mut Client,
+    conn: &db::Connection,
 ) -> Result<(), String> {
     match sync_result {
         Err(err) => {
@@ -127,17 +91,7 @@ fn update_last_sync(
             Ok(())
         }
         Ok(()) => {
-            client
-                .execute(
-                    "UPDATE blogs SET last_fetched = NOW() WHERE id = $1",
-                    &[&blog.id],
-                )
-                .map_err(|err| {
-                    format!(
-                        "failed to update last_fetched field for blog {}: {:?}",
-                        blog.id, err
-                    )
-                })?;
+            db::blogs_update_last_fetched(&conn, blog)?;
             println!("Updated last_fetched of blog {}", blog.id);
             Ok(())
         }
