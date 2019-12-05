@@ -23,7 +23,8 @@ mod schema {
             title -> Text,
             author -> Nullable<Text>,
             url -> Text,
-            created -> Timestamptz,
+            published -> Timestamptz,
+            inserted -> Timestamptz,
         }
     }
 }
@@ -52,7 +53,8 @@ mod models {
         pub title: String,
         pub author: Option<String>,
         pub url: String,
-        pub created: DateTime<Utc>,
+        pub published: DateTime<Utc>,
+        pub inserted: DateTime<Utc>,
     }
 }
 
@@ -92,6 +94,26 @@ pub enum InsertError {
     Unknown,
 }
 
+impl InsertError {
+    fn from_diesel(err: diesel::result::Error) -> InsertError {
+        if InsertError::is_unique_constrait_violation(err) {
+            InsertError::Duplicate
+        } else {
+            InsertError::Unknown
+        }
+    }
+
+    fn is_unique_constrait_violation(error: diesel::result::Error) -> bool {
+        match error {
+            result::Error::DatabaseError(kind, _) => match kind {
+                result::DatabaseErrorKind::UniqueViolation => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+}
+
 pub fn blogs_insert(conn: &PgConnection, blog: NewBlog) -> Result<(), InsertError> {
     use schema::blogs;
 
@@ -99,23 +121,7 @@ pub fn blogs_insert(conn: &PgConnection, blog: NewBlog) -> Result<(), InsertErro
         .values(&blog)
         .execute(conn)
         .map(|_| ())
-        .map_err(|err| {
-            if is_unique_constrait_violation(err) {
-                InsertError::Duplicate
-            } else {
-                InsertError::Unknown
-            }
-        })
-}
-
-fn is_unique_constrait_violation(error: diesel::result::Error) -> bool {
-    match error {
-        result::Error::DatabaseError(kind, _) => match kind {
-            result::DatabaseErrorKind::UniqueViolation => true,
-            _ => false,
-        },
-        _ => false,
-    }
+        .map_err(InsertError::from_diesel)
 }
 
 pub fn blogs_update_last_fetched(conn: &Connection, blog: &Blog) -> Result<(), String> {
@@ -133,12 +139,12 @@ pub fn blogs_update_last_fetched(conn: &Connection, blog: &Blog) -> Result<(), S
         .map(|_| ())
 }
 
-pub fn posts_insert_new(conn: &Connection, post: Post) -> Result<(), String> {
+pub fn posts_insert_new(conn: &Connection, post: &Post) -> Result<(), InsertError> {
     use schema::posts;
 
     diesel::insert_into(posts::table)
-        .values(&post)
+        .values(post)
         .execute(&conn.0)
-        .map_err(|err| format!("failed to insert new post: {:?}", err))
+        .map_err(InsertError::from_diesel)
         .map(|_| ())
 }

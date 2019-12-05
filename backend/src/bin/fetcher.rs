@@ -55,7 +55,7 @@ fn fetch_articles(blog: &Blog, conn: &db::Connection) -> Result<(), String> {
                 .ok_or_else(|| format!("No url for {:?}", item))?
                 .to_owned(),
             // todo don't ignore parse error
-            created: item
+            published: item
                 .pub_date()
                 .map(|date| {
                     DateTime::parse_from_rfc2822(date)
@@ -65,16 +65,23 @@ fn fetch_articles(blog: &Blog, conn: &db::Connection) -> Result<(), String> {
                         })
                 })
                 .ok_or_else(|| format!("No pub_date for {:?}", item))??,
+            inserted: Utc::now(),
         };
         // todo this is a technical error, which should be handled differently from the above business error
         let already_seen = blog
             .last_fetched
-            .map(|lf| post.created > lf)
+            .map(|lf| post.published > lf)
             .unwrap_or(false);
         if already_seen {
-            println!("Ignoring known post{}", post.title);
+            println!("Ignoring known post: {}", post.title);
         } else {
-            db::posts_insert_new(&conn, post)?;
+            match db::posts_insert_new(&conn, &post) {
+                Ok(_) => {}
+                Err(db::InsertError::Unknown) => return Err("Error during posts insert".to_owned()),
+                Err(db::InsertError::Duplicate) => {
+                    println!("Ignoring duplicate post: {}", post.title)
+                }
+            }
         }
     }
     Ok(())
