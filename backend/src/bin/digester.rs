@@ -3,6 +3,9 @@ extern crate backend;
 use backend::db;
 use backend::db::{Day, Digest, Frequency, InsertDigest, Subscription};
 use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Utc, Weekday};
+use lettre::smtp::authentication::{Credentials, Mechanism};
+use lettre::{ClientSecurity, SmtpClient, Transport};
+use lettre_email::Email;
 
 fn main() -> Result<(), String> {
     let db_conn = db::connection_from_env()?;
@@ -109,10 +112,41 @@ fn send_digest(conn: &db::Connection, digest: &Digest) -> Result<(), String> {
     let previous_digest_sent = db::digests_find_previous(conn, &digest)?.and_then(|d| d.sent);
     let subscription = db::subscriptions_find_by_digest(conn, &digest)?;
     let posts = db::posts_find_new(conn, &subscription, previous_digest_sent)?;
-    for post in posts {
-        println!("Sending e-mail for post: {:?}", post);
-    }
-    Ok(())
+    let formatted_posts = posts
+        .iter()
+        .map(|p| format!("- {}: {}", p.title, p.url))
+        .collect::<Vec<String>>()
+        .join("\n");
+    let email_content = format!(
+        "Hi, here's your digest:\n\n{}\n\n-Digester",
+        formatted_posts
+    );
+    let recipient = subscription.email;
+
+    send_email(recipient, email_content)
+}
+
+fn send_email(recipient: String, email_content: String) -> Result<(), String> {
+    let email = Email::builder()
+        .to(recipient)
+        .from("digster@digester.io")
+        .subject("your digest is ready")
+        .text(email_content)
+        .build()
+        .unwrap();
+    // todo use tls
+    let mut mailer = SmtpClient::new(("smtp.mailtrap.io", 25), ClientSecurity::None)
+        .unwrap()
+        .credentials(Credentials::new(
+            "5037062aefe9c9652".to_string(),
+            "6e7e4d68510493".to_string(),
+        ))
+        .authentication_mechanism(Mechanism::Plain)
+        .transport();
+    mailer
+        .send(email.into())
+        .map(|_| ())
+        .map_err(|err| format!("Failed to send email: {:?}", err))
 }
 
 #[allow(dead_code)]
