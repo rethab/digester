@@ -1,15 +1,14 @@
 extern crate backend;
 
 use backend::db;
-use backend::db::{Blog, Post};
+use backend::db::{Blog, NewPost};
 use chrono::{DateTime, Duration, Utc};
 use rss::Channel;
-use std::env;
 
 fn main() -> Result<(), String> {
     let fetch_frequency = Duration::hours(6);
 
-    let db_conn = setup_connection()?;
+    let db_conn = db::connection_from_env()?;
     let blogs = find_due_blogs(fetch_frequency, &db_conn)?;
 
     if blogs.is_empty() {
@@ -22,12 +21,6 @@ fn main() -> Result<(), String> {
     }
 
     Ok(())
-}
-
-fn setup_connection() -> Result<db::Connection, String> {
-    let connection_string = env::var("DATABASE_CONNECTION")
-        .map_err(|_err| "Missing connection string in env variable".to_owned())?;
-    db::connect(connection_string.as_str())
 }
 
 fn find_due_blogs(fetch_frequency: Duration, conn: &db::Connection) -> Result<Vec<Blog>, String> {
@@ -43,7 +36,7 @@ fn fetch_articles(blog: &Blog, conn: &db::Connection) -> Result<(), String> {
         blog.url
     );
     for item in channel.items() {
-        let post = Post {
+        let post = NewPost {
             blog_id: blog.id,
             title: item
                 .title()
