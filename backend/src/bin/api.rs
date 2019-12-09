@@ -13,6 +13,7 @@ extern crate url;
 
 use backend::db;
 
+use rocket::http::Method;
 use rocket::http::Status as HttpStatus;
 use rocket::request::Request;
 use rocket::response::status::Custom;
@@ -20,6 +21,9 @@ use rocket::response::{self, Responder};
 
 use rocket_contrib::databases::diesel::PgConnection;
 use rocket_contrib::json::{Json, JsonValue};
+
+use rocket_cors;
+use rocket_cors::{AllowedHeaders, AllowedOrigins, Error};
 
 use url::Url;
 
@@ -130,12 +134,29 @@ fn not_found() -> JsonResponse {
     JsonResponse::NotFound
 }
 
-fn main() {
+fn main() -> Result<(), Error> {
+    // todo properly implement CORS, this only works development
+    let allowed_origins = AllowedOrigins::some_exact(&["http://localhost:8080"]);
+    let cors = rocket_cors::CorsOptions {
+        allowed_origins,
+        allowed_methods: vec![Method::Get, Method::Post, Method::Put]
+            .into_iter()
+            .map(From::from)
+            .collect(),
+        allowed_headers: AllowedHeaders::all(),
+        allow_credentials: true,
+        ..Default::default()
+    }
+    .to_cors()?;
+
     rocket::ignite()
         .attach(DigesterDbConn::fairing())
+        .attach(cors)
         .register(catchers![internal_error, not_found])
         .mount("/", routes![add_blog])
         .launch();
+
+    Ok(())
 }
 
 #[cfg(test)]

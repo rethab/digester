@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 rocket = "0.4.2"
+rocket_cors = "0.5.1"
 diesel = { version = "1.0.0", default-features = false, features = ["postgres", "chrono"] } 
 rss = { version = "1.8.0", features = ["from_url"] }
 chrono = "0.4"
