@@ -100,6 +100,11 @@ fn sanitize_blog_url(url: String) -> Result<String, String> {
         url
     };
 
+    let minimum_length = |s: &str| {
+        let pieces: Vec<&str> = s.split('.').collect();
+        pieces.len() >= 2 && pieces.last().unwrap().len() >= 2
+    };
+
     match Url::parse(&url_with_scheme) {
         Err(err) => {
             eprintln!("failed to parse url '{}': {}", url_with_scheme, err);
@@ -112,7 +117,8 @@ fn sanitize_blog_url(url: String) -> Result<String, String> {
                 scheme => Err(format!("invalid scheme: {}", scheme)),
             };
             let maybe_host = match valid.host() {
-                Some(url::Host::Domain(d)) => Ok(d),
+                Some(url::Host::Domain(d)) if minimum_length(d) => Ok(d),
+                Some(url::Host::Domain(_)) => Err("missing tld".to_owned()),
                 Some(_ip) => Err("cannot be ip".to_owned()),
                 None => Err("missing host".to_owned()),
             };
@@ -272,6 +278,26 @@ mod tests {
                 url: "data:text/plain,Hello?World#".to_owned(),
             }),
             Err("url is invalid: not a url".to_owned())
+        )
+    }
+
+    #[test]
+    fn blog_validation_reject_garbage_asdf() {
+        assert_eq!(
+            validate_blog(NewBlog {
+                url: "asdf".to_owned(),
+            }),
+            Err("url is invalid: missing tld".to_owned())
+        )
+    }
+
+    #[test]
+    fn blog_validation_reject_garbage_x_dot_x() {
+        assert_eq!(
+            validate_blog(NewBlog {
+                url: "x.x".to_owned(),
+            }),
+            Err("url is invalid: missing tld".to_owned())
         )
     }
 }
