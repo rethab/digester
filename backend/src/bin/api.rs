@@ -13,18 +13,29 @@ extern crate url;
 
 use backend::db;
 
-use rocket::http::Method;
 use rocket::http::Status as HttpStatus;
+use rocket::http::{Cookie, Cookies, Method, SameSite};
 use rocket::request::Request;
 use rocket::response::status::Custom;
-use rocket::response::{self, Responder};
+use rocket::response::{self, Redirect, Responder};
 
 use rocket_contrib::databases::diesel::PgConnection;
 use rocket_contrib::json::{Json, JsonValue};
 
+use rocket_oauth2::hyper_sync_rustls_adapter::HyperSyncRustlsAdapter;
+use rocket_oauth2::{OAuth2, TokenResponse};
+
 use rocket_cors;
 use rocket_cors::{AllowedHeaders, AllowedOrigins, Error};
 
+use hyper::{
+    header::{qitem, Accept, Authorization, UserAgent},
+    mime::Mime,
+    net::HttpsConnector,
+    Client,
+};
+
+use std::io::Read;
 use url::Url;
 
 #[database("digester")]
@@ -52,6 +63,62 @@ impl<'r> Responder<'r> for JsonResponse {
         };
         Custom(status, body).respond_to(req)
     }
+}
+
+#[derive(serde::Deserialize)]
+struct GitHubUserInfo {
+    #[serde(default)]
+    name: String,
+}
+
+fn github_callback(
+    request: &Request,
+    token: TokenResponse,
+) -> Result<Redirect, Box<dyn (::std::error::Error)>> {
+    let https = HttpsConnector::new(hyper_sync_rustls::TlsClient::new());
+    let client = Client::with_connector(https);
+
+    // Use the token to retrieve the user's GitHub account information.
+    let mime: Mime = "application/vnd.github.v3+json"
+        .parse()
+        .expect("parse GitHub MIME type");
+    let response = client
+        .get("https://api.github.com/user")
+        .header(Authorization(format!("token {}", token.access_token())))
+        .header(Accept(vec![qitem(mime)]))
+        .header(UserAgent("rocket_oauth2 demo application".into()))
+        .send()?;
+
+    if !response.status.is_success() {
+        return Err(format!("got non-success status {}", response.status).into());
+    }
+
+    let user_info: GitHubUserInfo = serde_json::from_reader(response.take(2 * 1024 * 1024))?;
+
+    // todo remove expect
+    let mut cookies = request.guard::<Cookies>().expect("request cookies");
+
+    cookies.add_private(
+        Cookie::build("username", user_info.name)
+            .same_site(SameSite::Lax)
+            .finish(),
+    );
+    Ok(Redirect::to("/"))
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+struct BlaBla {
+    code: String,
+    clientId: String,
+    redirectUri: String,
+}
+
+#[post("/auth/github", data = "<oauth_data>")]
+fn auth_github(oauth_data: Json<BlaBla>) -> Result<Redirect, Box<dyn (::std::error::Error)>> {
+    println!("data from github: {:?}", oauth_data);
+    // github_callback(request.0, token_response.into_inner())
+
+    Ok(Redirect::to("http://localhost:8080/auth/callback"))
 }
 
 #[post("/blogs/add", data = "<new_blog>")]
@@ -155,11 +222,20 @@ fn main() -> Result<(), Error> {
     }
     .to_cors()?;
 
+    let oauth = OAuth2::fairing(
+        HyperSyncRustlsAdapter,
+        github_callback,
+        "github",
+        "/auth/github",
+        Some(("/login/github", vec!["user:read".to_string()])),
+    );
+
     rocket::ignite()
         .attach(DigesterDbConn::fairing())
         .attach(cors)
+        .attach(oauth)
         .register(catchers![internal_error, not_found])
-        .mount("/", routes![add_blog])
+        .mount("/", routes![add_blog, auth_github])
         .launch();
 
     Ok(())

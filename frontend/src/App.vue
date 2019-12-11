@@ -5,6 +5,7 @@
         <v-btn text to="/">Digester</v-btn>
       </v-toolbar-title>
       <v-btn text to="/blogs/add">Add</v-btn>
+      <v-btn text to="/auth/login">Login</v-btn>
       <v-spacer></v-spacer>
     </v-app-bar>
 
