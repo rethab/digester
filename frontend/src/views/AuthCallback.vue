@@ -1,9 +1,15 @@
 <template>
-  <div class="home">
-    <h1>Callback</h1>
+  <div class="welcome">
+    <h1>Welcome, {{ username }}</h1>
   </div>
 </template>
 
 <script>
-export default { };
+export default {
+  computed: {
+    username() {
+      return this.$store.state.user.username;
+    }
+  }
+};
 </script>

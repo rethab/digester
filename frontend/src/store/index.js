@@ -10,7 +10,8 @@ export default new Vuex.Store({
       { url: 'https://acolyer.org' },
       { url: 'https://vuejs.org' },
       { url: 'https://google.com' }
-    ]
+    ],
+    user: false
   },
   mutations: {
     SET_BLOGS(state, blogs) {
@@ -19,6 +20,9 @@ export default new Vuex.Store({
     ADD_BLOG(state, url) {
       let blogs = state.blogs.concat({ url: url });
       state.blogs = blogs;
+    },
+    AUTHENTICATE(state, user) {
+      state.user = user;
     }
   },
   actions: {
@@ -29,8 +33,9 @@ export default new Vuex.Store({
     async addBlog({ commit }, url) {
       commit('ADD_BLOG', url);
       return url;
+    },
+    async authenticate({ commit }, user) {
+      commit('AUTHENTICATE', user);
     }
-  },
-  modules: {
   }
 })

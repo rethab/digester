@@ -13,17 +13,20 @@ extern crate url;
 
 use backend::db;
 
+use rocket::fairing::AdHoc;
+use rocket::http::Method;
 use rocket::http::Status as HttpStatus;
-use rocket::http::{Cookie, Cookies, Method, SameSite};
 use rocket::request::Request;
 use rocket::response::status::Custom;
-use rocket::response::{self, Redirect, Responder};
+use rocket::response::{self, Responder};
+use rocket::State;
 
 use rocket_contrib::databases::diesel::PgConnection;
 use rocket_contrib::json::{Json, JsonValue};
 
 use rocket_oauth2::hyper_sync_rustls_adapter::HyperSyncRustlsAdapter;
-use rocket_oauth2::{OAuth2, TokenResponse};
+use rocket_oauth2::Adapter;
+use rocket_oauth2::{OAuthConfig, TokenRequest};
 
 use rocket_cors;
 use rocket_cors::{AllowedHeaders, AllowedOrigins, Error};
@@ -71,10 +74,7 @@ struct GitHubUserInfo {
     name: String,
 }
 
-fn github_callback(
-    request: &Request,
-    token: TokenResponse,
-) -> Result<Redirect, Box<dyn (::std::error::Error)>> {
+fn github_username(access_token: String) -> Result<String, Box<dyn (::std::error::Error)>> {
     let https = HttpsConnector::new(hyper_sync_rustls::TlsClient::new());
     let client = Client::with_connector(https);
 
@@ -84,7 +84,7 @@ fn github_callback(
         .expect("parse GitHub MIME type");
     let response = client
         .get("https://api.github.com/user")
-        .header(Authorization(format!("token {}", token.access_token())))
+        .header(Authorization(format!("token {}", access_token)))
         .header(Accept(vec![qitem(mime)]))
         .header(UserAgent("rocket_oauth2 demo application".into()))
         .send()?;
@@ -95,31 +95,45 @@ fn github_callback(
 
     let user_info: GitHubUserInfo = serde_json::from_reader(response.take(2 * 1024 * 1024))?;
 
-    // todo remove expect
-    let mut cookies = request.guard::<Cookies>().expect("request cookies");
-
-    cookies.add_private(
-        Cookie::build("username", user_info.name)
-            .same_site(SameSite::Lax)
-            .finish(),
-    );
-    Ok(Redirect::to("/"))
+    Ok(user_info.name)
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
 struct BlaBla {
     code: String,
-    clientId: String,
-    redirectUri: String,
+    #[serde(rename = "clientId")]
+    client_id: String,
+    #[serde(rename = "redirectUri")]
+    redirect_uri: String,
 }
 
 #[post("/auth/github", data = "<oauth_data>")]
-fn auth_github(oauth_data: Json<BlaBla>) -> Result<JsonResponse, Box<dyn (::std::error::Error)>> {
-    println!("data from github: {:?}", oauth_data);
+fn auth_github(
+    oauth_data: Json<BlaBla>,
+    state: State<OAuthConfig>,
+) -> Result<JsonResponse, Box<dyn (::std::error::Error)>> {
+    println!("State: {:?}", state);
+    println!("data from github: {:?}", oauth_data.0);
+
+    let code = oauth_data.0.code;
+    println!("code from github: {}", code);
     // github_callback(request.0, token_response.into_inner())
+
+    let hyper = HyperSyncRustlsAdapter {};
+    let access_token = hyper
+        .exchange_code(&state, TokenRequest::AuthorizationCode(code))
+        .map(|token_resp| {
+            println!("token_resp: {:?}", token_resp);
+            token_resp.access_token().to_owned()
+        })?;
+    // let access_token = github_access_token(&oauth_data.code.clone(), &state)?;
+    println!("github access token: {}", access_token);
+
+    let username = github_username(access_token)?;
 
     Ok(JsonResponse::Ok(json!({
         "redirect_to": "http://localhost:8080/auth/callback",
+        "username": username,
         "access_token": "my-access-token"
     })))
 }
@@ -225,18 +239,19 @@ fn main() -> Result<(), Error> {
     }
     .to_cors()?;
 
-    let oauth = OAuth2::fairing(
-        HyperSyncRustlsAdapter,
-        github_callback,
-        "github",
-        "/auth/github",
-        Some(("/login/github", vec!["user:read".to_string()])),
-    );
+    let config_reader = AdHoc::on_attach("OAuthConfig", |rocket| {
+        let gh_config: OAuthConfig =
+            OAuthConfig::from_config(rocket.config(), "github").expect("failed to read config");
+        // let config = MyConfig {
+        //     user_val: gh_config, //"foo".to_owned(),
+        // };
+        Ok(rocket.manage(gh_config))
+    });
 
     rocket::ignite()
         .attach(DigesterDbConn::fairing())
         .attach(cors)
-        .attach(oauth)
+        .attach(config_reader)
         .register(catchers![internal_error, not_found])
         .mount("/", routes![add_blog, auth_github])
         .launch();

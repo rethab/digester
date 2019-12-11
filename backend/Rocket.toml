@@ -5,4 +5,4 @@ digester = { url = "postgres://postgres@localhost:5432/postgres"}
 provider = "GitHub"
 client_id = "ce2e6a7d28bdf8eca16c"
 client_secret = "faf62455d8e125a2758cfdbb3c605f249970ba41"
-redirect_uri = "http://localhost:8000/auth/github"
+redirect_uri = "http://localhost:8080/auth/callback"
