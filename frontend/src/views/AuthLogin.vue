@@ -13,8 +13,9 @@ export default {
       console.log("START authenticate(" + provider + ")");
       try {
         let response = await this.$auth.authenticate(provider);
-        console.log(response);
-        console.log("END authenticate(" + provider + ")");
+        let redirect_to = response.data.redirect_to;
+        console.log("Redirecting to: " + redirect_to);
+        window.location.href = redirect_to;
       } catch (e) {
         console.error("Failed to call authenticate");
         console.error(e);

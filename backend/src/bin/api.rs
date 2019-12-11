@@ -114,11 +114,14 @@ struct BlaBla {
 }
 
 #[post("/auth/github", data = "<oauth_data>")]
-fn auth_github(oauth_data: Json<BlaBla>) -> Result<Redirect, Box<dyn (::std::error::Error)>> {
+fn auth_github(oauth_data: Json<BlaBla>) -> Result<JsonResponse, Box<dyn (::std::error::Error)>> {
     println!("data from github: {:?}", oauth_data);
     // github_callback(request.0, token_response.into_inner())
 
-    Ok(Redirect::to("http://localhost:8080/auth/callback"))
+    Ok(JsonResponse::Ok(json!({
+        "redirect_to": "http://localhost:8080/auth/callback",
+        "access_token": "my-access-token"
+    })))
 }
 
 #[post("/blogs/add", data = "<new_blog>")]
