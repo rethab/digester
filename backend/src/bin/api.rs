@@ -12,6 +12,7 @@ extern crate serde_derive;
 extern crate url;
 
 use backend::db;
+use backend::iam;
 
 use rocket::fairing::AdHoc;
 use rocket::http::Method;
@@ -24,21 +25,9 @@ use rocket::State;
 use rocket_contrib::databases::diesel::PgConnection;
 use rocket_contrib::json::{Json, JsonValue};
 
-use rocket_oauth2::hyper_sync_rustls_adapter::HyperSyncRustlsAdapter;
-use rocket_oauth2::Adapter;
-use rocket_oauth2::{OAuthConfig, TokenRequest};
-
 use rocket_cors;
 use rocket_cors::{AllowedHeaders, AllowedOrigins, Error};
 
-use hyper::{
-    header::{qitem, Accept, Authorization, UserAgent},
-    mime::Mime,
-    net::HttpsConnector,
-    Client,
-};
-
-use std::io::Read;
 use url::Url;
 
 #[database("digester")]
@@ -68,36 +57,6 @@ impl<'r> Responder<'r> for JsonResponse {
     }
 }
 
-#[derive(serde::Deserialize)]
-struct GitHubUserInfo {
-    #[serde(default)]
-    name: String,
-}
-
-fn github_username(access_token: String) -> Result<String, Box<dyn (::std::error::Error)>> {
-    let https = HttpsConnector::new(hyper_sync_rustls::TlsClient::new());
-    let client = Client::with_connector(https);
-
-    // Use the token to retrieve the user's GitHub account information.
-    let mime: Mime = "application/vnd.github.v3+json"
-        .parse()
-        .expect("parse GitHub MIME type");
-    let response = client
-        .get("https://api.github.com/user")
-        .header(Authorization(format!("token {}", access_token)))
-        .header(Accept(vec![qitem(mime)]))
-        .header(UserAgent("rocket_oauth2 demo application".into()))
-        .send()?;
-
-    if !response.status.is_success() {
-        return Err(format!("got non-success status {}", response.status).into());
-    }
-
-    let user_info: GitHubUserInfo = serde_json::from_reader(response.take(2 * 1024 * 1024))?;
-
-    Ok(user_info.name)
-}
-
 #[derive(Deserialize, Debug, PartialEq)]
 struct BlaBla {
     code: String,
@@ -107,35 +66,24 @@ struct BlaBla {
     redirect_uri: String,
 }
 
+// todo how to prevent malicious users from calling this? (and us essentially being a github proxy)
 #[post("/auth/github", data = "<oauth_data>")]
-fn auth_github(
-    oauth_data: Json<BlaBla>,
-    state: State<OAuthConfig>,
-) -> Result<JsonResponse, Box<dyn (::std::error::Error)>> {
-    println!("State: {:?}", state);
-    println!("data from github: {:?}", oauth_data.0);
-
-    let code = oauth_data.0.code;
-    println!("code from github: {}", code);
-    // github_callback(request.0, token_response.into_inner())
-
-    let hyper = HyperSyncRustlsAdapter {};
-    let access_token = hyper
-        .exchange_code(&state, TokenRequest::AuthorizationCode(code))
-        .map(|token_resp| {
-            println!("token_resp: {:?}", token_resp);
-            token_resp.access_token().to_owned()
-        })?;
-    // let access_token = github_access_token(&oauth_data.code.clone(), &state)?;
-    println!("github access token: {}", access_token);
-
-    let username = github_username(access_token)?;
-
-    Ok(JsonResponse::Ok(json!({
-        "redirect_to": "http://localhost:8080/auth/callback",
-        "username": username,
-        "access_token": "my-access-token"
-    })))
+fn auth_github(oauth_data: Json<BlaBla>, provider: State<iam::Github>) -> JsonResponse {
+    use iam::AuthenticationError;
+    match iam::authenticate::<iam::Github>(&provider, iam::AuthorizationCode(oauth_data.0.code)) {
+        Ok(session) => JsonResponse::Ok(json!({
+            "session_id": session.id,
+            "username": session.username,
+        })),
+        Err(AuthenticationError::UnknownFailure(msg)) => {
+            println!("Unknown auth failure: {}", msg);
+            JsonResponse::InternalServerError
+        }
+        Err(AuthenticationError::TokenExchangeFailed(msg)) => {
+            println!("token exchange failure: {}", msg);
+            JsonResponse::InternalServerError
+        }
+    }
 }
 
 #[post("/blogs/add", data = "<new_blog>")]
@@ -239,13 +187,10 @@ fn main() -> Result<(), Error> {
     }
     .to_cors()?;
 
-    let config_reader = AdHoc::on_attach("OAuthConfig", |rocket| {
-        let gh_config: OAuthConfig =
-            OAuthConfig::from_config(rocket.config(), "github").expect("failed to read config");
-        // let config = MyConfig {
-        //     user_val: gh_config, //"foo".to_owned(),
-        // };
-        Ok(rocket.manage(gh_config))
+    let config_reader = AdHoc::on_attach("Github Identity Provider", |rocket| {
+        let github =
+            iam::Github::from_rocket_config(rocket.config()).expect("Failed to read github config");
+        Ok(rocket.manage(github))
     });
 
     rocket::ignite()
