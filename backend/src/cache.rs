@@ -28,3 +28,15 @@ pub fn session_store(
     conn.set(id, serialized_data)
         .map_err(|err| format!("Failed to store session in redis: {:?}", err))
 }
+
+pub fn session_find(conn: &Connection, id: SessionId) -> Result<Option<SessionData>, String> {
+    let maybe_data: Option<Vec<u8>> = conn
+        .get(id)
+        .map_err(|err| format!("Failed to fetch session from redis: {:?}", err))?;
+
+    match maybe_data {
+        None => Ok(None),
+        Some(data) => serde_cbor::from_slice(&data[..])
+            .map_err(|err| format!("Failed to deserialize redis value: {:?}", err)),
+    }
+}

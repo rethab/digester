@@ -17,10 +17,10 @@ use backend::iam;
 use rocket::fairing::AdHoc;
 use rocket::http::Method;
 use rocket::http::Status as HttpStatus;
-use rocket::request::Request;
+use rocket::request::{self, FromRequest, Request};
 use rocket::response::status::Custom;
 use rocket::response::{self, Responder};
-use rocket::State;
+use rocket::{Outcome, State};
 
 use rocket_contrib::databases::diesel::PgConnection;
 use rocket_contrib::databases::redis::Connection as RedisConnection;
@@ -48,6 +48,27 @@ enum JsonResponse {
     BadRequest(String),
     InternalServerError,
     NotFound,
+}
+
+struct Protected(iam::Session);
+
+impl<'a, 'r> FromRequest<'a, 'r> for Protected {
+    type Error = ();
+    // todo check how failure can be handled
+    fn from_request(req: &'a Request<'r>) -> request::Outcome<Protected, ()> {
+        let keys: Vec<_> = req.headers().get("Authentication").collect();
+        if keys.len() != 1 {
+            return Outcome::Forward(());
+        }
+        // todo parse fails on garbage input, need to handle
+        let session_id = Uuid::parse_str(keys[0]).expect("failed to parse uuid");
+        let redis = Redis::from_request(req)?;
+        match iam::fetch_session(&redis, session_id) {
+            Ok(Some(session)) => Outcome::Success(Protected(session)),
+            Ok(None) => Outcome::Forward(()),
+            Err(err) => Outcome::Forward(()), // todo log
+        }
+    }
 }
 
 impl<'r> Responder<'r> for JsonResponse {
@@ -105,7 +126,8 @@ fn auth_github(
 }
 
 #[post("/blogs/add", data = "<new_blog>")]
-fn add_blog(db: DigesterDbConn, new_blog: Json<NewBlog>) -> JsonResponse {
+fn add_blog(session: Protected, db: DigesterDbConn, new_blog: Json<NewBlog>) -> JsonResponse {
+    println!("User {} is making a request :)", session.0.username);
     match validate_blog(new_blog.0) {
         Ok(valid) => {
             match insert_blog(db, valid) {

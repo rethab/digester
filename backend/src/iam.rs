@@ -53,6 +53,14 @@ impl Session {
             username,
         }
     }
+
+    fn from_data(id: Uuid, data: cache::SessionData) -> Session {
+        Session {
+            id,
+            user_id: data.user_id,
+            username: data.username,
+        }
+    }
 }
 
 pub struct Github {
@@ -170,6 +178,12 @@ pub fn authenticate<P: IdentityProvider>(
         .map_err(AuthenticationError::UnknownFailure)?;
     let session = create_session(cache, &user).map_err(AuthenticationError::UnknownFailure)?;
     Ok(session)
+}
+
+pub fn fetch_session(cache: &RedisConnection, session_id: Uuid) -> Result<Option<Session>, String> {
+    let id = cache::SessionId(session_id.clone());
+    let maybe_data = cache::session_find(cache, id)?;
+    Ok(maybe_data.map(|data| Session::from_data(session_id, data)))
 }
 
 fn fetch_or_insert_user_in_db(
