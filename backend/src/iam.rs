@@ -5,15 +5,19 @@ use hyper::{
     Client,
 };
 use rocket::config::Config;
+use rocket_contrib::databases::redis::Connection as RedisConnection;
 use rocket_oauth2::hyper_sync_rustls_adapter::HyperSyncRustlsAdapter;
 use rocket_oauth2::Adapter;
 use rocket_oauth2::{OAuthConfig, TokenRequest};
 
 use diesel::pg::PgConnection;
 
+use super::cache;
 use super::db;
 
 use std::io::Read;
+
+use uuid::Uuid;
 
 pub struct User {
     id: i32,
@@ -36,8 +40,19 @@ pub struct ProviderUserInfo {
     username: String,
 }
 pub struct Session {
-    pub id: String,
+    pub id: Uuid,
+    pub user_id: i32,
     pub username: String,
+}
+
+impl Session {
+    pub fn generate(user_id: i32, username: String) -> Session {
+        Session {
+            id: Uuid::new_v4(),
+            user_id,
+            username,
+        }
+    }
 }
 
 pub struct Github {
@@ -75,7 +90,7 @@ pub trait IdentityProvider {
 #[derive(serde::Deserialize)]
 struct GitHubUserInfo {
     #[serde(rename = "id")]
-    pid: String,
+    pid: i32,
     #[serde(rename = "login")]
     username: String,
     email: String,
@@ -85,7 +100,7 @@ impl GitHubUserInfo {
     fn user_info(self) -> ProviderUserInfo {
         ProviderUserInfo {
             provider: Github::IDENTIFIER,
-            pid: self.pid,
+            pid: self.pid.to_string(),
             email: self.email,
             username: self.username,
         }
@@ -145,6 +160,7 @@ impl IdentityProvider for Github {
 
 pub fn authenticate<P: IdentityProvider>(
     conn: &PgConnection,
+    cache: &mut RedisConnection,
     provider: &P,
     code: AuthorizationCode,
 ) -> Result<Session, AuthenticationError> {
@@ -152,7 +168,7 @@ pub fn authenticate<P: IdentityProvider>(
     let user_info = provider.fetch_user_info(access_token)?;
     let user = fetch_or_insert_user_in_db(conn, &user_info)
         .map_err(AuthenticationError::UnknownFailure)?;
-    let session = create_session(&user).map_err(AuthenticationError::UnknownFailure)?;
+    let session = create_session(cache, &user).map_err(AuthenticationError::UnknownFailure)?;
     Ok(session)
 }
 
@@ -177,6 +193,12 @@ fn fetch_or_insert_user_in_db(
     }
 }
 
-fn create_session(user: &User) -> Result<Session, String> {
-    unimplemented!()
+fn create_session(c: &mut RedisConnection, user: &User) -> Result<Session, String> {
+    let session = Session::generate(user.id, user.username.clone());
+    let data = cache::SessionData {
+        user_id: user.id,
+        username: user.username.clone(),
+    };
+    cache::session_store(c, cache::SessionId(session.id), &data)?;
+    Ok(session)
 }

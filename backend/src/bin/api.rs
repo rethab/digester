@@ -23,15 +23,20 @@ use rocket::response::{self, Responder};
 use rocket::State;
 
 use rocket_contrib::databases::diesel::PgConnection;
+use rocket_contrib::databases::redis::Connection as RedisConnection;
 use rocket_contrib::json::{Json, JsonValue};
 
 use rocket_cors;
 use rocket_cors::{AllowedHeaders, AllowedOrigins, Error};
 
 use url::Url;
+use uuid::Uuid;
 
 #[database("digester")]
 struct DigesterDbConn(PgConnection);
+
+#[database("redis")]
+struct Redis(RedisConnection);
 
 #[derive(Deserialize, Debug, PartialEq)]
 struct NewBlog {
@@ -70,16 +75,24 @@ struct BlaBla {
 #[post("/auth/github", data = "<oauth_data>")]
 fn auth_github(
     db: DigesterDbConn,
+    mut redis: Redis,
     oauth_data: Json<BlaBla>,
     provider: State<iam::Github>,
 ) -> JsonResponse {
     use iam::AuthenticationError;
     let code = iam::AuthorizationCode(oauth_data.0.code);
-    match iam::authenticate::<iam::Github>(&db.0, &provider, code) {
-        Ok(session) => JsonResponse::Ok(json!({
-            "session_id": session.id,
-            "username": session.username,
-        })),
+    match iam::authenticate::<iam::Github>(&db.0, &mut redis.0, &provider, code) {
+        Ok(session) => {
+            let session_id = session
+                .id
+                .to_simple()
+                .encode_lower(&mut Uuid::encode_buffer())
+                .to_owned();
+            JsonResponse::Ok(json!({
+                "session_id": session_id,
+                "username": session.username,
+            }))
+        }
         Err(AuthenticationError::UnknownFailure(msg)) => {
             println!("Unknown auth failure: {}", msg);
             JsonResponse::InternalServerError
@@ -200,6 +213,7 @@ fn main() -> Result<(), Error> {
 
     rocket::ignite()
         .attach(DigesterDbConn::fairing())
+        .attach(Redis::fairing())
         .attach(cors)
         .attach(config_reader)
         .register(catchers![internal_error, not_found])

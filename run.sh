@@ -4,7 +4,7 @@ set -e
 set -u
 
 POSTGRES_CONNECTION="postgres://postgres@localhost:5432/postgres"
-DB_IMAGE_TAG="digester-postgres"
+DB_IMAGE_TAG="digester_postgres"
 DB_CONTAINER_ID=`docker ps | grep $DB_IMAGE_TAG | awk '{print $1}'`
 CMD=$1
 
@@ -22,28 +22,33 @@ function run_digester(){
 
 function run_api() {
   pushd backend
-  ROCKET_DATABASES="{digester={url=\"$POSTGRES_CONNECTION\"}}" cargo run --bin api
+  cargo run --bin api
   popd
 }
 
 function run_db() {
-  docker run -p 5432:5432 -d $DB_IMAGE_TAG
+  docker-compose up -d
 }
 
 function build_db() {
-  docker build -t $DB_IMAGE_TAG .
+  docker-compose build
 }
 
 function kill_db() {
-  docker stop $DB_CONTAINER_ID && docker rm $DB_CONTAINER_ID
+  docker-compose down
 }
 
 function run_psql() {
   docker exec -it $DB_CONTAINER_ID psql --user postgres
 }
 
+function run_redis() {
+  type redis-cli >/dev/null || { echo "Missing redis-cli. Install redis-tools"; exit 1; };
+  redis-cli
+}
+
 function run_db_logs() {
-  docker logs $DB_CONTAINER_ID
+  docker-compose logs
 }
 
 
@@ -55,10 +60,11 @@ case $CMD in
   kill-db)  kill_db ;;
   build-db) build_db ;;
   psql)     run_psql ;;
+  redis)    run_redis ;;
   logs-db)  run_db_logs ;;
   *)
     echo "unknown command.."
-    echo "known commands are: fetcher, digester, api, db, kill-db, build-db, psql, logs-db"
+    echo "known commands are: fetcher, digester, api, db, kill-db, build-db, psql, redis, logs-db"
     exit 1
     ;;
 esac

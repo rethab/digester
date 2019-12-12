@@ -1,5 +1,6 @@
 [global.databases]
 digester = { url = "postgres://postgres@localhost:5432/postgres"}
+redis = { url = "redis://127.0.0.1" }
 
 [global.oauth.github]
 provider = "GitHub"
