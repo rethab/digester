@@ -11,6 +11,23 @@ pub use models::*;
 mod schema {
 
     table! {
+        users(id) {
+            id -> Integer,
+        }
+    }
+
+    table! {
+        identities(id) {
+            id -> Integer,
+            provider -> Text,
+            pid -> Text,
+            user_id -> Integer,
+            email -> Text,
+            username -> Text,
+        }
+    }
+
+    table! {
         blogs (id) {
             id -> Integer,
             url -> Text,
@@ -51,6 +68,7 @@ mod schema {
     }
 
     allow_tables_to_appear_in_same_query!(subscriptions, digests);
+    allow_tables_to_appear_in_same_query!(users, identities);
 }
 
 mod models {
@@ -63,6 +81,31 @@ mod models {
     use diesel::sql_types::Text;
     use diesel::*;
     use std::io::Write;
+
+    #[derive(Queryable)]
+    pub struct Identity {
+        pub id: i32,
+        pub provider: String,
+        pub pid: String,
+        pub user_id: i32,
+        pub email: String,
+        pub username: String,
+    }
+
+    #[derive(Insertable)]
+    #[table_name = "identities"]
+    pub struct NewIdentity {
+        pub provider: String,
+        pub pid: String,
+        pub user_id: i32,
+        pub email: String,
+        pub username: String,
+    }
+
+    #[derive(Queryable)]
+    pub struct User {
+        pub id: i32,
+    }
 
     #[derive(Queryable)]
     pub struct Blog {
@@ -396,4 +439,70 @@ pub fn digests_set_sent(conn: &Connection, digest: &Digest) -> Result<(), String
         .execute(&conn.0)
         .map(|_| ())
         .map_err(|err| format!("Failed to update 'sent' for digest {:?}: {:?}", digest, err))
+}
+
+pub fn users_find_by_provider(
+    conn: &PgConnection,
+    provider: &str,
+    pid: &str,
+) -> Result<Option<(User, Identity)>, String> {
+    use schema::identities;
+    use schema::users;
+
+    users::table
+        .inner_join(identities::table.on(identities::user_id.eq(users::id)))
+        .filter(
+            identities::provider
+                .eq(provider)
+                .and(identities::pid.eq(pid)),
+        )
+        .select((users::all_columns, identities::all_columns))
+        .load::<(User, Identity)>(conn)
+        .map_err(|err| format!("Failed to fetch user by provider: {}", err))
+        .and_then(|uis| {
+            if uis.len() > 1 {
+                Err(format!(
+                    "Found more than one entry for provider={} and pid={}",
+                    provider, pid
+                ))
+            } else {
+                Ok(uis.into_iter().next())
+            }
+        })
+}
+
+pub struct NewUserData {
+    pub provider: String,
+    pub pid: String,
+    pub email: String,
+    pub username: String,
+}
+
+pub fn users_insert(
+    conn: &PgConnection,
+    new_user: NewUserData,
+) -> Result<(User, Identity), String> {
+    use schema::identities;
+    use schema::users;
+
+    let user: User = diesel::insert_into(users::table)
+        .default_values()
+        .returning(users::all_columns)
+        .get_result(conn)
+        .map_err(|err| format!("Failed to insert new user: {:?}", err))?;
+
+    let new_identity = NewIdentity {
+        provider: new_user.provider,
+        pid: new_user.pid,
+        user_id: user.id,
+        email: new_user.email,
+        username: new_user.username,
+    };
+    let identity: Identity = diesel::insert_into(identities::table)
+        .values(new_identity)
+        .returning(identities::all_columns)
+        .get_result(conn)
+        .map_err(|err| format!("Failed to insert new identity: {:?}", err))?;
+
+    Ok((user, identity))
 }

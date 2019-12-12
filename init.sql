@@ -1,3 +1,26 @@
+-- general conventions:
+--
+-- - inserted: when the record was inserted
+
+-- IAM
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+);
+
+CREATE TABLE identities (
+  id SERIAL PRIMARY KEY,
+  provider VARCHAR NOT NULL, -- eg. 'github'
+  pid VARCHAR NOT NULL, -- user's id in that provider
+  user_id INT NOT NULL REFERENCES users(id),
+  email VARCHAR NOT NULL,
+  username VARCHAR NOT NULL,
+  inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(provider, id)
+);
+
+-- BLOGS
+
 CREATE TABLE blogs (
   id SERIAL PRIMARY KEY,
   url VARCHAR NOT NULL, -- url incl scheme
@@ -14,7 +37,7 @@ CREATE TABLE posts (
   author VARCHAR NULL, -- could be different from blog for guest posts
   url VARCHAR NULL, -- direct link to post
   published TIMESTAMP WITH TIME ZONE NULL, -- when the post was published
-  inserted TIMESTAMP WITH TIME ZONE NULL, -- when the post was inserted into the db
+  inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(blog_id, title, published) -- title could be duplicate, but not for the same published date
 );
 

@@ -68,9 +68,14 @@ struct BlaBla {
 
 // todo how to prevent malicious users from calling this? (and us essentially being a github proxy)
 #[post("/auth/github", data = "<oauth_data>")]
-fn auth_github(oauth_data: Json<BlaBla>, provider: State<iam::Github>) -> JsonResponse {
+fn auth_github(
+    db: DigesterDbConn,
+    oauth_data: Json<BlaBla>,
+    provider: State<iam::Github>,
+) -> JsonResponse {
     use iam::AuthenticationError;
-    match iam::authenticate::<iam::Github>(&provider, iam::AuthorizationCode(oauth_data.0.code)) {
+    let code = iam::AuthorizationCode(oauth_data.0.code);
+    match iam::authenticate::<iam::Github>(&db.0, &provider, code) {
         Ok(session) => JsonResponse::Ok(json!({
             "session_id": session.id,
             "username": session.username,
