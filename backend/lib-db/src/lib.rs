@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate diesel;
+
 use chrono::{DateTime, Duration, Utc};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;

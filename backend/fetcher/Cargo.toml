@@ -1,0 +1,10 @@
+[package]
+name = "fetcher"
+version = "0.1.0"
+authors = ["Reto Habluetzel <rethab@protonmail.ch>"]
+edition = "2018"
+
+[dependencies]
+lib-db = { path = "../lib-db" }
+rss = { version = "1.8.0", features = ["from_url"] }
+chrono = "0.4"

@@ -1,13 +1,12 @@
 extern crate url;
 
-use super::super::db;
+use lib_db as db;
 
 use super::common::*;
 
 use rocket::Rocket;
 
 use rocket_contrib::json::Json;
-use serde::Deserialize;
 
 use url::Url;
 

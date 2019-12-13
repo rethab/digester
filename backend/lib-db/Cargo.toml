@@ -1,0 +1,9 @@
+[package]
+name = "lib-db"
+version = "0.1.0"
+authors = ["Reto Habluetzel <rethab@protonmail.ch>"]
+edition = "2018"
+
+[dependencies]
+chrono = "0.4"
+diesel = { version = "1.0.0", default-features = false, features = ["postgres", "chrono"] } 

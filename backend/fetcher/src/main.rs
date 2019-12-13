@@ -1,8 +1,6 @@
-extern crate backend;
-
-use backend::db;
-use backend::db::{Blog, NewPost};
 use chrono::{DateTime, Duration, Utc};
+use lib_db as db;
+use lib_db::{Blog, NewPost};
 use rss::Channel;
 
 fn main() -> Result<(), String> {

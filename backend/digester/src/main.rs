@@ -1,11 +1,9 @@
-extern crate backend;
-
-use backend::db;
-use backend::db::{Day, Digest, Frequency, InsertDigest, Subscription};
 use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Utc, Weekday};
 use lettre::smtp::authentication::{Credentials, Mechanism};
 use lettre::{ClientSecurity, SmtpClient, Transport};
 use lettre_email::Email;
+use lib_db as db;
+use lib_db::{Day, Digest, Frequency, InsertDigest, Subscription};
 
 fn main() -> Result<(), String> {
     let db_conn = db::connection_from_env()?;

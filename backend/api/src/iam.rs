@@ -13,7 +13,7 @@ use rocket_oauth2::{OAuthConfig, TokenRequest};
 use diesel::pg::PgConnection;
 
 use super::cache;
-use super::db;
+use lib_db as db;
 
 use std::io::Read;
 
@@ -95,7 +95,7 @@ pub trait IdentityProvider {
     ) -> Result<ProviderUserInfo, AuthenticationError>;
 }
 
-#[derive(serde::Deserialize)]
+#[derive(Deserialize)]
 struct GitHubUserInfo {
     #[serde(rename = "id")]
     pid: i32,

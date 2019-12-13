@@ -1,19 +1,18 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-extern crate backend;
-
 #[macro_use]
 extern crate rocket;
 
+extern crate api;
 extern crate url;
 
-use backend::iam;
+use api::iam;
 
 use rocket::fairing::AdHoc;
 
-use backend::api::auth;
-use backend::api::blog;
-use backend::api::common::*;
+use api::controllers::auth;
+use api::controllers::blog;
+use api::controllers::common::*;
 
 #[catch(500)]
 fn internal_error() -> JsonResponse {

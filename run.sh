@@ -4,25 +4,23 @@ set -e
 set -u
 
 POSTGRES_CONNECTION="postgres://postgres@localhost:5432/postgres"
-DB_IMAGE_TAG="digester_postgres"
-DB_CONTAINER_ID=`docker ps | grep $DB_IMAGE_TAG | awk '{print $1}'`
 CMD=$1
 
 function run_fetcher(){
-  pushd backend
-  DATABASE_CONNECTION=$POSTGRES_CONNECTION cargo run --bin fetcher
+  pushd backend/fetcher
+  DATABASE_CONNECTION=$POSTGRES_CONNECTION cargo run
   popd
 }
 
 function run_digester(){
-  pushd backend
-  DATABASE_CONNECTION=$POSTGRES_CONNECTION cargo run --bin digester
+  pushd backend/digester
+  DATABASE_CONNECTION=$POSTGRES_CONNECTION cargo run
   popd
 }
 
 function run_api() {
-  pushd backend
-  cargo run --bin api
+  pushd backend/api
+  cargo run 
   popd
 }
 
@@ -39,7 +37,7 @@ function kill_db() {
 }
 
 function run_psql() {
-  docker exec -it $DB_CONTAINER_ID psql --user postgres
+  docker-compose exec postgres psql --user postgres
 }
 
 function run_redis() {

@@ -1,0 +1,12 @@
+[package]
+name = "digester"
+version = "0.1.0"
+authors = ["Reto Habluetzel <rethab@protonmail.ch>"]
+edition = "2018"
+
+
+[dependencies]
+lib-db = { path = "../lib-db" }
+chrono = "0.4"
+lettre = "0.9"
+lettre_email = "0.9"

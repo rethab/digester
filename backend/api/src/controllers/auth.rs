@@ -6,7 +6,6 @@ use rocket::http::{Cookie, Cookies};
 use rocket::{self, Rocket, State};
 
 use rocket_contrib::json::Json;
-use serde::Deserialize;
 
 use time::Duration;
 use uuid::Uuid;
