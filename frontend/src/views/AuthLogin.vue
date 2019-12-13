@@ -15,7 +15,7 @@ export default {
         await this.$store.dispatch("authenticate", {
           username: response.data.username
         });
-        this.$router.push({ name: "auth-callback" });
+        this.$router.push({ name: "subscriptions" });
       } catch (e) {
         console.error("Failed to call authenticate");
         console.error(e);

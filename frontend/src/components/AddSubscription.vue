@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <v-card>
-      <v-card-title>Add New</v-card-title>
+      <v-card-title>New Subscription</v-card-title>
       <v-card-subtitle>
         Into golang? Try
         <span class="font-italic">golang/tools</span>

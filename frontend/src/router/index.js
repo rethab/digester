@@ -1,11 +1,9 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Home from '@/views/Home.vue'
-import BlogAdd from '@/views/BlogAdd.vue'
-import DigestsOverview from '@/views/DigestsOverview.vue'
+import Subscriptions from '@/views/Subscriptions.vue'
 import AuthLogin from '@/views/AuthLogin.vue'
 import AuthLogout from '@/components/AuthLogout.vue'
-import AuthCallback from '@/views/AuthCallback.vue'
 
 Vue.use(VueRouter)
 
@@ -16,24 +14,14 @@ const routes = [
     component: Home
   },
   {
-    path: '/digests',
-    name: 'digests',
-    component: DigestsOverview
-  },
-  {
-    path: '/blogs/add',
-    name: 'blogs-add',
-    component: BlogAdd
+    path: '/subs',
+    name: 'subscriptions',
+    component: Subscriptions
   },
   {
     path: '/auth/login',
     name: 'auth-login',
     component: AuthLogin
-  },
-  {
-    path: '/auth/callback',
-    name: 'auth-callback',
-    component: AuthCallback
   },
   {
     path: '/auth/logout',
