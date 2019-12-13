@@ -7,10 +7,22 @@ Vue.use(Vuex)
 export default new Vuex.Store({
   strict: process.env.NODE_ENV != 'production',
   state: {
-    blogs: [
-      { url: 'https://acolyer.org' },
-      { url: 'https://vuejs.org' },
-      { url: 'https://google.com' }
+    subscriptions: [
+      {
+        type: 'github_release',
+        name: 'kubernetes/kubernets',
+        frequency: 'every saturday at 10am'
+      },
+      {
+        type: 'github_release',
+        name: 'ghc/ghc',
+        frequency: 'every day at 9am'
+      },
+      {
+        type: 'github_release',
+        name: 'rethab/digester',
+        frequency: 'every monday at 7am'
+      },
     ],
     user: null
   },

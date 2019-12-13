@@ -2,6 +2,7 @@ import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Home from '@/views/Home.vue'
 import BlogAdd from '@/views/BlogAdd.vue'
+import DigestsOverview from '@/views/DigestsOverview.vue'
 import AuthLogin from '@/views/AuthLogin.vue'
 import AuthLogout from '@/components/AuthLogout.vue'
 import AuthCallback from '@/views/AuthCallback.vue'
@@ -13,6 +14,11 @@ const routes = [
     path: '/',
     name: 'home',
     component: Home
+  },
+  {
+    path: '/digests',
+    name: 'digests',
+    component: DigestsOverview
   },
   {
     path: '/blogs/add',
