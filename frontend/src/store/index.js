@@ -27,12 +27,11 @@ export default new Vuex.Store({
     user: null
   },
   mutations: {
-    SET_BLOGS(state, blogs) {
-      state.blogs = blogs;
+    SET_SUBSCRIPTIONS(state, subscriptions) {
+      state.subscriptions = subscriptions;
     },
-    ADD_BLOG(state, url) {
-      let blogs = state.blogs.concat({ url: url });
-      state.blogs = blogs;
+    ADD_SUBSCRIPTION(state, subscription) {
+      state.subscriptions.unshift(subscription);
     },
     AUTHENTICATE(state, user) {
       state.user = user;
@@ -42,13 +41,13 @@ export default new Vuex.Store({
     }
   },
   actions: {
-    async loadBlogs({ commit }) {
-      let response = await Api().get("blogs");
-      commit('SET_BLOGS', response.data);
+    async loadSubscriptions({ commit }) {
+      let response = await Api().get("subscriptions");
+      commit('SET_SUBSCRIPTIONS', response.data);
     },
-    addBlog({ commit }, url) {
-      commit('ADD_BLOG', url);
-      return url;
+    subscribe({ commit }, subscription) {
+      commit('ADD_SUBSCRIPTION', subscription);
+      return subscription;
     },
     authenticate({ commit }, user) {
       commit('AUTHENTICATE', user);

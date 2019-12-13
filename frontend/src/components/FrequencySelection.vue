@@ -1,32 +1,40 @@
 <template>
   <v-row cols="12">
     <v-col cols="5">
-      <v-select v-model="frequency" :items="frequencies" append-icon></v-select>
+      <v-select v-model="value.frequency" :items="frequencies" append-icon></v-select>
     </v-col>
     <v-col cols="3">
-      <v-select v-model="day" :disabled="!isWeekly" :items="days" append-icon></v-select>
+      <v-select v-model="value.day" :disabled="!isWeekly" :items="days" append-icon></v-select>
     </v-col>
     <v-col cols="4">
-      <v-select v-model="hour" :items="hours" append-icon></v-select>
+      <v-select v-model="value.hour" :items="hours" append-icon></v-select>
     </v-col>
   </v-row>
 </template>
 
 <script>
 export default {
+  props: {
+    value: {
+      type: Object,
+      required: true
+    }
+  },
+  watch: {
+    value() {
+      this.$emit("input", this.value);
+    }
+  },
   data() {
     return {
       frequencies: ["weekly", "daily"],
-      frequency: "weekly",
       days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-      day: "Sat",
-      hours: [],
-      hour: "09:00"
+      hours: []
     };
   },
   computed: {
     isWeekly() {
-      return this.frequency === "weekly";
+      return this.value.frequency === "weekly";
     }
   },
   mounted() {
