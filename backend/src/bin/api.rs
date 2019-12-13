@@ -15,8 +15,8 @@ use backend::db;
 use backend::iam;
 
 use rocket::fairing::AdHoc;
-use rocket::http::Method;
 use rocket::http::Status as HttpStatus;
+use rocket::http::{Cookie, Cookies, Method};
 use rocket::request::{self, FromRequest, Request};
 use rocket::response::status::Custom;
 use rocket::response::{self, Responder};
@@ -29,6 +29,7 @@ use rocket_contrib::json::{Json, JsonValue};
 use rocket_cors;
 use rocket_cors::{AllowedHeaders, AllowedOrigins, Error};
 
+use time::Duration;
 use url::Url;
 use uuid::Uuid;
 
@@ -48,6 +49,7 @@ enum JsonResponse {
     BadRequest(String),
     InternalServerError,
     NotFound,
+    Unauthorized,
 }
 
 struct Protected(iam::Session);
@@ -56,17 +58,24 @@ impl<'a, 'r> FromRequest<'a, 'r> for Protected {
     type Error = ();
     // todo check how failure can be handled
     fn from_request(req: &'a Request<'r>) -> request::Outcome<Protected, ()> {
-        let keys: Vec<_> = req.headers().get("Authentication").collect();
-        if keys.len() != 1 {
-            return Outcome::Forward(());
-        }
-        // todo parse fails on garbage input, need to handle
-        let session_id = Uuid::parse_str(keys[0]).expect("failed to parse uuid");
-        let redis = Redis::from_request(req)?;
-        match iam::fetch_session(&redis, session_id) {
-            Ok(Some(session)) => Outcome::Success(Protected(session)),
-            Ok(None) => Outcome::Forward(()),
-            Err(err) => Outcome::Forward(()), // todo log
+        match Cookies::from_request(req) {
+            Outcome::Success(cookies) => {
+                match cookies.get("SESSION_ID") {
+                    None => return Outcome::Forward(()),
+                    Some(cookie) => {
+                        // todo parse fails on garbage input, need to handle
+                        let session_id =
+                            Uuid::parse_str(cookie.value()).expect("failed to parse uuid");
+                        let redis = Redis::from_request(req)?;
+                        match iam::fetch_session(&redis, session_id) {
+                            Ok(Some(session)) => Outcome::Success(Protected(session)),
+                            Ok(None) => Outcome::Forward(()),
+                            Err(_) => Outcome::Forward(()), // todo log
+                        }
+                    }
+                }
+            }
+            _ => Outcome::Forward(()),
         }
     }
 }
@@ -78,6 +87,7 @@ impl<'r> Responder<'r> for JsonResponse {
             JsonResponse::BadRequest(error) => (json!({ "error": error }), HttpStatus::BadRequest),
             JsonResponse::InternalServerError => (json!({}), HttpStatus::InternalServerError),
             JsonResponse::NotFound => (json!({}), HttpStatus::NotFound),
+            JsonResponse::Unauthorized => (json!({}), HttpStatus::Unauthorized),
         };
         Custom(status, body).respond_to(req)
     }
@@ -97,6 +107,7 @@ struct BlaBla {
 fn auth_github(
     db: DigesterDbConn,
     mut redis: Redis,
+    mut cookies: Cookies,
     oauth_data: Json<BlaBla>,
     provider: State<iam::Github>,
 ) -> JsonResponse {
@@ -109,8 +120,16 @@ fn auth_github(
                 .to_simple()
                 .encode_lower(&mut Uuid::encode_buffer())
                 .to_owned();
+            // todo review cookie settings
+            let cookie: Cookie = Cookie::build("SESSION_ID", session_id)
+                .domain("localtest.me")
+                .secure(false)
+                .path("/")
+                .http_only(false)
+                .max_age(Duration::days(1))
+                .finish();
+            cookies.add(cookie);
             JsonResponse::Ok(json!({
-                "session_id": session_id,
                 "username": session.username,
             }))
         }
@@ -122,6 +141,26 @@ fn auth_github(
             println!("token exchange failure: {}", msg);
             JsonResponse::InternalServerError
         }
+    }
+}
+
+#[get("/auth/me")]
+fn auth_me(session: Protected) -> JsonResponse {
+    JsonResponse::Ok(json! ({
+        "username": session.0.username
+    }))
+}
+
+#[get("/auth/me", rank = 2)]
+fn auth_unauthenticated() -> JsonResponse {
+    JsonResponse::Unauthorized
+}
+
+#[get("/auth/logout")]
+fn auth_logout(session: Protected, mut redis: Redis) -> JsonResponse {
+    match iam::logout(&mut redis.0, session.0) {
+        Ok(()) => JsonResponse::Ok(json!({})),
+        Err(_) => JsonResponse::InternalServerError,
     }
 }
 
@@ -239,7 +278,16 @@ fn main() -> Result<(), Error> {
         .attach(cors)
         .attach(config_reader)
         .register(catchers![internal_error, not_found])
-        .mount("/", routes![add_blog, auth_github])
+        .mount(
+            "/",
+            routes![
+                add_blog,
+                auth_github,
+                auth_me,
+                auth_logout,
+                auth_unauthenticated
+            ],
+        )
         .launch();
 
     Ok(())

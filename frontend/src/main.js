@@ -11,6 +11,7 @@ Vue.config.productionTip = false
 
 Vue.use(VueAxios, Axios);
 Vue.use(VueAuthenticate, {
+  withCredentials: true,
   baseUrl: 'http://localhost:8000',
 
   providers: {

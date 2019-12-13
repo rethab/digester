@@ -25,6 +25,7 @@ pub fn session_store(
 ) -> Result<(), String> {
     let serialized_data = serde_cbor::to_vec(data)
         .map_err(|err| format!("Failed to serialize session data: {:?}", err))?;
+    // todo set an expire value
     conn.set(id, serialized_data)
         .map_err(|err| format!("Failed to store session in redis: {:?}", err))
 }
@@ -39,4 +40,9 @@ pub fn session_find(conn: &Connection, id: SessionId) -> Result<Option<SessionDa
         Some(data) => serde_cbor::from_slice(&data[..])
             .map_err(|err| format!("Failed to deserialize redis value: {:?}", err)),
     }
+}
+
+pub fn session_delete(conn: &mut Connection, id: SessionId) -> Result<(), String> {
+    conn.del(id)
+        .map_err(|err| format!("Failed to delete key in redis: {:?}", err))
 }

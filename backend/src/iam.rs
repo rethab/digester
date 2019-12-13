@@ -186,6 +186,10 @@ pub fn fetch_session(cache: &RedisConnection, session_id: Uuid) -> Result<Option
     Ok(maybe_data.map(|data| Session::from_data(session_id, data)))
 }
 
+pub fn logout(cache: &mut RedisConnection, session: Session) -> Result<(), String> {
+    cache::session_delete(cache, cache::SessionId(session.id))
+}
+
 fn fetch_or_insert_user_in_db(
     conn: &PgConnection,
     user_info: &ProviderUserInfo,
