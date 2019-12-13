@@ -10,7 +10,6 @@ export default {
   name: "auth-login",
   methods: {
     async authenticate(provider) {
-      console.log("START authenticate(" + provider + ")");
       try {
         let response = await this.$auth.authenticate(provider);
         await this.$store.dispatch("authenticate", {

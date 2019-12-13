@@ -4,8 +4,9 @@
       <v-toolbar-title class="headline text-uppercase">
         <v-btn text to="/">Digester</v-btn>
       </v-toolbar-title>
-      <v-btn text to="/blogs/add">Add</v-btn>
-      <v-btn text to="/auth/login">Login</v-btn>
+      <v-btn v-if="isAuthenticated" text to="/blogs/add">Add</v-btn>
+      <v-btn v-if="!isAuthenticated" text to="/auth/login">Login</v-btn>
+      <v-btn v-if="isAuthenticated" text to="/auth/logout">Logout</v-btn>
       <v-spacer></v-spacer>
     </v-app-bar>
 
@@ -19,10 +20,10 @@
 export default {
   name: "App",
 
-  components: {},
-
-  data: () => ({
-    //
-  })
+  computed: {
+    isAuthenticated() {
+      return this.$store.getters.isAuthenticated;
+    }
+  }
 };
 </script>

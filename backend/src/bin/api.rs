@@ -102,6 +102,25 @@ struct BlaBla {
     redirect_uri: String,
 }
 
+// creates the session cookie. a None value creates a removal cookie
+fn create_session_cookie(maybe_id: Option<Uuid>) -> Cookie<'static> {
+    let value = maybe_id
+        .map(|id| {
+            id.to_simple()
+                .encode_lower(&mut Uuid::encode_buffer())
+                .to_owned()
+        })
+        .unwrap_or(String::new());
+    // todo review cookie settings
+    Cookie::build("SESSION_ID", value)
+        .domain("localhost")
+        .secure(false)
+        .path("/")
+        .http_only(false)
+        .max_age(Duration::days(1))
+        .finish()
+}
+
 // todo how to prevent malicious users from calling this? (and us essentially being a github proxy)
 #[post("/auth/github", data = "<oauth_data>")]
 fn auth_github(
@@ -115,19 +134,7 @@ fn auth_github(
     let code = iam::AuthorizationCode(oauth_data.0.code);
     match iam::authenticate::<iam::Github>(&db.0, &mut redis.0, &provider, code) {
         Ok(session) => {
-            let session_id = session
-                .id
-                .to_simple()
-                .encode_lower(&mut Uuid::encode_buffer())
-                .to_owned();
-            // todo review cookie settings
-            let cookie: Cookie = Cookie::build("SESSION_ID", session_id)
-                .domain("localtest.me")
-                .secure(false)
-                .path("/")
-                .http_only(false)
-                .max_age(Duration::days(1))
-                .finish();
+            let cookie = create_session_cookie(Some(session.id.clone()));
             cookies.add(cookie);
             JsonResponse::Ok(json!({
                 "username": session.username,
@@ -156,12 +163,27 @@ fn auth_unauthenticated() -> JsonResponse {
     JsonResponse::Unauthorized
 }
 
-#[get("/auth/logout")]
-fn auth_logout(session: Protected, mut redis: Redis) -> JsonResponse {
-    match iam::logout(&mut redis.0, session.0) {
-        Ok(()) => JsonResponse::Ok(json!({})),
-        Err(_) => JsonResponse::InternalServerError,
+#[post("/auth/logout")]
+fn auth_logout(
+    maybe_session: Option<Protected>,
+    mut redis: Redis,
+    mut cookies: Cookies,
+) -> JsonResponse {
+    match maybe_session {
+        Some(session) => {
+            println!("Destroying session");
+            match iam::logout(&mut redis.0, session.0) {
+                Ok(()) => (),
+                Err(_) => return JsonResponse::InternalServerError,
+            }
+        }
+        None => {
+            println!("No session to destroy");
+        }
     }
+    let cookie = create_session_cookie(None);
+    cookies.remove(cookie);
+    JsonResponse::Ok(json!({}))
 }
 
 #[post("/blogs/add", data = "<new_blog>")]
