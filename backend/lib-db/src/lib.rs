@@ -9,254 +9,10 @@ use std::env;
 
 pub struct Connection(PgConnection);
 
-pub use models::*;
+pub mod model;
+mod schema;
 
-mod schema {
-
-    table! {
-        users(id) {
-            id -> Integer,
-        }
-    }
-
-    table! {
-        identities(id) {
-            id -> Integer,
-            provider -> Text,
-            pid -> Text,
-            user_id -> Integer,
-            email -> Text,
-            username -> Text,
-        }
-    }
-
-    table! {
-        blogs (id) {
-            id -> Integer,
-            url -> Text,
-            last_fetched -> Nullable<Timestamptz>,
-        }
-    }
-
-    table! {
-        posts (id) {
-            id -> BigInt,
-            blog_id -> Integer,
-            title -> Text,
-            author -> Nullable<Text>,
-            url -> Text,
-            published -> Timestamptz,
-            inserted -> Timestamptz,
-        }
-    }
-
-    table! {
-        subscriptions(id) {
-          id -> Integer,
-          email -> Text,
-          blog_id -> Integer,
-          frequency -> Text,
-          day -> Nullable<Text>,
-          time -> Time,
-        }
-    }
-
-    table! {
-        digests(id) {
-          id -> BigInt,
-          subscription_id -> Integer,
-          due -> Timestamptz,
-          sent -> Nullable<Timestamptz>,
-        }
-    }
-
-    allow_tables_to_appear_in_same_query!(subscriptions, digests);
-    allow_tables_to_appear_in_same_query!(users, identities);
-}
-
-mod models {
-    use super::schema::*;
-    use chrono::naive::NaiveTime;
-    use chrono::{DateTime, Utc};
-    use diesel::deserialize::{self, FromSql};
-    use diesel::pg::Pg;
-    use diesel::serialize::{self, IsNull, Output, ToSql};
-    use diesel::sql_types::Text;
-    use diesel::*;
-    use std::io::Write;
-
-    #[derive(Queryable)]
-    pub struct Identity {
-        pub id: i32,
-        pub provider: String,
-        pub pid: String,
-        pub user_id: i32,
-        pub email: String,
-        pub username: String,
-    }
-
-    #[derive(Insertable)]
-    #[table_name = "identities"]
-    pub struct NewIdentity {
-        pub provider: String,
-        pub pid: String,
-        pub user_id: i32,
-        pub email: String,
-        pub username: String,
-    }
-
-    #[derive(Queryable)]
-    pub struct User {
-        pub id: i32,
-    }
-
-    #[derive(Queryable)]
-    pub struct Blog {
-        pub id: i32,
-        pub url: String,
-        pub last_fetched: Option<DateTime<Utc>>,
-    }
-
-    #[derive(Insertable)]
-    #[table_name = "blogs"]
-    pub struct NewBlog {
-        pub url: String,
-    }
-
-    #[derive(Debug, Insertable)]
-    #[table_name = "posts"]
-    pub struct NewPost {
-        pub blog_id: i32,
-        pub title: String,
-        pub author: Option<String>,
-        pub url: String,
-        pub published: DateTime<Utc>,
-        pub inserted: DateTime<Utc>,
-    }
-
-    #[derive(Debug, Queryable)]
-    pub struct Post {
-        pub id: i64,
-        pub blog_id: i32,
-        pub title: String,
-        pub author: Option<String>,
-        pub url: String,
-        pub published: DateTime<Utc>,
-        pub inserted: DateTime<Utc>,
-    }
-
-    #[derive(Debug, PartialEq, FromSqlRow, AsExpression)]
-    #[sql_type = "Text"]
-    pub enum Frequency {
-        Daily,
-        Weekly,
-    }
-
-    #[derive(Debug, PartialEq, FromSqlRow, AsExpression)]
-    #[sql_type = "Text"]
-    pub enum Day {
-        Mon,
-        Tue,
-        Wed,
-        Thu,
-        Fri,
-        Sat,
-        Sun,
-    }
-
-    impl Day {
-        pub fn to_weekday(&self) -> chrono::Weekday {
-            match self {
-                Day::Mon => chrono::Weekday::Mon,
-                Day::Tue => chrono::Weekday::Tue,
-                Day::Wed => chrono::Weekday::Wed,
-                Day::Thu => chrono::Weekday::Thu,
-                Day::Fri => chrono::Weekday::Fri,
-                Day::Sat => chrono::Weekday::Sat,
-                Day::Sun => chrono::Weekday::Sun,
-            }
-        }
-    }
-
-    #[derive(Debug, Queryable)]
-    pub struct Subscription {
-        pub id: i32,
-        pub email: String,
-        pub blog_id: i32,
-        pub frequency: Frequency,
-        pub day: Option<Day>,
-        pub time: NaiveTime,
-    }
-
-    #[derive(Insertable, Debug)]
-    #[table_name = "digests"]
-    pub struct InsertDigest {
-        pub subscription_id: i32,
-        pub due: DateTime<Utc>,
-    }
-
-    #[derive(Debug, Queryable)]
-    pub struct Digest {
-        pub id: i64,
-        pub subscription_id: i32,
-        pub due: DateTime<Utc>,
-        pub sent: Option<DateTime<Utc>>,
-    }
-
-    impl ToSql<Text, Pg> for Frequency {
-        fn to_sql<W: Write>(&self, out: &mut Output<W, Pg>) -> serialize::Result {
-            match *self {
-                Frequency::Daily => out.write_all(b"daily")?,
-                Frequency::Weekly => out.write_all(b"weekly")?,
-            }
-            Ok(IsNull::No)
-        }
-    }
-
-    impl FromSql<Text, Pg> for Frequency {
-        fn from_sql(bytes: Option<&[u8]>) -> deserialize::Result<Self> {
-            match not_none!(bytes) {
-                b"daily" => Ok(Frequency::Daily),
-                b"weekly" => Ok(Frequency::Weekly),
-                unrecognized => {
-                    Err(format!("Unrecognized frequency enum variant: {:?}", unrecognized).into())
-                }
-            }
-        }
-    }
-
-    impl FromSql<Text, Pg> for Day {
-        fn from_sql(bytes: Option<&[u8]>) -> deserialize::Result<Self> {
-            match not_none!(bytes) {
-                b"mon" => Ok(Day::Mon),
-                b"tue" => Ok(Day::Tue),
-                b"wed" => Ok(Day::Wed),
-                b"thu" => Ok(Day::Thu),
-                b"fri" => Ok(Day::Fri),
-                b"sat" => Ok(Day::Sat),
-                b"sun" => Ok(Day::Sun),
-                unrecognized => {
-                    Err(format!("Unrecognized day enum variant: {:?}", unrecognized).into())
-                }
-            }
-        }
-    }
-
-    impl ToSql<Text, Pg> for Day {
-        fn to_sql<W: Write>(&self, out: &mut Output<W, Pg>) -> serialize::Result {
-            match *self {
-                Day::Mon => out.write_all(b"mon")?,
-                Day::Tue => out.write_all(b"tue")?,
-                Day::Wed => out.write_all(b"wed")?,
-                Day::Thu => out.write_all(b"thu")?,
-                Day::Fri => out.write_all(b"fri")?,
-                Day::Sat => out.write_all(b"sat")?,
-                Day::Sun => out.write_all(b"sun")?,
-            }
-            Ok(IsNull::No)
-        }
-    }
-}
+pub use model::*;
 
 pub fn connection_from_env() -> Result<Connection, String> {
     let connection_string = env::var("DATABASE_CONNECTION")
@@ -266,24 +22,24 @@ pub fn connection_from_env() -> Result<Connection, String> {
         .map(Connection)
 }
 
-pub fn blogs_find_by_last_fetched(
+pub fn channels_find_by_last_fetched(
     conn: &Connection,
     fetch_frequency: Duration,
-) -> Result<Vec<Blog>, String> {
-    use schema::blogs::dsl::*;
+) -> Result<Vec<Channel>, String> {
+    use schema::channels::dsl::*;
 
     let since_last_fetched = Utc::now() - fetch_frequency;
 
-    blogs
+    channels
         .filter(
             last_fetched
                 .lt(since_last_fetched)
                 .or(last_fetched.is_null()),
         )
-        .load::<Blog>(&conn.0)
+        .load::<Channel>(&conn.0)
         .map_err(|err| {
             format!(
-                "Failed to run query in blogs_find_by_last_fetched: {:?}",
+                "Failed to run query in channels_find_by_last_fetched: {:?}",
                 err
             )
         })
@@ -314,59 +70,98 @@ impl InsertError {
     }
 }
 
-pub fn blogs_insert(conn: &PgConnection, blog: NewBlog) -> Result<(), InsertError> {
-    use schema::blogs;
+pub fn channels_insert_if_not_exists(
+    conn: &PgConnection,
+    new_channel: NewChannel,
+) -> Result<Channel, String> {
+    use schema::channels::dsl::*;
 
-    diesel::insert_into(blogs::table)
-        .values(&blog)
-        .execute(conn)
-        .map(|_| ())
-        .map_err(InsertError::from_diesel)
+    let find = || -> Result<Option<Channel>, String> {
+        channels
+            .filter(name.eq(&new_channel.name).and(type_.eq(&new_channel.type_)))
+            .load(conn)
+            .map_err(|err| format!("Failed to query for channel: {:?}", err))
+            .and_then(|results| {
+                if results.len() > 1 {
+                    Err(format!(
+                        "Found more than one channel for name {} and type {:?}",
+                        new_channel.name, new_channel.type_
+                    ))
+                } else {
+                    Ok(results.into_iter().next())
+                }
+            })
+    };
+
+    match find() {
+        Err(err) => return Err(err),
+        Ok(Some(channel)) => return Ok(channel),
+        Ok(None) => {
+            use schema::channels;
+            match diesel::insert_into(channels::table)
+                .values(&new_channel)
+                .returning(channels::all_columns)
+                .get_result(conn)
+                .map_err(InsertError::from_diesel)
+            {
+                Ok(channel) => Ok(channel),
+                Err(InsertError::Duplicate) => {
+                    find().and_then(|maybe_channel| match maybe_channel {
+                        Some(channel) => Ok(channel),
+                        None => Err("Found no channel after duplicate insert error".to_owned()),
+                    })
+                }
+                Err(InsertError::Unknown) => Err("Failed to insert new channel".to_owned()),
+            }
+        }
+    }
 }
 
-pub fn blogs_update_last_fetched(conn: &Connection, blog: &Blog) -> Result<(), String> {
+pub fn channels_update_last_fetched(conn: &Connection, channel: &Channel) -> Result<(), String> {
     use diesel::expression::dsl::now;
-    use schema::blogs::dsl::*;
-    diesel::update(blogs.find(blog.id))
+    use schema::channels::dsl::*;
+    diesel::update(channels.find(channel.id))
         .set(last_fetched.eq(now))
         .execute(&conn.0)
         .map_err(|err| {
             format!(
-                "failed to update last_fetched field for blog {}: {:?}",
-                blog.id, err
+                "failed to update last_fetched field for channel {}: {:?}",
+                channel.id, err
             )
         })
         .map(|_| ())
 }
 
-pub fn posts_insert_new(conn: &Connection, post: &NewPost) -> Result<(), InsertError> {
-    use schema::posts;
+pub fn updates_insert_new(conn: &Connection, update: &NewUpdate) -> Result<(), InsertError> {
+    use schema::updates;
 
-    diesel::insert_into(posts::table)
-        .values(post)
+    diesel::insert_into(updates::table)
+        .values(update)
         .execute(&conn.0)
         .map_err(InsertError::from_diesel)
         .map(|_| ())
 }
 
-pub fn posts_find_new(
+pub fn updates_find_new(
     conn: &Connection,
     subscription: &Subscription,
     maybe_previous_digest_sent: Option<DateTime<Utc>>,
-) -> Result<Vec<Post>, String> {
-    use schema::posts::dsl::*;
+) -> Result<Vec<Update>, String> {
+    use schema::updates::dsl::*;
     let result = if let Some(previous_digest_sent) = maybe_previous_digest_sent {
-        posts
+        updates
             .filter(
-                blog_id
-                    .eq(subscription.blog_id)
+                channel_id
+                    .eq(subscription.channel_id)
                     .and(inserted.gt(previous_digest_sent)),
             )
             .load(&conn.0)
     } else {
-        posts.filter(blog_id.eq(subscription.blog_id)).load(&conn.0)
+        updates
+            .filter(channel_id.eq(subscription.channel_id))
+            .load(&conn.0)
     };
-    result.map_err(|err| format!("Failed to load posts: {:?}", err))
+    result.map_err(|err| format!("Failed to load updates: {:?}", err))
 }
 
 pub fn subscriptions_find_by_digest(
@@ -402,6 +197,20 @@ pub fn subscriptions_find_without_due_digest(
             )
         })
 }
+
+pub fn subscriptions_insert(
+    conn: &PgConnection,
+    sub: NewSubscription,
+) -> Result<Subscription, String> {
+    use schema::subscriptions;
+
+    diesel::insert_into(subscriptions::table)
+        .values(&sub)
+        .returning(subscriptions::all_columns)
+        .get_result(conn)
+        .map_err(|err| format!("Failed to insert new subscription: {:?}", err))
+}
+
 pub fn digests_insert(conn: &Connection, digest: &InsertDigest) -> Result<(), InsertError> {
     use schema::digests;
     diesel::insert_into(digests::table)
@@ -508,4 +317,20 @@ pub fn users_insert(
         .map_err(|err| format!("Failed to insert new identity: {:?}", err))?;
 
     Ok((user, identity))
+}
+
+pub fn identities_find_by_user_id(
+    conn: &PgConnection,
+    id_of_user: i32,
+) -> Result<Identity, String> {
+    use schema::identities::dsl::*;
+    identities
+        .filter(user_id.eq(id_of_user))
+        .get_result(conn)
+        .map_err(|err| {
+            format!(
+                "Failed to fetch identity for user_id {}: {:?}",
+                id_of_user, err
+            )
+        })
 }

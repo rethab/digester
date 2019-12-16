@@ -106,18 +106,18 @@ fn next_due_date_for_subscription(
 }
 
 fn send_digest(conn: &db::Connection, digest: &Digest) -> Result<(), String> {
-    // we send new posts since the last digest
+    // we send new updates since the last digest
     let previous_digest_sent = db::digests_find_previous(conn, &digest)?.and_then(|d| d.sent);
     let subscription = db::subscriptions_find_by_digest(conn, &digest)?;
-    let posts = db::posts_find_new(conn, &subscription, previous_digest_sent)?;
-    let formatted_posts = posts
+    let updates = db::updates_find_new(conn, &subscription, previous_digest_sent)?;
+    let formatted_updates = updates
         .iter()
         .map(|p| format!("- {}: {}", p.title, p.url))
         .collect::<Vec<String>>()
         .join("\n");
     let email_content = format!(
         "Hi, here's your digest:\n\n{}\n\n-Digester",
-        formatted_posts
+        formatted_updates
     );
     let recipient = subscription.email;
 
@@ -236,7 +236,7 @@ mod tests {
         Subscription {
             id: 1,
             email: "foo@bar.ch".into(),
-            blog_id: 1,
+            channel_id: 1,
             frequency: Frequency::Daily,
             day: None,
             time: NaiveTime::from_hms(hour, minute, 0),
@@ -247,7 +247,7 @@ mod tests {
         Subscription {
             id: 1,
             email: "foo@bar.ch".into(),
-            blog_id: 1,
+            channel_id: 1,
             frequency: Frequency::Weekly,
             day: Some(day),
             time: NaiveTime::from_hms(hour, minute, 0),

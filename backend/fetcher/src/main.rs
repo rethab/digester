@@ -1,41 +1,48 @@
 use chrono::{DateTime, Duration, Utc};
 use lib_db as db;
-use lib_db::{Blog, NewPost};
-use rss::Channel;
+use lib_db::{Channel, NewUpdate};
+use rss::Channel as RssChannel;
 
 fn main() -> Result<(), String> {
     let fetch_frequency = Duration::hours(6);
 
     let db_conn = db::connection_from_env()?;
-    let blogs = find_due_blogs(fetch_frequency, &db_conn)?;
+    let channels = find_due_channels(fetch_frequency, &db_conn)?;
 
-    if blogs.is_empty() {
-        println!("Found no blogs to update")
+    if channels.is_empty() {
+        println!("Found no channels to update")
     }
 
-    for blog in blogs {
-        let res = fetch_articles(&blog, &db_conn);
-        update_last_sync(&blog, res, &db_conn)?;
+    for channel in channels {
+        let res = fetch_articles(&channel, &db_conn);
+        update_last_sync(&channel, res, &db_conn)?;
     }
 
     Ok(())
 }
 
-fn find_due_blogs(fetch_frequency: Duration, conn: &db::Connection) -> Result<Vec<Blog>, String> {
-    db::blogs_find_by_last_fetched(conn, fetch_frequency)
+fn find_due_channels(
+    fetch_frequency: Duration,
+    conn: &db::Connection,
+) -> Result<Vec<Channel>, String> {
+    db::channels_find_by_last_fetched(conn, fetch_frequency)
 }
 
-fn fetch_articles(blog: &Blog, conn: &db::Connection) -> Result<(), String> {
-    let channel = Channel::from_url(&blog.url)
-        .map_err(|err| format!("failed to fetch blog from url '{}': {:?}", blog.url, err))?;
+fn fetch_articles(channel: &Channel, conn: &db::Connection) -> Result<(), String> {
+    let rss_channel = RssChannel::from_url(&channel.name).map_err(|err| {
+        format!(
+            "failed to fetch channel from url '{}': {:?}",
+            channel.url, err
+        )
+    })?;
     println!(
-        "Found {} articles for blog {}",
-        channel.items().len(),
-        blog.url
+        "Found {} articles for channel {}",
+        rss_channel.items().len(),
+        rss_channel.url
     );
-    for item in channel.items() {
-        let post = NewPost {
-            blog_id: blog.id,
+    for item in rss_channel.items() {
+        let update = NewUpdate {
+            channel_id: rss_channel.id,
             title: item
                 .title()
                 .ok_or_else(|| format!("No title for {:?}", item))?
@@ -59,18 +66,20 @@ fn fetch_articles(blog: &Blog, conn: &db::Connection) -> Result<(), String> {
             inserted: Utc::now(),
         };
         // todo this is a technical error, which should be handled differently from the above business error
-        let already_seen = blog
+        let already_seen = channel
             .last_fetched
-            .map(|lf| post.published > lf)
+            .map(|lf| update.published > lf)
             .unwrap_or(false);
         if already_seen {
-            println!("Ignoring known post: {}", post.title);
+            println!("Ignoring known update: {}", update.title);
         } else {
-            match db::posts_insert_new(&conn, &post) {
+            match db::updates_insert_new(&conn, &update) {
                 Ok(_) => {}
-                Err(db::InsertError::Unknown) => return Err("Error during posts insert".to_owned()),
+                Err(db::InsertError::Unknown) => {
+                    return Err("Error during updates insert".to_owned())
+                }
                 Err(db::InsertError::Duplicate) => {
-                    println!("Ignoring duplicate post: {}", post.title)
+                    println!("Ignoring duplicate update: {}", update.title)
                 }
             }
         }
@@ -79,7 +88,7 @@ fn fetch_articles(blog: &Blog, conn: &db::Connection) -> Result<(), String> {
 }
 
 fn update_last_sync(
-    blog: &Blog,
+    channel: &Channel,
     sync_result: Result<(), String>,
     conn: &db::Connection,
 ) -> Result<(), String> {
@@ -89,8 +98,8 @@ fn update_last_sync(
             Ok(())
         }
         Ok(()) => {
-            db::blogs_update_last_fetched(&conn, blog)?;
-            println!("Updated last_fetched of blog {}", blog.id);
+            db::channels_update_last_fetched(&conn, channel)?;
+            println!("Updated last_fetched of channel {}", channel.id);
             Ok(())
         }
     }

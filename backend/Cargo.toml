@@ -1,8 +1,8 @@
 [workspace]
 
 members = [
+    "lib-db",
     "api",
     "digester",
-    "fetcher",
-    "lib-db"
+    "fetcher"
 ]

@@ -11,8 +11,8 @@ use api::iam;
 use rocket::fairing::AdHoc;
 
 use api::controllers::auth;
-use api::controllers::blog;
 use api::controllers::common::*;
+use api::controllers::subscriptions;
 
 #[catch(500)]
 fn internal_error() -> JsonResponse {
@@ -33,7 +33,7 @@ fn main() -> Result<(), rocket_cors::Error> {
 
     let mut rocket = rocket::ignite();
     rocket = auth::mount(rocket);
-    rocket = blog::mount(rocket);
+    rocket = subscriptions::mount(rocket);
 
     rocket
         .attach(DigesterDbConn::fairing())
