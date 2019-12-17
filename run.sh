@@ -3,12 +3,13 @@
 set -e
 set -u
 
-POSTGRES_CONNECTION="postgres://postgres@localhost:5432/postgres"
+source .env
+
 CMD=$1
 
 function run_fetcher(){
   pushd backend/fetcher
-  DATABASE_CONNECTION=$POSTGRES_CONNECTION cargo run
+  cargo run -- --github-api-token $GITHUB_API_TOKEN --database-uri $POSTGRES_CONNECTION
   popd
 }
 

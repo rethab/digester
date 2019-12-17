@@ -17,7 +17,11 @@ pub use model::*;
 pub fn connection_from_env() -> Result<Connection, String> {
     let connection_string = env::var("DATABASE_CONNECTION")
         .map_err(|_err| "Missing connection string in env variable".to_owned())?;
-    diesel::connection::Connection::establish(connection_string.as_str())
+    connection_from_str(&connection_string)
+}
+
+pub fn connection_from_str(uri: &str) -> Result<Connection, String> {
+    diesel::connection::Connection::establish(uri)
         .map_err(|err| format!("Failed to connect to database: {:?}", err))
         .map(Connection)
 }

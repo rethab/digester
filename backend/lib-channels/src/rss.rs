@@ -7,8 +7,9 @@ use url::Url;
 pub struct Rss {}
 
 impl Channel for Rss {
-    fn validate(&self, url: &str) -> Result<String, String> {
-        sanitize_blog_url(url).map_err(|err| format!("url is invalid: {}", err))
+    fn validate(&self, url: &str) -> Result<String, ValidationError> {
+        sanitize_blog_url(url)
+            .map_err(|err| ValidationError::ChannelInvalid(format!("url is invalid: {}", err)))
     }
 
     fn fetch_updates(

@@ -13,6 +13,7 @@ pub enum ChannelType {
 
 /// An update is a new thing from a channel. In RSS terminology, this
 /// would be an item.
+#[derive(Debug)]
 pub struct Update {
     /// The title of the update could be the title of a blog post
     /// or the name/version of the new release
@@ -22,6 +23,17 @@ pub struct Update {
     pub url: String,
     /// The datetime when the update was published in the channel.
     pub published: DateTime<Utc>,
+}
+
+/// The failure cases when validating a channel
+#[derive(Debug)]
+pub enum ValidationError {
+    /// The channel is invalid. The String gives further details.
+    ChannelInvalid(String),
+    /// The channel format is valid, but it doesn't exist (404)
+    ChannelNotFound,
+    /// Something went wrong. Please try again later
+    TechnicalError,
 }
 
 /// A channel is a thing where we can pull updates from.
@@ -37,7 +49,7 @@ pub trait Channel {
     /// Validates and sanitizes the name of a channel. The format
     /// of the name depends on the type of channel. It could be a
     /// URL, a repository or something else.
-    fn validate(&self, name: &str) -> Result<String, String>;
+    fn validate(&self, name: &str) -> Result<String, ValidationError>;
 
     /// Fetches updates from the channel. The parameter last_fetched
     /// incates the last time we fetched from this channel. This method
