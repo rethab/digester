@@ -5,6 +5,7 @@ authors = ["Reto Habluetzel <rethab@protonmail.ch>"]
 edition = "2018"
 
 [dependencies]
+lib-channels = { path = "../lib-channels" } 
 lib-db = { path = "../lib-db" } 
 chrono = { version = "0.4", features = ["serde"] }
 rocket = "0.4.2"
