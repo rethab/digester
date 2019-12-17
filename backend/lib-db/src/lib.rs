@@ -205,6 +205,25 @@ pub fn subscriptions_find_without_due_digest(
         })
 }
 
+pub fn subscriptions_find_by_user_id(
+    conn: &PgConnection,
+    user_id: i32,
+) -> Result<Vec<(Subscription, Channel)>, String> {
+    use schema::channels;
+    use schema::subscriptions;
+    subscriptions::table
+        .inner_join(channels::table.on(subscriptions::channel_id.eq(channels::id)))
+        .filter(subscriptions::user_id.eq(user_id))
+        .select((subscriptions::all_columns, channels::all_columns))
+        .load::<(Subscription, Channel)>(conn)
+        .map_err(|err| {
+            format!(
+                "Failed to run query in subscriptions_find_without_due_digests: {:?}",
+                err
+            )
+        })
+}
+
 pub fn subscriptions_insert(
     conn: &PgConnection,
     sub: NewSubscription,

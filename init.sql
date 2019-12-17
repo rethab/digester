@@ -44,6 +44,7 @@ CREATE TABLE subscriptions (
   id SERIAL PRIMARY KEY,
   email VARCHAR NOT NULL,
   channel_id INT REFERENCES channels(id),
+  user_id INT REFERENCES users(id),
   frequency VARCHAR NOT NULL, -- daily or weekly
   day VARCHAR NULL, -- any three-letter day: set if frequency is weekly, we also have a day
   time TIME WITHOUT TIME ZONE NOT NULL, -- timezone is based on user profile

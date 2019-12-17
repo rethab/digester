@@ -41,6 +41,7 @@ table! {
       id -> Integer,
       email -> Text,
       channel_id -> Integer,
+      user_id -> Integer,
       frequency -> Text,
       day -> Nullable<Text>,
       time -> Time,
@@ -57,4 +58,5 @@ table! {
 }
 
 allow_tables_to_appear_in_same_query!(subscriptions, digests);
+allow_tables_to_appear_in_same_query!(subscriptions, channels);
 allow_tables_to_appear_in_same_query!(users, identities);

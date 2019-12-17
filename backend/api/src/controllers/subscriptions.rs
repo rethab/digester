@@ -9,7 +9,7 @@ use rocket::{Rocket, State};
 use rocket_contrib::json::{Json, JsonValue};
 
 pub fn mount(rocket: Rocket) -> Rocket {
-    rocket.mount("/subscriptions", routes![add])
+    rocket.mount("/subscriptions", routes![list, add])
 }
 
 pub struct GithubApiToken(pub String);
@@ -45,6 +45,15 @@ impl Into<JsonResponse> for Subscription {
     }
 }
 
+impl Into<JsonResponse> for Vec<Subscription> {
+    fn into(self) -> JsonResponse {
+        match serde_json::to_value(self) {
+            Ok(v) => JsonResponse::Ok(JsonValue(v)),
+            Err(_) => JsonResponse::InternalServerError, // todo log
+        }
+    }
+}
+
 impl Subscription {
     fn from_db(sub: db::Subscription, chan: db::Channel) -> Subscription {
         Subscription {
@@ -54,6 +63,18 @@ impl Subscription {
             day: sub.day,
             time: sub.time,
         }
+    }
+}
+
+#[get("/")]
+fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
+    match db::subscriptions_find_by_user_id(&db, session.0.user_id) {
+        Err(_) => JsonResponse::InternalServerError,
+        Ok(subs) => subs
+            .into_iter()
+            .map(|(sub, chan)| Subscription::from_db(sub, chan))
+            .collect::<Vec<Subscription>>()
+            .into(),
     }
 }
 
@@ -123,6 +144,7 @@ fn insert_subscription(
     let new_subscription = db::NewSubscription {
         email: identity.email.clone(),
         channel_id: chan.id,
+        user_id: identity.user_id,
         frequency: sub.frequency,
         day: sub.day,
         time: sub.time,

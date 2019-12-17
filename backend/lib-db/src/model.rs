@@ -113,6 +113,7 @@ pub struct Subscription {
     pub id: i32,
     pub email: String,
     pub channel_id: i32,
+    pub user_id: i32,
     pub frequency: Frequency,
     pub day: Option<Day>,
     pub time: NaiveTime,
@@ -123,6 +124,7 @@ pub struct Subscription {
 pub struct NewSubscription {
     pub email: String,
     pub channel_id: i32,
+    pub user_id: i32,
     pub frequency: Frequency,
     pub day: Option<Day>,
     pub time: NaiveTime,
