@@ -76,8 +76,10 @@ fn next_due_date_for_subscription(
                 ..
             } = subscription;
 
-            let is_due_today = due_day.as_ref().unwrap().to_weekday() == now.weekday()
-                && due_time.hour() > now.hour()
+            // into doesn't seem to work on references? need to make this nicer..
+            let due_weekday: Weekday = (*due_day.as_ref().unwrap()).clone().into();
+
+            let is_due_today = due_weekday == now.weekday() && due_time.hour() > now.hour()
                 || (due_time.hour() == now.hour() && due_time.minute() > now.minute());
 
             let due = now
@@ -89,11 +91,7 @@ fn next_due_date_for_subscription(
                 due
             } else {
                 let today_idx = now.weekday().num_days_from_monday() as i64;
-                let due_idx = due_day
-                    .as_ref()
-                    .unwrap()
-                    .to_weekday()
-                    .num_days_from_monday() as i64;
+                let due_idx = due_weekday.num_days_from_monday() as i64;
                 let days_to_day = if due_idx > today_idx {
                     due_idx - today_idx
                 } else {

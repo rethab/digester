@@ -1,7 +1,7 @@
-use chrono::{DateTime, Duration, Utc};
+use chrono::Duration;
+use lib_channels as channels;
 use lib_db as db;
-use lib_db::{Channel, NewUpdate};
-use rss::Channel as RssChannel;
+use lib_db::{Channel, ChannelType, NewUpdate};
 
 fn main() -> Result<(), String> {
     let fetch_frequency = Duration::hours(6);
@@ -29,62 +29,33 @@ fn find_due_channels(
 }
 
 fn fetch_articles(channel: &Channel, conn: &db::Connection) -> Result<(), String> {
-    let rss_channel = RssChannel::from_url(&channel.name).map_err(|err| {
-        format!(
-            "failed to fetch channel from url '{}': {:?}",
-            channel.url, err
-        )
-    })?;
-    println!(
-        "Found {} articles for channel {}",
-        rss_channel.items().len(),
-        rss_channel.url
-    );
-    for item in rss_channel.items() {
-        let update = NewUpdate {
-            channel_id: rss_channel.id,
-            title: item
-                .title()
-                .ok_or_else(|| format!("No title for {:?}", item))?
-                .to_owned(),
-            author: item.author().map(|author| author.to_owned()),
-            url: item
-                .link()
-                .ok_or_else(|| format!("No url for {:?}", item))?
-                .to_owned(),
-            // todo don't ignore parse error
-            published: item
-                .pub_date()
-                .map(|date| {
-                    DateTime::parse_from_rfc2822(date)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .map_err(|parse_err| {
-                            format!("Failed to parse date '{}': {:?}", date, parse_err)
-                        })
-                })
-                .ok_or_else(|| format!("No pub_date for {:?}", item))??,
-            inserted: Utc::now(),
+    let c = get_channel(channel);
+
+    let updates = c.fetch_updates(&channel.name, channel.last_fetched)?;
+
+    for update in updates {
+        let new_update = NewUpdate {
+            channel_id: channel.id,
+            title: update.title,
+            url: update.url,
+            published: update.published,
         };
-        // todo this is a technical error, which should be handled differently from the above business error
-        let already_seen = channel
-            .last_fetched
-            .map(|lf| update.published > lf)
-            .unwrap_or(false);
-        if already_seen {
-            println!("Ignoring known update: {}", update.title);
-        } else {
-            match db::updates_insert_new(&conn, &update) {
-                Ok(_) => {}
-                Err(db::InsertError::Unknown) => {
-                    return Err("Error during updates insert".to_owned())
-                }
-                Err(db::InsertError::Duplicate) => {
-                    println!("Ignoring duplicate update: {}", update.title)
-                }
+        match db::updates_insert_new(&conn, &new_update) {
+            Ok(_) => {}
+            Err(db::InsertError::Unknown) => return Err("Error during updates insert".to_owned()),
+            Err(db::InsertError::Duplicate) => {
+                println!("Ignoring duplicate update: {}", new_update.title)
             }
         }
     }
+
     Ok(())
+}
+
+fn get_channel(channel: &Channel) -> Box<dyn channels::Channel> {
+    match channel.type_ {
+        ChannelType::GithubRelease => Box::new(channels::github_release::GithubRelease),
+    }
 }
 
 fn update_last_sync(

@@ -4,7 +4,6 @@
 extern crate rocket;
 
 extern crate api;
-extern crate url;
 
 use api::iam;
 

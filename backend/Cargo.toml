@@ -2,6 +2,7 @@
 
 members = [
     "lib-db",
+    "lib-channels",
     "api",
     "digester",
     "fetcher"

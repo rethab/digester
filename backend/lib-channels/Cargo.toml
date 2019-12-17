@@ -1,10 +1,10 @@
 [package]
-name = "fetcher"
+name = "lib-channels"
 version = "0.1.0"
 authors = ["Reto Habluetzel <rethab@protonmail.ch>"]
 edition = "2018"
 
 [dependencies]
-lib-channels = { path = "../lib-channels" }
-lib-db = { path = "../lib-db" }
 chrono = "0.4"
+rss = { version = "1.8.0", features = ["from_url"] }
+url = "2.1.0"
