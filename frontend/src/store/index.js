@@ -7,23 +7,7 @@ Vue.use(Vuex)
 export default new Vuex.Store({
   strict: process.env.NODE_ENV != 'production',
   state: {
-    subscriptions: [
-      {
-        type: 'github_release',
-        name: 'kubernetes/kubernets',
-        frequency: 'every saturday at 10am'
-      },
-      {
-        type: 'github_release',
-        name: 'ghc/ghc',
-        frequency: 'every day at 9am'
-      },
-      {
-        type: 'github_release',
-        name: 'rethab/digester',
-        frequency: 'every monday at 7am'
-      },
-    ],
+    subscriptions: [],
     user: null
   },
   mutations: {
@@ -45,8 +29,17 @@ export default new Vuex.Store({
       let response = await Api().get("subscriptions");
       commit('SET_SUBSCRIPTIONS', response.data);
     },
-    subscribe({ commit }, subscription) {
-      commit('ADD_SUBSCRIPTION', subscription);
+    async subscribe({ commit }, subscription) {
+      console.log("store: subscribe..");
+      let response = await Api().post("subscriptions/add", {
+        channelName: subscription.name,
+        channelType: subscription.type,
+        frequency: subscription.frequency,
+        day: subscription.day,
+        time: subscription.time + ":00.00",
+      });
+      console.log("Respone from adding: " + response.data);
+      commit('ADD_SUBSCRIPTION', response.data);
       return subscription;
     },
     authenticate({ commit }, user) {

@@ -27,14 +27,14 @@ export default {
   },
   data() {
     return {
-      frequencies: ["weekly", "daily"],
+      frequencies: ["Weekly", "Daily"],
       days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
       hours: []
     };
   },
   computed: {
     isWeekly() {
-      return this.value.frequency === "weekly";
+      return this.value.frequency === "Weekly";
     }
   },
   mounted() {

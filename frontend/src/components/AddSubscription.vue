@@ -53,8 +53,8 @@ export default {
     return {
       twoRows: false, // this.$vuetify.breakpoint.smAndDown,
 
-      types: ["Github"],
-      type: "Github",
+      types: [{ text: "Github", value: "GithubRelease" }],
+      type: "GithubRelease",
       typeErrors: [],
 
       repository: "",
@@ -62,7 +62,7 @@ export default {
       repositoryLabel: "Repository",
 
       frequency: {
-        frequency: "weekly",
+        frequency: "Weekly",
         day: "Sat",
         hour: "09:00"
       }
@@ -74,18 +74,14 @@ export default {
     }
   },
   methods: {
-    subscribe() {
+    async subscribe() {
       if (this.validate()) {
-        // todo plug backend
-        var fmt = "every ";
-        if (this.frequency.frequency == "daily") fmt += "day";
-        else fmt += this.frequency.day;
-        fmt += " at ";
-        fmt += this.frequency.hour;
-        this.$store.dispatch("subscribe", {
+        await this.$store.dispatch("subscribe", {
           type: this.type,
           name: this.repository,
-          frequency: fmt
+          frequency: this.frequency.frequency,
+          day: this.frequency.day,
+          time: this.frequency.hour
         });
         this.repository = "";
       }

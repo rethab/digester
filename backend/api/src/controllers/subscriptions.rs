@@ -18,6 +18,7 @@ pub struct GithubApiToken(pub String);
 struct Subscription {
     #[serde(rename = "channelName")]
     channel_name: String,
+    #[serde(rename = "channelType")]
     channel_type: ChannelType,
     frequency: Frequency,
     day: Option<Day>,
@@ -150,4 +151,29 @@ fn insert_subscription(
         time: sub.time,
     };
     db::subscriptions_insert(&conn.0, new_subscription)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_subscription() {
+        let sub: Subscription = serde_json::from_str(r#"{
+            "channelName":"rethab/dotfiles",
+            "channelType":"GithubRelease",
+            "frequency":"Weekly",
+            "day":"Sat",
+            "time":"09:00:00.00"
+        }"#).expect("Failed to parse");
+        let exp = Subscription{
+            channel_name: "rethab/dotfiles".into(),
+            channel_type: ChannelType::GithubRelease,
+            frequency: Frequency::Weekly,
+            day: Some(Day::Sat),
+            time: NaiveTime::from_hms_milli(9, 0, 0, 0),
+        };
+
+        assert_eq!(exp, sub);
+    }
 }
