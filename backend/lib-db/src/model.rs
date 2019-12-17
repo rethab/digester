@@ -37,7 +37,7 @@ pub struct User {
 #[derive(Queryable)]
 pub struct Channel {
     pub id: i32,
-    pub type_: ChannelType,
+    pub channel_type: ChannelType,
     pub name: String,
     pub last_fetched: Option<DateTime<Utc>>,
     pub inserted: DateTime<Utc>,
@@ -46,7 +46,7 @@ pub struct Channel {
 #[derive(Insertable, Debug)]
 #[table_name = "channels"]
 pub struct NewChannel {
-    pub type_: ChannelType,
+    pub channel_type: ChannelType,
     pub name: String,
 }
 

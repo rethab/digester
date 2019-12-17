@@ -23,11 +23,11 @@ CREATE TABLE identities (
 
 CREATE TABLE channels (
   id SERIAL PRIMARY KEY,
-  "type" VARCHAR NOT NULL, -- eg. github_release, etc..
+  channel_type VARCHAR NOT NULL, -- eg. github_release, etc..
   name VARCHAR NULL, -- name of the channel, eg. 'kubernetes/kubernetes'. format depends on type
   last_fetched TIMESTAMP WITH TIME ZONE NULL, -- last successful fetch
   inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(url) -- cannot have channel twice
+  UNIQUE(channel_type, name) -- cannot have channel twice
 );
 
 CREATE TABLE updates (

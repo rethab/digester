@@ -82,14 +82,17 @@ pub fn channels_insert_if_not_exists(
 
     let find = || -> Result<Option<Channel>, String> {
         channels
-            .filter(name.eq(&new_channel.name).and(type_.eq(&new_channel.type_)))
+            .filter(
+                name.eq(&new_channel.name)
+                    .and(channel_type.eq(&new_channel.channel_type)),
+            )
             .load(conn)
             .map_err(|err| format!("Failed to query for channel: {:?}", err))
             .and_then(|results| {
                 if results.len() > 1 {
                     Err(format!(
                         "Found more than one channel for name {} and type {:?}",
-                        new_channel.name, new_channel.type_
+                        new_channel.name, new_channel.channel_type
                     ))
                 } else {
                     Ok(results.into_iter().next())

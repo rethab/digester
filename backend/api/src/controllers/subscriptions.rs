@@ -33,7 +33,7 @@ impl Subscription {
     fn from_db(sub: db::Subscription, chan: db::Channel) -> Subscription {
         Subscription {
             channel_name: chan.name,
-            r#type: chan.type_,
+            r#type: chan.channel_type,
             frequency: sub.frequency,
             day: sub.day,
             time: sub.time,
@@ -87,7 +87,7 @@ fn insert_channel_if_not_exists(
 ) -> Result<db::Channel, String> {
     let new_channel = db::NewChannel {
         name: sub.channel_name.clone(),
-        type_: sub.r#type,
+        channel_type: sub.r#type,
     };
     db::channels_insert_if_not_exists(&conn.0, new_channel)
 }

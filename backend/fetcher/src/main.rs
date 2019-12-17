@@ -76,7 +76,7 @@ impl App {
     }
 
     fn get_channel(&self, channel: &Channel) -> &dyn channels::Channel {
-        match channel.type_ {
+        match channel.channel_type {
             ChannelType::GithubRelease => &self.channel_github_release,
         }
     }

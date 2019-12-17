@@ -18,7 +18,7 @@ table! {
 table! {
     channels (id) {
         id -> Integer,
-        type_ -> Text,
+        channel_type -> Text,
         name -> Text,
         last_fetched -> Nullable<Timestamptz>,
         inserted -> Timestamptz,
