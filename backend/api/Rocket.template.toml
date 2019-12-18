@@ -1,0 +1,9 @@
+[global.databases]
+digester = { url = "ROCKET_REPLACE_DIGESTER_URL" }
+redis = { url = "ROCKET_REPLACE_REDIS_URL" }
+
+[global.oauth.github]
+provider = "GitHub"
+client_id = "ce2e6a7d28bdf8eca16c"
+client_secret = "ROCKET_REPLACE_OAUTH_GITHUB_CLIENT_SECRET"
+redirect_uri = "http://localhost:8080/auth/callback"
