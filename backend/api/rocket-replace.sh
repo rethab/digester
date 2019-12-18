@@ -32,7 +32,6 @@
 
 
 set -e
-set -x
 
 TEMPLATE_ROCKET_FILE="Rocket.template.toml"
 TARGET_ROCKET_FILE="Rocket.toml"
@@ -59,10 +58,8 @@ cp ${TEMPLATE_ROCKET_FILE} ${TARGET_ROCKET_FILE}
 
 for var in "${vars[@]}"
 do
-    printf 'Replacing %s\n' $var;
     # rhs in sed must be escaped: https://unix.stackexchange.com/a/129063
     val=$(printf '%s\n' "${!var}" | sed 's:[\/&]:\\&:g;$!s/$/\\/');
-
     sed -i "s/$var/$val/" ${TARGET_ROCKET_FILE}
 done
 
@@ -73,4 +70,8 @@ then
     exit 1
 fi
 
+# required for heroku, because they will pass $PORT
+# where we need to bind to
+export ROCKET_PORT=${PORT:-8000}
 
+exec ${ROCKET_EXECUTABLE}
