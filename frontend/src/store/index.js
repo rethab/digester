@@ -30,7 +30,6 @@ export default new Vuex.Store({
       commit('SET_SUBSCRIPTIONS', response.data);
     },
     async subscribe({ commit }, subscription) {
-      console.log("store: subscribe..");
       let response = await Api().post("subscriptions/add", {
         channelName: subscription.name,
         channelType: subscription.type,
@@ -38,7 +37,6 @@ export default new Vuex.Store({
         day: subscription.day,
         time: subscription.time + ":00.00",
       });
-      console.log("Respone from adding: " + response.data);
       commit('ADD_SUBSCRIPTION', response.data);
       return subscription;
     },
@@ -47,16 +45,10 @@ export default new Vuex.Store({
     },
     async unauthenticate({ commit, getters }) {
       if (!getters.isAuthenticated) {
-        console.warn("Cannot logout w/o being authenticated: NOOP");
         return;
       }
-      try {
-        await Api().post("/auth/logout");
-        commit('UNAUTHENTICATE');
-      } catch (e) {
-        console.error("Failed to logout");
-        console.error(e);
-      }
+      await Api().post("/auth/logout");
+      commit('UNAUTHENTICATE');
     }
   },
   getters: {

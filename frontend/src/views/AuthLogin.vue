@@ -10,16 +10,11 @@ export default {
   name: "auth-login",
   methods: {
     async authenticate(provider) {
-      try {
-        let response = await this.$auth.authenticate(provider);
-        await this.$store.dispatch("authenticate", {
-          username: response.data.username
-        });
-        this.$router.push({ name: "subscriptions" });
-      } catch (e) {
-        console.error("Failed to call authenticate");
-        console.error(e);
-      }
+      let response = await this.$auth.authenticate(provider);
+      await this.$store.dispatch("authenticate", {
+        username: response.data.username
+      });
+      this.$router.push({ name: "subscriptions" });
     }
   }
 };
