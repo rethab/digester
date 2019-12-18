@@ -24,7 +24,7 @@ fn not_found() -> JsonResponse {
     JsonResponse::NotFound
 }
 
-fn main() -> Result<(), rocket_cors::Error> {
+fn main() -> Result<(), String> {
     let github_identity_provider = AdHoc::on_attach("Github Identity Provider", |rocket| {
         let github =
             iam::Github::from_rocket_config(rocket.config()).expect("Failed to read github config");
@@ -37,16 +37,46 @@ fn main() -> Result<(), rocket_cors::Error> {
         Ok(rocket.manage(subscriptions::GithubApiToken(api_token)))
     });
 
+    let cookie_config = AdHoc::on_attach("Cookie Config", |rocket| {
+        let cookie_domain = rocket
+            .config()
+            .get_table("cookie")
+            .expect("Missing config entry cookie")
+            .get("domain")
+            .expect("Missing config entry 'cookie.domain'")
+            .as_str()
+            .expect("Missing config cookie.domain");
+
+        // todo cookies want a static lifetime. this should be fixed once
+        // we're using a version of rocket that uses a newer version of the
+        // cookies library --> see CookieBuilder.domain
+        let static_cookie_domain = if cookie_domain == "localhost" {
+            "localhost"
+        } else if cookie_domain == "digester-api-integration.herokuapp.com" {
+            "digester-api-integration.herokuapp.com"
+        } else {
+            panic!("Cookie domain misconfigured")
+        };
+
+        Ok(rocket.manage(auth::CookieConfig {
+            domain: static_cookie_domain,
+        }))
+    });
+
     let mut rocket = rocket::ignite();
+
+    let cors_fairing = cors_fairing(rocket.config())?;
+
     rocket = auth::mount(rocket);
     rocket = subscriptions::mount(rocket);
 
     rocket
         .attach(DigesterDbConn::fairing())
         .attach(Redis::fairing())
-        .attach(cors_fairing()?)
+        .attach(cors_fairing)
         .attach(github_identity_provider)
         .attach(github_api_token)
+        .attach(cookie_config)
         .register(catchers![internal_error, not_found])
         .launch();
 

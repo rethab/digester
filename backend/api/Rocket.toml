@@ -1,9 +1,21 @@
-[global.databases]
-digester = { url = "postgres://postgres@localhost:5432/postgres"}
-redis = { url = "redis://127.0.0.1" }
+[development]
+cors.allowed_origin = "http://localhost:8080"
+cookie.domain = "localhost"
+
+[staging]
+cors.allowed_origin = "https://digester-api-integration.herokuapp.com"
+cookie.domain = "digester-api-integration.herokuapp.com"
 
 [global.oauth.github]
 provider = "GitHub"
 client_id = "ce2e6a7d28bdf8eca16c"
 client_secret = "faf62455d8e125a2758cfdbb3c605f249970ba41"
 redirect_uri = "http://localhost:8080/auth/callback"
+
+[development.databases]
+digester = { url = "postgres://postgres@localhost:5432/postgres"}
+redis = { url = "redis://127.0.0.1" }
+
+[staging.databases]
+digester = { url = "ROCKET_REPLACE_DIGESTER_URL" }
+redis = { url = "ROCKET_REPLACE_REDIS_URL" }

@@ -10,6 +10,10 @@ use rocket_contrib::json::Json;
 use time::Duration;
 use uuid::Uuid;
 
+pub struct CookieConfig {
+    pub domain: &'static str,
+}
+
 pub fn mount(rocket: Rocket) -> Rocket {
     rocket.mount(
         "/auth",
@@ -18,7 +22,7 @@ pub fn mount(rocket: Rocket) -> Rocket {
 }
 
 // creates the session cookie. a None value creates a removal cookie
-fn create_session_cookie(maybe_id: Option<Uuid>) -> Cookie<'static> {
+fn create_session_cookie(maybe_id: Option<Uuid>, cookie_config: &CookieConfig) -> Cookie<'static> {
     let value = maybe_id
         .map(|id| {
             id.to_simple()
@@ -28,7 +32,7 @@ fn create_session_cookie(maybe_id: Option<Uuid>) -> Cookie<'static> {
         .unwrap_or(String::new());
     // todo review cookie settings
     Cookie::build("SESSION_ID", value)
-        .domain("localhost")
+        .domain(cookie_config.domain)
         .secure(false)
         .path("/")
         .http_only(false)
@@ -53,12 +57,13 @@ fn github_oauth_exchange(
     mut cookies: Cookies,
     oauth_data: Json<BlaBla>,
     provider: State<iam::Github>,
+    cookie_config: State<CookieConfig>,
 ) -> JsonResponse {
     use iam::AuthenticationError;
     let code = iam::AuthorizationCode(oauth_data.0.code);
     match iam::authenticate::<iam::Github>(&db.0, &mut redis.0, &provider, code) {
         Ok(session) => {
-            let cookie = create_session_cookie(Some(session.id.clone()));
+            let cookie = create_session_cookie(Some(session.id.clone()), &cookie_config);
             cookies.add(cookie);
             JsonResponse::Ok(json!({
                 "username": session.username,
@@ -92,6 +97,7 @@ fn logout(
     maybe_session: Option<Protected>,
     mut redis: Redis,
     mut cookies: Cookies,
+    cookie_config: State<CookieConfig>,
 ) -> JsonResponse {
     match maybe_session {
         Some(session) => {
@@ -105,7 +111,7 @@ fn logout(
             println!("No session to destroy");
         }
     }
-    let cookie = create_session_cookie(None);
+    let cookie = create_session_cookie(None, &cookie_config);
     cookies.remove(cookie);
     JsonResponse::Ok(json!({}))
 }

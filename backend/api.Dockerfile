@@ -2,7 +2,7 @@ FROM rustlang/rust:nightly as build
 
 COPY ./ ./
 
-RUN cargo build --package api
+RUN cargo build --package api --release
 
 RUN mkdir -p /build-out
 
@@ -17,7 +17,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /build-out/api /
-COPY api/rocket-replace.sh /
-COPY api/Rocket.template.toml /
+COPY api/launch-rocket.sh /
+COPY api/Rocket.toml /
 
-CMD /rocket-replace.sh /api
+CMD /launch-rocket.sh /api
