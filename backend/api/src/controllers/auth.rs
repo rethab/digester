@@ -67,6 +67,12 @@ fn github_oauth_exchange(
             cookies.add(cookie);
             JsonResponse::Ok(json!({
                 "username": session.username,
+                // we need to pass an access token back, because vue-authenticate looks at the
+                // response and wants to extract the access token and store it in some storage.
+                // After that, they call isAuthenticated(), which throws an error if nothing is
+                // in the storage. Therefore, we just set a dummy value.
+                // See here: https://github.com/dgrubelic/vue-authenticate/blob/3ace24c36580d81fe4a1e748a28b997df2bbb706/src/authenticate.js#L215
+                "access_token": "dummy"
             }))
         }
         Err(AuthenticationError::UnknownFailure(msg)) => {

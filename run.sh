@@ -3,7 +3,7 @@
 set -e
 set -u
 
-source .env
+source .env.local
 
 CMD=$1
 
