@@ -12,12 +12,12 @@ Vue.config.productionTip = false
 Vue.use(VueAxios, Axios);
 Vue.use(VueAuthenticate, {
   withCredentials: true,
-  baseUrl: 'http://localhost:8000',
+  baseUrl: process.env.VUE_APP_API_HOST,
 
   providers: {
     github: {
-      clientId: 'ce2e6a7d28bdf8eca16c',
-      redirectUri: 'http://localhost:8080/auth/callback'
+      clientId: process.env.VUE_APP_OAUTH_GITHUB_CLIENT_ID,
+      redirectUri: window.location.origin,
     }
   }
 });

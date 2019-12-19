@@ -24,6 +24,10 @@ export default {
     isAuthenticated() {
       return this.$store.getters.isAuthenticated;
     }
+  },
+
+  created() {
+    document.title = process.env.VUE_APP_TITLE;
   }
 };
 </script>

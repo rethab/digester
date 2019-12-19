@@ -6,7 +6,7 @@ RUN cargo build --package api --release
 
 RUN mkdir -p /build-out
 
-RUN cp target/debug/api /build-out/
+RUN cp target/release/api /build-out/
 
 FROM ubuntu:disco
 
@@ -20,4 +20,4 @@ COPY --from=build /build-out/api /
 COPY api/launch-rocket.sh /
 COPY api/Rocket.toml /
 
-CMD /launch-rocket.sh /api
+CMD /launch-rocket.sh --app /api
