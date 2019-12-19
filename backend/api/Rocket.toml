@@ -3,14 +3,20 @@ cors.allowed_origin = "http://localhost:8080"
 cookie.domain = "localhost"
 
 [staging]
-cors.allowed_origin = "https://digester-api-integration.herokuapp.com"
+cors.allowed_origin = "ROCKET_REPLACE_CORS_ALLOWED_ORIGIN"
 cookie.domain = "digester-api-integration.herokuapp.com"
 
-[global.oauth.github]
+[development.oauth.github]
 provider = "GitHub"
 client_id = "ce2e6a7d28bdf8eca16c"
 client_secret = "faf62455d8e125a2758cfdbb3c605f249970ba41"
-redirect_uri = "http://localhost:8080/auth/callback"
+redirect_uri = "NOT_USED_BUT_LIBRARY_WANTS_IT"
+
+[staging.oauth.github]
+provider = "GitHub"
+client_id = "ROCKET_REPLACE_OAUTH_GITHUB_CLIENT_ID"
+client_secret = "ROCKET_REPLACE_OAUTH_GITHUB_CLIENT_SECRET"
+redirect_uri = "ROCKET_REPLACE_OAUTH_GITHUB_REDIRECT_URI"
 
 [development.databases]
 digester = { url = "postgres://postgres@localhost:5432/postgres"}
