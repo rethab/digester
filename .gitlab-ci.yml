@@ -21,7 +21,7 @@ build:
 integration:
     stage: deploy
     script:
-        - docker login --username=_ --password=$HEROKU_AUTH_TOKEN registry.heroku.com
+        - docker login --username=_ --password=$HEROKU_API_KEY registry.heroku.com
         - docker tag digester/api:latest registry.heroku.com/digester-api-integration/web
         - docker push registry.heroku.com/digester-api-integration/web
         - heroku container:release web --app digester-api-integration
