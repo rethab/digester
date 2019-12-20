@@ -3,32 +3,21 @@ use chrono::Duration;
 use lib_channels as channels;
 use lib_db as db;
 use lib_db::{Channel, ChannelType, NewUpdate};
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-struct Opt {
-    #[structopt(long)]
-    github_api_token: String,
-    #[structopt(long)]
-    database_uri: String,
-}
-
-struct App {
+pub struct App<'a> {
     channel_github_release: GithubRelease,
-    db: db::Connection,
+    db: &'a db::Connection,
 }
 
-impl App {
-    fn create(opt: Opt) -> Result<App, String> {
-        let db_conn = db::connection_from_str(&opt.database_uri)?;
-        let github = GithubRelease::new(&opt.github_api_token)?;
-        Ok(App {
+impl App<'_> {
+    pub fn new(db_conn: &db::Connection, github: GithubRelease) -> App {
+        App {
             channel_github_release: github,
             db: db_conn,
-        })
+        }
     }
 
-    fn run(&self) -> Result<(), String> {
+    pub fn run(&self) -> Result<(), String> {
         let fetch_frequency = Duration::hours(6);
 
         let channels = self.find_due_channels(fetch_frequency)?;
@@ -98,9 +87,4 @@ impl App {
             }
         }
     }
-}
-
-fn main() -> Result<(), String> {
-    let opt = Opt::from_args();
-    App::create(opt)?.run()
 }

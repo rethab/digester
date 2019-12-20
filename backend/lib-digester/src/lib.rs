@@ -5,47 +5,77 @@ use lettre_email::Email;
 use lib_db as db;
 use lib_db::{Day, Digest, Frequency, InsertDigest, Subscription};
 
-fn main() -> Result<(), String> {
-    let db_conn = db::connection_from_env()?;
-
-    let subscriptions = db::subscriptions_find_without_due_digest(&db_conn)?;
-    println!(
-        "Found {} subscriptions without due digest",
-        subscriptions.len()
-    );
-
-    for subscription in subscriptions {
-        insert_next_digest(&db_conn, &subscription)?;
-    }
-
-    let digests = db::digests_find_due(&db_conn)?;
-    println!("Found {} digests to send", digests.len());
-
-    for digest in digests {
-        match send_digest(&db_conn, &digest) {
-            Ok(_) => db::digests_set_sent(&db_conn, &digest)?,
-            Err(err) => eprintln!("Failed to send digest: {:?}", err),
-        }
-    }
-
-    Ok(())
+pub struct App<'a> {
+    db_conn: &'a db::Connection,
 }
 
-fn insert_next_digest(conn: &db::Connection, subscription: &Subscription) -> Result<(), String> {
-    let digest = InsertDigest {
-        subscription_id: subscription.id,
-        due: next_due_date_for_subscription(subscription, Utc::now()),
-    };
-    match db::digests_insert(conn, &digest) {
-        Ok(()) => Ok(()),
-        Err(db::InsertError::Unknown) => Err(format!("Failed to insert new digest: {:?}", digest)),
-        Err(db::InsertError::Duplicate) => {
-            println!(
-                "Digest seems to have been inserted in the meantime.. {:?}",
-                digest
-            );
-            Ok(())
+impl App<'_> {
+    pub fn new(db_conn: &db::Connection) -> App {
+        App { db_conn }
+    }
+
+    pub fn run(&self) -> Result<(), String> {
+        let subscriptions = db::subscriptions_find_without_due_digest(&self.db_conn)?;
+        println!(
+            "Found {} subscriptions without due digest",
+            subscriptions.len()
+        );
+
+        for subscription in subscriptions {
+            self.insert_next_digest(&subscription)?;
         }
+
+        let digests = db::digests_find_due(&self.db_conn)?;
+        println!("Found {} digests to send", digests.len());
+
+        for digest in digests {
+            match self.send_digest(&digest) {
+                Ok(_) => db::digests_set_sent(&self.db_conn, &digest)?,
+                Err(err) => eprintln!("Failed to send digest: {:?}", err),
+            }
+        }
+
+        Ok(())
+    }
+
+    fn insert_next_digest(&self, subscription: &Subscription) -> Result<(), String> {
+        let digest = InsertDigest {
+            subscription_id: subscription.id,
+            due: next_due_date_for_subscription(subscription, Utc::now()),
+        };
+        match db::digests_insert(&self.db_conn, &digest) {
+            Ok(()) => Ok(()),
+            Err(db::InsertError::Unknown) => {
+                Err(format!("Failed to insert new digest: {:?}", digest))
+            }
+            Err(db::InsertError::Duplicate) => {
+                println!(
+                    "Digest seems to have been inserted in the meantime.. {:?}",
+                    digest
+                );
+                Ok(())
+            }
+        }
+    }
+
+    fn send_digest(&self, digest: &Digest) -> Result<(), String> {
+        // we send new updates since the last digest
+        let previous_digest_sent =
+            db::digests_find_previous(&self.db_conn, &digest)?.and_then(|d| d.sent);
+        let subscription = db::subscriptions_find_by_digest(&self.db_conn, &digest)?;
+        let updates = db::updates_find_new(&self.db_conn, &subscription, previous_digest_sent)?;
+        let formatted_updates = updates
+            .iter()
+            .map(|p| format!("- {}: {}", p.title, p.url))
+            .collect::<Vec<String>>()
+            .join("\n");
+        let email_content = format!(
+            "Hi, here's your digest:\n\n{}\n\n-Digester",
+            formatted_updates
+        );
+        let recipient = subscription.email;
+
+        send_email(recipient, email_content)
     }
 }
 
@@ -101,25 +131,6 @@ fn next_due_date_for_subscription(
             }
         }
     }
-}
-
-fn send_digest(conn: &db::Connection, digest: &Digest) -> Result<(), String> {
-    // we send new updates since the last digest
-    let previous_digest_sent = db::digests_find_previous(conn, &digest)?.and_then(|d| d.sent);
-    let subscription = db::subscriptions_find_by_digest(conn, &digest)?;
-    let updates = db::updates_find_new(conn, &subscription, previous_digest_sent)?;
-    let formatted_updates = updates
-        .iter()
-        .map(|p| format!("- {}: {}", p.title, p.url))
-        .collect::<Vec<String>>()
-        .join("\n");
-    let email_content = format!(
-        "Hi, here's your digest:\n\n{}\n\n-Digester",
-        formatted_updates
-    );
-    let recipient = subscription.email;
-
-    send_email(recipient, email_content)
 }
 
 fn send_email(recipient: String, email_content: String) -> Result<(), String> {

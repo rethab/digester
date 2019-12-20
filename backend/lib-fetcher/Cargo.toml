@@ -1,5 +1,5 @@
 [package]
-name = "fetcher"
+name = "lib-fetcher"
 version = "0.1.0"
 authors = ["Reto Habluetzel <rethab@protonmail.ch>"]
 edition = "2018"
@@ -8,4 +8,3 @@ edition = "2018"
 lib-channels = { path = "../lib-channels" }
 lib-db = { path = "../lib-db" }
 chrono = "0.4"
-structopt = { version = "0.3", default-features = false }

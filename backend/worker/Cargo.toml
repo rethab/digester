@@ -1,0 +1,12 @@
+[package]
+name = "worker"
+version = "0.1.0"
+authors = ["Reto Habluetzel <rethab@protonmail.ch>"]
+edition = "2018"
+
+[dependencies]
+lib-db = { path = "../lib-db" }
+lib-channels = { path = "../lib-channels" }
+lib-digester = { path = "../lib-digester" }
+lib-fetcher = { path = "../lib-fetcher" }
+structopt = { version = "0.3", default-features = false }

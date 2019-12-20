@@ -1,5 +1,5 @@
 [package]
-name = "digester"
+name = "lib-digester"
 version = "0.1.0"
 authors = ["Reto Habluetzel <rethab@protonmail.ch>"]
 edition = "2018"
