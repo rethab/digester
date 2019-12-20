@@ -2,6 +2,11 @@ image: docker:19.03.1
 
 variables:
     DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_REGISTRY: "registry.heroku.com"
+    CONTAINER_IMAGE: "digester/api"
+
+services:
+  - docker:19.03.1-dind
 
 before_script:
     - docker info
@@ -14,7 +19,11 @@ build:
             - backend/
             - .gitlab-ci.yml
     script:
-        - docker build -t digester/api -f api.Dockerfile .
+        - docker login --username=_ --password=$HEROKU_API_KEY $DOCKER_REGISTRY
+        - docker pull $CONTAINER_IMAGE:latest
+        - docker build --tag $CONTAINER_IMAGE:latest --tag $CONTAINER_IMAGE:$CI_BUILD_REF --cache-from $CONTAINER_IMAGE:latest -f api.Dockerfile .
+        - docker tag $CONTAINER_IMAGE:latest $DOCKER_REGISTRY/digester-api-integration/web
+        - docker push $DOCKER_REGISTRY/digester-api-integration/web
 
 integration:
     stage: deploy
@@ -23,7 +32,4 @@ integration:
             - backend/
             - .gitlab-ci.yml
     script:
-        - docker login --username=_ --password=$HEROKU_API_KEY registry.heroku.com
-        - docker tag digester/api:latest registry.heroku.com/digester-api-integration/web
-        - docker push registry.heroku.com/digester-api-integration/web
         - heroku container:release web --app digester-api-integration
