@@ -1,6 +1,10 @@
 FROM rustlang/rust:nightly as build
 
-# workarounds to make use of build caching
+RUN cargo +nightly install \
+    --git https://github.com/romac/cargo-build-deps.git \
+    --rev 1d5598de52eb05f9dd8f0be9731023058a219791
+RUN cd /tmp && USER=root cargo new --bin digester-build
+WORKDIR /tmp/digester-build
 COPY Cargo.toml Cargo.lock ./
 
 RUN mkdir -p api/src/ && echo "fn main() {}" > api/src/main.rs
@@ -18,26 +22,19 @@ COPY digester/Cargo.toml digester/
 RUN mkdir -p fetcher/src/ && echo "fn main() {}" > fetcher/src/main.rs
 COPY fetcher/Cargo.toml fetcher/
 
-RUN cargo build --package api --release || true
+RUN cargo build-deps --release --workspace
 
-ADD ./ ./
-RUN cargo build --package api --release
-
-RUN mkdir -p /build-out
-
-RUN cp target/release/api /build-out/
+COPY ./ /tmp/digester-build
+RUN cargo build --package fetcher --release
 
 FROM ubuntu:disco
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get -y install ca-certificates libssl-dev libpq-dev curl && \
+    apt-get -y install ca-certificates libssl-dev libpq-dev && \
     rm -rf /var/lib/apt/lists/*
 
-RUN curl -o launch-rocket.sh https://raw.githubusercontent.com/rethab/rocket-launcher/master/launch-rocket.sh
+COPY --from=build /tmp/digester-build/target/release/fetcher /
 
-COPY --from=build /build-out/api /
-COPY api/Rocket.toml /
-
-CMD /launch-rocket.sh --app /api
+CMD /fetcher
