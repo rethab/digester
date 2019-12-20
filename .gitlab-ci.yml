@@ -1,0 +1,22 @@
+image: docker:19.03.1
+
+variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+
+services:
+  - docker:19.03.1-dind
+
+before_script:
+    docker info
+
+build:
+    stage: build
+    script:
+        - docker build -t digester/api -f api.Dockerfile backend
+
+stage:
+    stage: integration
+    script:
+        - docker tag digester/api:latest registry.heroku.com/digester-api-integration/web
+        - docker push registry.heroku.com/digester-api-integration/web
+        - heroku container:release web --app digester-api-integration
