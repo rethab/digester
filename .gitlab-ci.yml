@@ -4,6 +4,7 @@ variables:
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_REGISTRY: "registry.heroku.com"
     CONTAINER_IMAGE: "digester/api"
+    HEROKU_APP: "digester-api-integration/web"
 
 services:
   - docker:19.03.1-dind
@@ -16,10 +17,10 @@ build:
     stage: build
     script:
         - docker login --username=_ --password=$HEROKU_API_KEY $DOCKER_REGISTRY
-        - docker pull $CONTAINER_IMAGE:latest
+        - docker pull $DOCKER_REGISTRY/$HEROKU_APP
         - docker build --tag $CONTAINER_IMAGE:latest --tag $CONTAINER_IMAGE:$CI_BUILD_REF --cache-from $CONTAINER_IMAGE:latest -f api.Dockerfile .
-        - docker tag $CONTAINER_IMAGE:latest $DOCKER_REGISTRY/digester-api-integration/web
-        - docker push $DOCKER_REGISTRY/digester-api-integration/web
+        - docker tag $CONTAINER_IMAGE:latest $DOCKER_REGISTRY/$HEROKU_APP
+        - docker push $DOCKER_REGISTRY/$HEROKU_APP
 
 integration:
     stage: deploy
