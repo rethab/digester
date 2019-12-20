@@ -4,29 +4,28 @@ variables:
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_REGISTRY: "registry.heroku.com"
     CONTAINER_IMAGE: "digester/api"
-    HEROKU_APP: "digester-api-integration/web"
+    HEROKU_APP: "digester-api-integration"
     HEROKU_EMAIL: "rethab@pm.me"
 
 services:
   - docker:19.03.1-dind
 
-before_script:
-    - docker info
-    - cd backend
-
 build:
     stage: build
+    before_script:
+      - docker info
+      - cd backend
     script:
         - docker login --username=_ --password=$HEROKU_API_KEY $DOCKER_REGISTRY
-        - docker pull $DOCKER_REGISTRY/$HEROKU_APP
+        - docker pull $DOCKER_REGISTRY/$HEROKU_APP/web
         - docker build --tag $CONTAINER_IMAGE:latest --tag $CONTAINER_IMAGE:$CI_BUILD_REF --cache-from $CONTAINER_IMAGE:latest -f api.Dockerfile .
-        - docker tag $CONTAINER_IMAGE:latest $DOCKER_REGISTRY/$HEROKU_APP
-        - docker push $DOCKER_REGISTRY/$HEROKU_APP
+        - docker tag $CONTAINER_IMAGE:latest $DOCKER_REGISTRY/$HEROKU_APP/web
+        - docker push $DOCKER_REGISTRY/$HEROKU_APP/web
 
-integration:
+deploy:
     stage: deploy
     before_script:
-        - apk add curl git gnupg
+        - apk add curl
         - curl https://cli-assets.heroku.com/install.sh | sh
         - heroku --version
         - |
@@ -37,4 +36,4 @@ integration:
           EOF
         - chmod 600 ~/.netrc
     script:
-        - heroku container:release web --app digester-api-integration
+        - heroku container:release web --app $HEROKU_APP
