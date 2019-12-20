@@ -5,6 +5,7 @@ variables:
     DOCKER_REGISTRY: "registry.heroku.com"
     CONTAINER_IMAGE: "digester/api"
     HEROKU_APP: "digester-api-integration/web"
+    HEROKU_EMAIL: "rethab@pm.me"
 
 services:
   - docker:19.03.1-dind
@@ -24,5 +25,16 @@ build:
 
 integration:
     stage: deploy
+    before_script:
+        - apk add curl git gnupg
+        - curl https://cli-assets.heroku.com/install.sh | sh
+        - heroku --version
+        - |
+          cat >~/.netrc <<EOF
+          machine api.heroku.com
+            login $HEROKU_EMAIL
+            password $HEROKU_API_KEY
+          EOF
+        - chmod 600 ~/.netrc
     script:
         - heroku container:release web --app digester-api-integration
