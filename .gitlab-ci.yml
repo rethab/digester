@@ -12,6 +12,9 @@ before_script:
 
 build:
     stage: build
+    only:
+        changes:
+            - backend/
     script:
         - docker build -t digester/api -f api.Dockerfile .
 
