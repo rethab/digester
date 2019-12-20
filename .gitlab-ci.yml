@@ -8,6 +8,7 @@ services:
 
 before_script:
     - docker info
+    - cd backend
 
 build:
     stage: build
