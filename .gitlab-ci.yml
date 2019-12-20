@@ -14,10 +14,6 @@ before_script:
 
 build:
     stage: build
-    only:
-        changes:
-            - backend/
-            - .gitlab-ci.yml
     script:
         - docker login --username=_ --password=$HEROKU_API_KEY $DOCKER_REGISTRY
         - docker pull $CONTAINER_IMAGE:latest
@@ -27,9 +23,5 @@ build:
 
 integration:
     stage: deploy
-    only:
-        changes:
-            - backend/
-            - .gitlab-ci.yml
     script:
         - heroku container:release web --app digester-api-integration
