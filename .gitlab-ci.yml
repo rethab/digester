@@ -13,7 +13,7 @@ before_script:
 build:
     stage: build
     script:
-        - docker build -t digester/api -f api.Dockerfile backend
+        - docker build -t digester/api -f api.Dockerfile .
 
 integration:
     stage: deploy
