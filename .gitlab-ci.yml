@@ -5,7 +5,8 @@ variables:
     DOCKER_REGISTRY: "registry.heroku.com"
     API_CONTAINER_IMAGE: "digester/api"
     WORKER_CONTAINER_IMAGE: "digester/worker"
-    HEROKU_APP: "digester-api-integration"
+    API_HEROKU_APP: "digester-api-integration"
+    WORKER_HEROKU_APP: "digester-worker-integration"
 
 services:
   - docker:19.03.1-dind
@@ -17,18 +18,10 @@ build:
       - cd backend
     script:
         - docker login --username=_ --password=$HEROKU_API_KEY $DOCKER_REGISTRY
-
-        - docker pull $DOCKER_REGISTRY/$HEROKU_APP/web
-        - docker pull $DOCKER_REGISTRY/$HEROKU_APP/worker
-
+        - docker pull $DOCKER_REGISTRY/$API_HEROKU_APP/web
         - docker build --tag $API_CONTAINER_IMAGE:latest --tag $API_CONTAINER_IMAGE:$CI_BUILD_REF --cache-from $API_CONTAINER_IMAGE:latest -f api.Dockerfile .
-        - docker build --tag $WORKER_CONTAINER_IMAGE:latest --tag $WORKER_CONTAINER_IMAGE:$CI_BUILD_REF --cache-from $WORKER_CONTAINER_IMAGE:latest -f worker.Dockerfile .
-
-        - docker tag $API_CONTAINER_IMAGE:latest $DOCKER_REGISTRY/$HEROKU_APP/web
-        - docker tag $WORKER_CONTAINER_IMAGE:latest $DOCKER_REGISTRY/$HEROKU_APP/worker
-
-        - docker push $DOCKER_REGISTRY/$HEROKU_APP/web
-        - docker push $DOCKER_REGISTRY/$HEROKU_APP/worker
+        - docker tag $API_CONTAINER_IMAGE:latest $DOCKER_REGISTRY/$API_HEROKU_APP/web
+        - docker push $DOCKER_REGISTRY/$API_HEROKU_APP/web
 
 deploy:
     stage: deploy
@@ -44,5 +37,4 @@ deploy:
           EOF
         - chmod 600 ~/.netrc
     script:
-        - heroku container:release web --app $HEROKU_APP
-        - heroku container:release worker --app $HEROKU_APP
+        - heroku container:release web --app $API_HEROKU_APP
