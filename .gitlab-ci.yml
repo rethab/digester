@@ -15,11 +15,16 @@ build:
     only:
         changes:
             - backend/
+            - .gitlab-ci.yml
     script:
         - docker build -t digester/api -f api.Dockerfile .
 
 integration:
     stage: deploy
+    only:
+        changes:
+            - backend/
+            - .gitlab-ci.yml
     script:
         - docker login --username=_ --password=$HEROKU_API_KEY registry.heroku.com
         - docker tag digester/api:latest registry.heroku.com/digester-api-integration/web
