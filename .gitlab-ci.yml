@@ -18,9 +18,15 @@ build:
       - cd backend
     script:
         - docker login --username=_ --password=$HEROKU_API_KEY $DOCKER_REGISTRY
-        - docker pull $DOCKER_REGISTRY/$API_HEROKU_APP/web
-        - docker build --tag $API_CONTAINER_IMAGE:latest --tag $API_CONTAINER_IMAGE:$CI_BUILD_REF --cache-from $API_CONTAINER_IMAGE:latest -f api.Dockerfile .
-        - docker tag $API_CONTAINER_IMAGE:latest $DOCKER_REGISTRY/$API_HEROKU_APP/web
+
+        - docker pull $DOCKER_REGISTRY/$WORKER_HEROKU_APP/base
+
+        - docker build --tag $WORKER_HEROKU_APP/base:latest --cache-from $WORKER_HEROKU_APP/base:latest -f base.Dockerfile .
+        - docker build --tag $WORKER_HEROKU_APP/web:latest -f worker.Dockerfile .
+        - docker build --tag $API_HEROKU_APP/web:latest -f api.Dockerfile .
+
+        - docker push $DOCKER_REGISTRY/$WORKER_HEROKU_APP/base
+        - docker push $DOCKER_REGISTRY/$WORKER_HEROKU_APP/web
         - docker push $DOCKER_REGISTRY/$API_HEROKU_APP/web
 
 deploy:
@@ -38,3 +44,4 @@ deploy:
         - chmod 600 ~/.netrc
     script:
         - heroku container:release web --app $API_HEROKU_APP
+        - heroku container:release web --app $WORKER_HEROKU_APP
