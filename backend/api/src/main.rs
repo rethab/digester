@@ -33,7 +33,8 @@ fn main() -> Result<(), String> {
 
     let github_api_token = AdHoc::on_attach("Github Api Token", |rocket| {
         let name = "GITHUB_API_TOKEN";
-        let api_token = env::var(name).expect(&format!("Failed to read env variable {}", name));
+        let api_token =
+            env::var(name).unwrap_or_else(|_| panic!("Failed to read env variable {}", name));
         Ok(rocket.manage(subscriptions::GithubApiToken(api_token)))
     });
 

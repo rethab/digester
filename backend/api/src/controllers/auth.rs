@@ -29,7 +29,7 @@ fn create_session_cookie(maybe_id: Option<Uuid>, cookie_config: &CookieConfig) -
                 .encode_lower(&mut Uuid::encode_buffer())
                 .to_owned()
         })
-        .unwrap_or(String::new());
+        .unwrap_or_default();
     // todo review cookie settings
     Cookie::build("SESSION_ID", value)
         .domain(cookie_config.domain)
@@ -63,7 +63,7 @@ fn github_oauth_exchange(
     let code = iam::AuthorizationCode(oauth_data.0.code);
     match iam::authenticate::<iam::Github>(&db.0, &mut redis.0, &provider, code) {
         Ok(session) => {
-            let cookie = create_session_cookie(Some(session.id.clone()), &cookie_config);
+            let cookie = create_session_cookie(Some(session.id), &cookie_config);
             cookies.add(cookie);
             JsonResponse::Ok(json!({
                 "username": session.username,

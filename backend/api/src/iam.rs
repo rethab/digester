@@ -90,7 +90,7 @@ impl Github {
             emails
                 .find(|email| email.primary)
                 .or_else(|| emails.next())
-                .ok_or("No email found in response".to_owned())
+                .ok_or_else(|| "No email found in response".to_owned())
         };
         match client.get().user().emails().execute::<Value>() {
             Ok((_, status, Some(json))) if status == StatusCode::OK => {
@@ -177,7 +177,7 @@ impl IdentityProvider for Github {
                 Ok(ProviderUserInfo {
                     provider: Github::IDENTIFIER,
                     pid: raw.pid.to_string(),
-                    email: email,
+                    email,
                     username: raw.username,
                 })
             }
@@ -200,7 +200,7 @@ pub fn authenticate<P: IdentityProvider>(
 }
 
 pub fn fetch_session(cache: &RedisConnection, session_id: Uuid) -> Result<Option<Session>, String> {
-    let id = cache::SessionId(session_id.clone());
+    let id = cache::SessionId(session_id);
     let maybe_data = cache::session_find(cache, id)?;
     Ok(maybe_data.map(|data| Session::from_data(session_id, data)))
 }

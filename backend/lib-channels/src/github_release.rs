@@ -73,15 +73,14 @@ impl TryInto<Update> for ReleaseResponse {
         Ok(Update {
             title: self.name,
             url: self.html_url,
-            published: published,
+            published,
         })
     }
 }
 
 impl Channel for GithubRelease {
     fn validate(&self, name: &str) -> Result<String, ValidationError> {
-        let (owner, repo) =
-            Self::split_name(name).map_err(|msg| ValidationError::ChannelInvalid(msg))?;
+        let (owner, repo) = Self::split_name(name).map_err(ValidationError::ChannelInvalid)?;
 
         let query = self.client.get().repos().owner(owner).repo(repo);
 

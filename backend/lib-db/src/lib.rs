@@ -101,8 +101,8 @@ pub fn channels_insert_if_not_exists(
     };
 
     match find() {
-        Err(err) => return Err(err),
-        Ok(Some(channel)) => return Ok(channel),
+        Err(err) => Err(err),
+        Ok(Some(channel)) => Ok(channel),
         Ok(None) => {
             use schema::channels;
             match diesel::insert_into(channels::table)

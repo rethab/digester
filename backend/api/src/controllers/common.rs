@@ -48,7 +48,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Protected {
         match Cookies::from_request(req) {
             Outcome::Success(cookies) => {
                 match cookies.get("SESSION_ID") {
-                    None => return Outcome::Forward(()),
+                    None => Outcome::Forward(()),
                     Some(cookie) => {
                         // todo parse fails on garbage input, need to handle
                         let session_id =
