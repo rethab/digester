@@ -75,6 +75,10 @@ fn github_oauth_exchange(
                 "access_token": "dummy"
             }))
         }
+        Err(AuthenticationError::MissingPermissions(msg)) => {
+            println!("Missing permissions: {}", msg);
+            JsonResponse::BadRequest("Not all necessary scopes granted".into())
+        }
         Err(AuthenticationError::UnknownFailure(msg)) => {
             println!("Unknown auth failure: {}", msg);
             JsonResponse::InternalServerError

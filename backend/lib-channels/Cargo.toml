@@ -11,6 +11,7 @@ url = "2.1.0"
 serde = "1.0"
 serde_json = "1.0"
 
+# note that this is duplicated in api
 [dependencies.github-rs]
 git = "https://github.com/rethab/github-rs"
 branch = "master"

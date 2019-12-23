@@ -1,21 +1,16 @@
-use hyper::{
-    header::{qitem, Accept, Authorization, UserAgent},
-    mime::Mime,
-    net::HttpsConnector,
-    Client,
-};
+use github_rs::client::{Executor, Github as GhRsClient};
+use github_rs::StatusCode;
 use rocket::config::Config;
 use rocket_contrib::databases::redis::Connection as RedisConnection;
 use rocket_oauth2::hyper_sync_rustls_adapter::HyperSyncRustlsAdapter;
 use rocket_oauth2::Adapter;
 use rocket_oauth2::{OAuthConfig, TokenRequest};
+use serde_json::Value;
 
 use diesel::pg::PgConnection;
 
 use super::cache;
 use lib_db as db;
-
-use std::io::Read;
 
 use uuid::Uuid;
 
@@ -68,13 +63,44 @@ pub struct Github {
 }
 
 impl Github {
+    const IDENTIFIER: &'static str = "github";
+
     pub fn from_rocket_config(config: &Config) -> Result<Github, String> {
         let oauth_config = OAuthConfig::from_config(config, "github")
             .map_err(|err| format!("Failed to read github config from rocket: {:?}", err))?;
         Ok(Github { oauth_config })
     }
 
-    const IDENTIFIER: &'static str = "github";
+    fn fetch_user_info(client: &GhRsClient) -> Result<GitHubUserInfo, String> {
+        match client.get().user().execute::<Value>() {
+            Ok((_, status, Some(json))) if status == StatusCode::OK => {
+                serde_json::from_value::<GitHubUserInfo>(json)
+                    .map_err(|err| format!("Failed to parse GitHubUserInfo response: {:?}", err))
+            }
+            err => Err(format!("Failed to retrieve GitHubUserInfo: {:?}", err)),
+        }
+    }
+
+    // if a user chooses to set their email private, we don't get it from the /user
+    // call above. In that case, we need to reques /user/emails separately. See:
+    // https://stackoverflow.com/a/35387123
+    fn fetch_email(client: &GhRsClient) -> Result<GitHubUserEmail, String> {
+        let pick_email = |emails: Vec<GitHubUserEmail>| {
+            let mut emails = emails.into_iter();
+            emails
+                .find(|email| email.primary)
+                .or_else(|| emails.next())
+                .ok_or("No email found in response".to_owned())
+        };
+        match client.get().user().emails().execute::<Value>() {
+            Ok((_, status, Some(json))) if status == StatusCode::OK => {
+                serde_json::from_value::<Vec<GitHubUserEmail>>(json)
+                    .map_err(|err| format!("Failed to parse GitHubUserEmail response: {:?}", err))
+                    .and_then(pick_email)
+            }
+            err => Err(format!("Failed to retrieve GitHubUserEmail: {:?}", err)),
+        }
+    }
 }
 
 // the code we get from github when they call us
@@ -84,6 +110,7 @@ pub struct AccessToken(String);
 
 pub enum AuthenticationError {
     TokenExchangeFailed(String),
+    MissingPermissions(String),
     UnknownFailure(String),
 }
 
@@ -101,18 +128,14 @@ struct GitHubUserInfo {
     pid: i32,
     #[serde(rename = "login")]
     username: String,
-    email: String,
+    // can be none if user chooses to hide it
+    email: Option<String>,
 }
 
-impl GitHubUserInfo {
-    fn user_info(self) -> ProviderUserInfo {
-        ProviderUserInfo {
-            provider: Github::IDENTIFIER,
-            pid: self.pid.to_string(),
-            email: self.email,
-            username: self.username,
-        }
-    }
+#[derive(Deserialize)]
+struct GitHubUserEmail {
+    email: String,
+    primary: bool,
 }
 
 impl IdentityProvider for Github {
@@ -134,35 +157,31 @@ impl IdentityProvider for Github {
         &self,
         access_token: AccessToken,
     ) -> Result<ProviderUserInfo, AuthenticationError> {
-        use AuthenticationError::UnknownFailure;
+        use AuthenticationError::*;
 
-        let https = HttpsConnector::new(hyper_sync_rustls::TlsClient::new());
-        let client = Client::with_connector(https);
+        let client: GhRsClient = GhRsClient::new(access_token.0).map_err(|err| {
+            UnknownFailure(format!("Failed to initialize github client: {:?}", err))
+        })?;
 
-        // Use the token to retrieve the user's GitHub account information.
-        let mime: Mime = "application/vnd.github.v3+json"
-            .parse()
-            .expect("parse GitHub MIME type");
-        let response = client
-            .get("https://api.github.com/user")
-            .header(Authorization(format!("token {}", access_token.0)))
-            .header(Accept(vec![qitem(mime)]))
-            .header(UserAgent("rocket_oauth2 demo application".into()))
-            .send()
-            .map_err(|err| UnknownFailure(format!("Failed to call github api: {:?}", err)))?;
-
-        if !response.status.is_success() {
-            return Err(UnknownFailure(
-                format!("got non-success status {}", response.status).into(),
-            ));
+        match Github::fetch_user_info(&client) {
+            Err(msg) => Err(UnknownFailure(msg)),
+            Ok(raw) => {
+                let email = match raw.email {
+                    Some(email) => email,
+                    None => Github::fetch_email(&client)
+                        .map(|email| email.email)
+                        .map_err(|err| {
+                            UnknownFailure(format!("Failed to fetch e-mail separately: {:?}", err))
+                        })?,
+                };
+                Ok(ProviderUserInfo {
+                    provider: Github::IDENTIFIER,
+                    pid: raw.pid.to_string(),
+                    email: email,
+                    username: raw.username,
+                })
+            }
         }
-
-        let user_info: GitHubUserInfo = serde_json::from_reader(response.take(2 * 1024 * 1024))
-            .map_err(|err| {
-                UnknownFailure(format!("failed to deserialize github response: {:?}", err))
-            })?;
-
-        Ok(user_info.user_info())
     }
 }
 

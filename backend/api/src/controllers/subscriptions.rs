@@ -159,14 +159,17 @@ mod tests {
 
     #[test]
     fn parse_subscription() {
-        let sub: Subscription = serde_json::from_str(r#"{
+        let sub: Subscription = serde_json::from_str(
+            r#"{
             "channelName":"rethab/dotfiles",
             "channelType":"GithubRelease",
             "frequency":"Weekly",
             "day":"Sat",
             "time":"09:00:00.00"
-        }"#).expect("Failed to parse");
-        let exp = Subscription{
+        }"#,
+        )
+        .expect("Failed to parse");
+        let exp = Subscription {
             channel_name: "rethab/dotfiles".into(),
             channel_type: ChannelType::GithubRelease,
             frequency: Frequency::Weekly,
