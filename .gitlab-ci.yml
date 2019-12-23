@@ -25,6 +25,9 @@ build:
         - docker build --tag $WORKER_HEROKU_APP/web:latest -f worker.Dockerfile .
         - docker build --tag $API_HEROKU_APP/web:latest -f api.Dockerfile .
 
+        - docker tag $WORKER_HEROKU_APP/web:latest $DOCKER_REGISTRY/$WORKER_HEROKU_APP/web
+        - docker tag $API_HEROKU_APP/web:latest $DOCKER_REGISTRY/$API_HEROKU_APP/web
+
         - docker push $DOCKER_REGISTRY/$WORKER_HEROKU_APP/base
         - docker push $DOCKER_REGISTRY/$WORKER_HEROKU_APP/web
         - docker push $DOCKER_REGISTRY/$API_HEROKU_APP/web
