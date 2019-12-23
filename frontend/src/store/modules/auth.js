@@ -18,7 +18,6 @@ const actions = {
             provider = payload.provider;
 
         return new Promise((resolve, reject) => {
-            console.log("Inside promise: " + vueAuth + " provider: " + provider);
             vueAuth.authenticate(provider)
                 .then(resp => {
                     const username = resp.data.username;
@@ -27,7 +26,6 @@ const actions = {
                     commit("AUTHENTICATED", {
                         username: username
                     });
-                    console.log("resolving promise..");
                     resolve(resp);
                 }).catch(err => {
                     localStorage.removeItem('guess-auth');
