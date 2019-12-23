@@ -1,9 +1,15 @@
 <template>
-  <div class="home">
+  <v-container>
     <h1 class="mt-10 display-3 d-flex justify-center">Welcome to Digester!</h1>
-  </div>
+    <AuthLogin />
+  </v-container>
 </template>
 
 <script>
-export default {};
+import AuthLogin from "@/components/AuthLogin.vue";
+export default {
+  components: {
+    AuthLogin
+  }
+};
 </script>

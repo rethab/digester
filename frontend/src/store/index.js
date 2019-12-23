@@ -1,14 +1,17 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 import Api from '@/services/api';
+import auth from '@/store/modules/auth.js';
 
 Vue.use(Vuex)
 
 export default new Vuex.Store({
   strict: process.env.NODE_ENV != 'production',
+  modules: {
+    auth
+  },
   state: {
     subscriptions: [],
-    user: null
   },
   mutations: {
     SET_SUBSCRIPTIONS(state, subscriptions) {
@@ -17,12 +20,6 @@ export default new Vuex.Store({
     ADD_SUBSCRIPTION(state, subscription) {
       state.subscriptions.unshift(subscription);
     },
-    AUTHENTICATE(state, user) {
-      state.user = user;
-    },
-    UNAUTHENTICATE(state) {
-      state.user = null;
-    }
   },
   actions: {
     async loadSubscriptions({ commit }) {
@@ -40,24 +37,5 @@ export default new Vuex.Store({
       commit('ADD_SUBSCRIPTION', response.data);
       return subscription;
     },
-    authenticate({ commit }, user) {
-      commit('AUTHENTICATE', user);
-    },
-    async unauthenticate({ commit, getters }) {
-      if (!getters.isAuthenticated) {
-        return;
-      }
-      await Api().post("/auth/logout");
-      commit('UNAUTHENTICATE');
-    }
-  },
-  getters: {
-    isAuthenticated: state => {
-      return state.user !== null;
-    },
-    username: (state, getters) => {
-      if (!getters.isAuthenticated) return "Anonymous";
-      else return state.user.username;
-    }
   }
 })

@@ -51,7 +51,7 @@ export default {
   },
   data() {
     return {
-      twoRows: false, // this.$vuetify.breakpoint.smAndDown,
+      twoRows: this.$vuetify.breakpoint.smAndDown,
 
       types: [{ text: "Github", value: "GithubRelease" }],
       type: "GithubRelease",
