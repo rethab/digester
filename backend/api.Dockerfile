@@ -1,4 +1,4 @@
-FROM digester-worker-integration/web:latest as build
+FROM digester-worker-integration/base:latest as build
 
 FROM ubuntu:disco
 
