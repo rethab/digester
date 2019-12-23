@@ -76,14 +76,24 @@ export default {
   methods: {
     async subscribe() {
       if (this.validate()) {
-        await this.$store.dispatch("subscribe", {
-          type: this.type,
-          name: this.repository,
-          frequency: this.frequency.frequency,
-          day: this.frequency.day,
-          time: this.frequency.hour
-        });
-        this.repository = "";
+        this.$store
+          .dispatch("subscribe", {
+            type: this.type,
+            name: this.repository,
+            frequency: this.frequency.frequency,
+            day: this.frequency.day,
+            time: this.frequency.hour
+          })
+          .then(() => {
+            this.repository = "";
+          })
+          .catch(err => {
+            if (err.response.data.error) {
+              this.repositoryErrors.push(err.response.data.error);
+            } else {
+              // todo
+            }
+          });
       }
     },
     validate() {

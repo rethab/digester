@@ -27,15 +27,20 @@ export default new Vuex.Store({
       commit('SET_SUBSCRIPTIONS', response.data);
     },
     async subscribe({ commit }, subscription) {
-      let response = await Api().post("subscriptions/add", {
-        channelName: subscription.name,
-        channelType: subscription.type,
-        frequency: subscription.frequency,
-        day: subscription.day,
-        time: subscription.time + ":00.00",
-      });
-      commit('ADD_SUBSCRIPTION', response.data);
-      return subscription;
+      return new Promise((resolve, reject) => {
+        Api().post("subscriptions/add", {
+          channelName: subscription.name,
+          channelType: subscription.type,
+          frequency: subscription.frequency,
+          day: subscription.day,
+          time: subscription.time + ":00.00",
+        }).then(resp => {
+          commit('ADD_SUBSCRIPTION', resp.data);
+          resolve(subscription);
+        }).catch(err => {
+          reject(err)
+        });
+      })
     },
   }
 })
