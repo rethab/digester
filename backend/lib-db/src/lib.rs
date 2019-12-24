@@ -307,6 +307,17 @@ pub fn digests_set_sent(conn: &Connection, digest: &Digest) -> Result<(), String
         .map_err(|err| format!("Failed to update 'sent' for digest {:?}: {:?}", digest, err))
 }
 
+pub fn digests_remove_unsent_for_subscription(
+    conn: &PgConnection,
+    sub: &Subscription,
+) -> Result<(), String> {
+    use schema::digests::dsl::*;
+    diesel::delete(digests.filter(subscription_id.eq(sub.id).and(sent.is_null())))
+        .execute(conn)
+        .map(|_| ())
+        .map_err(|err| format!("Failed remove digest for subscription {:?}", err))
+}
+
 pub fn users_find_by_provider(
     conn: &PgConnection,
     provider: &str,

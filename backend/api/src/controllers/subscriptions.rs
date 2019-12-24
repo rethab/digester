@@ -206,7 +206,15 @@ fn update_subscription(
         day: updated.day,
         time: updated.time,
     };
-    db::subscriptions_update(&conn.0, db_sub)
+    db::subscriptions_update(&conn.0, db_sub).map(|sub| {
+        if let Err(err) = db::digests_remove_unsent_for_subscription(&conn.0, &sub) {
+            println!(
+                "Failed to remove digest after updating subscription: {:?}",
+                err
+            );
+        };
+        sub
+    })
 }
 
 #[cfg(test)]

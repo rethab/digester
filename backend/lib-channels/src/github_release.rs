@@ -32,8 +32,9 @@ impl GithubRelease {
         json: Value,
         last_fetched: Option<DateTime<Utc>>,
     ) -> Result<Vec<Update>, String> {
+        let cloned_json = json.clone();
         let releases = serde_json::from_value::<Vec<ReleaseResponse>>(json)
-            .map_err(|err| format!("Failed to parse releases: {:?}", err))?;
+            .map_err(|err| format!("Failed to parse releases: {:?}, json: {}", err, cloned_json))?;
         let keep = |update: &Update| last_fetched.map(|lf| lf < update.published).unwrap_or(true);
         let mut updates = Vec::with_capacity(releases.len());
         for release in releases {
@@ -55,7 +56,9 @@ struct RepoResponse {
 #[derive(Deserialize, Debug)]
 struct ReleaseResponse {
     html_url: String,
-    name: String,
+    // name is not required. In that case we take the tag_name, which is required
+    name: Option<String>,
+    tag_name: String,
     published_at: String,
 }
 
@@ -71,7 +74,7 @@ impl TryInto<Update> for ReleaseResponse {
                 )
             })?;
         Ok(Update {
-            title: self.name,
+            title: self.name.unwrap_or(self.tag_name),
             url: self.html_url,
             published,
         })

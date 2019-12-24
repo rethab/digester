@@ -7,15 +7,16 @@ source .env.local
 
 CMD=$1
 
-function run_fetcher(){
-  pushd backend/fetcher
-  cargo run -- --github-api-token $GITHUB_API_TOKEN --database-uri $POSTGRES_CONNECTION
-  popd
+function loop_worker() {
+  for n in $(seq 9999); do
+    run_worker;
+    sleep 5;
+  done
 }
 
-function run_digester(){
-  pushd backend/digester
-  DATABASE_CONNECTION=$POSTGRES_CONNECTION cargo run
+function run_worker(){
+  pushd backend/worker
+  cargo run -- --github-api-token $GITHUB_API_TOKEN --database-uri $POSTGRES_CONNECTION
   popd
 }
 
@@ -58,19 +59,19 @@ function run_db_logs() {
 
 
 case $CMD in
-  fetcher)  run_fetcher ;;
-  digester) run_digester ;;
-  api)      run_api ;;
-  fe)       run_fe ;;
-  db)       run_db ;;
-  kill-db)  kill_db ;;
-  build-db) build_db ;;
-  psql)     run_psql ;;
-  redis)    run_redis ;;
-  logs-db)  run_db_logs ;;
+  worker)      run_worker ;;
+  worker-loop) loop_worker ;;
+  api)         run_api ;;
+  fe)          run_fe ;;
+  db)          run_db ;;
+  kill-db)     kill_db ;;
+  build-db)    build_db ;;
+  psql)        run_psql ;;
+  redis)       run_redis ;;
+  logs-db)     run_db_logs ;;
   *)
     echo "unknown command.."
-    echo "known commands are: fetcher, digester, api, fe, db, kill-db, build-db, psql, redis, logs-db"
+    echo "known commands are: worker, worker-loop, api, fe, db, kill-db, build-db, psql, redis, logs-db"
     exit 1
     ;;
 esac
