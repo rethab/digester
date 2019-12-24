@@ -2,3 +2,8 @@
   base = "frontend"
   publish = "dist"
   command = "npm run stage"
+
+[redirects]
+  from = "/*"
+  to = "/index.html"
+  status = 200
