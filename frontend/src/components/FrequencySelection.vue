@@ -44,7 +44,6 @@ export default {
         value: value
       });
     }
-    console.log(times);
     this.times = times;
   }
 };
