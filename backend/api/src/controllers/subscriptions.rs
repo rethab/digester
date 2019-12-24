@@ -14,7 +14,18 @@ pub fn mount(rocket: Rocket) -> Rocket {
 
 pub struct GithubApiToken(pub String);
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq)]
+struct NewSubscription {
+    #[serde(rename = "channelName")]
+    channel_name: String,
+    #[serde(rename = "channelType")]
+    channel_type: ChannelType,
+    frequency: Frequency,
+    day: Option<Day>,
+    time: NaiveTime,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
 struct Subscription {
     id: i32,
     #[serde(rename = "channelName")]
@@ -26,10 +37,9 @@ struct Subscription {
     time: NaiveTime,
 }
 
-impl Subscription {
+impl NewSubscription {
     fn with_name(self, name: String) -> Self {
         Self {
-            id: self.id,
             channel_name: name,
             channel_type: self.channel_type,
             frequency: self.frequency,
@@ -87,7 +97,7 @@ fn add(
     session: Protected,
     db: DigesterDbConn,
     github_api_token: State<GithubApiToken>,
-    new_subscription: Json<Subscription>,
+    new_subscription: Json<NewSubscription>,
 ) -> JsonResponse {
     let identity = match db::identities_find_by_user_id(&db, session.0.user_id) {
         Ok(identity) => identity,
@@ -136,7 +146,7 @@ fn update(
     }
 }
 
-fn validate(sub: Subscription, gh_token: &GithubApiToken) -> Result<Subscription, String> {
+fn validate(sub: NewSubscription, gh_token: &GithubApiToken) -> Result<NewSubscription, String> {
     match sub.channel_type {
         ChannelType::GithubRelease => {
             // todo: if we already know this repo, no need to call github
@@ -156,7 +166,7 @@ fn validate(sub: Subscription, gh_token: &GithubApiToken) -> Result<Subscription
 
 fn insert_channel_if_not_exists(
     conn: &DigesterDbConn,
-    sub: &Subscription,
+    sub: &NewSubscription,
 ) -> Result<db::Channel, String> {
     let new_channel = db::NewChannel {
         name: sub.channel_name.clone(),
@@ -167,7 +177,7 @@ fn insert_channel_if_not_exists(
 
 fn insert_subscription(
     conn: &DigesterDbConn,
-    sub: Subscription,
+    sub: NewSubscription,
     chan: &db::Channel,
     identity: &db::Identity,
 ) -> Result<db::Subscription, String> {
@@ -205,7 +215,7 @@ mod tests {
 
     #[test]
     fn parse_subscription() {
-        let sub: Subscription = serde_json::from_str(
+        let sub: NewSubscription = serde_json::from_str(
             r#"{
             "channelName":"rethab/dotfiles",
             "channelType":"GithubRelease",
@@ -215,8 +225,7 @@ mod tests {
         }"#,
         )
         .expect("Failed to parse");
-        let exp = Subscription {
-            id: 1,
+        let exp = NewSubscription {
             channel_name: "rethab/dotfiles".into(),
             channel_type: ChannelType::GithubRelease,
             frequency: Frequency::Weekly,
