@@ -1,17 +1,23 @@
 use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Utc, Weekday};
-use lettre::smtp::authentication::{Credentials, Mechanism};
-use lettre::{ClientSecurity, SmtpClient, Transport};
-use lettre_email::Email;
 use lib_db as db;
-use lib_db::{Day, Digest, Frequency, InsertDigest, Subscription};
+use lib_db::{Day, Digest, Frequency, InsertDigest, Subscription, Update};
+use reqwest::header::CONTENT_TYPE;
+use reqwest::Client;
+use serde::Serialize;
 
 pub struct App<'a> {
     db_conn: &'a db::Connection,
+    mailjet: MailjetCredentials,
+}
+
+pub struct MailjetCredentials {
+    pub username: String,
+    pub password: String,
 }
 
 impl App<'_> {
-    pub fn new(db_conn: &db::Connection) -> App {
-        App { db_conn }
+    pub fn new(db_conn: &db::Connection, mailjet: MailjetCredentials) -> App {
+        App { db_conn, mailjet }
     }
 
     pub fn run(&self) -> Result<(), String> {
@@ -64,19 +70,104 @@ impl App<'_> {
             db::digests_find_previous(&self.db_conn, &digest)?.and_then(|d| d.sent);
         let subscription = db::subscriptions_find_by_digest(&self.db_conn, &digest)?;
         let updates = db::updates_find_new(&self.db_conn, &subscription, previous_digest_sent)?;
-        let formatted_updates = updates
-            .iter()
-            .map(|p| format!("- {}: {}", p.title, p.url))
-            .collect::<Vec<String>>()
-            .join("\n");
-        let email_content = format!(
-            "Hi, here's your digest:\n\n{}\n\n-Digester",
-            formatted_updates
-        );
-        let recipient = subscription.email;
 
-        send_email(recipient, email_content)
+        if updates.is_empty() {
+            // todo send marketing e-mail to add new subscriptions
+            println!(
+                "No updates to send for Subscription {} to {}",
+                subscription.id, subscription.email
+            );
+            Ok(())
+        } else {
+            let message = MailjetMessage::new(&subscription, updates);
+            self.send_email(message)
+        }
     }
+
+    fn send_email(&self, message: MailjetMessage) -> Result<(), String> {
+        let messages = MailjetMessages::new(message);
+        let result = Client::new()
+            .post("https://api.mailjet.com/v3.1/send")
+            .basic_auth(
+                self.mailjet.username.clone(),
+                Some(self.mailjet.password.clone()),
+            )
+            .header(CONTENT_TYPE, "application/json")
+            .json(&messages)
+            .send();
+        match result {
+            Ok(resp) if resp.status().is_success() => Ok(()),
+            Ok(resp) => Err(format!("Mailjet returned error: {:?}", resp)),
+            Err(err) => Err(format!("Failed to send email: {:?}", err)),
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct MailjetMessages {
+    #[serde(rename = "Messages")]
+    messages: Vec<MailjetMessage>,
+}
+
+impl MailjetMessages {
+    fn new(message: MailjetMessage) -> MailjetMessages {
+        MailjetMessages {
+            messages: vec![message],
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct MailjetMessage {
+    #[serde(rename = "To")]
+    to: Vec<MailjetTo>,
+    #[serde(rename = "TemplateID")]
+    template_id: i32,
+    #[serde(rename = "TemplateLanguage")]
+    template_language: bool,
+    #[serde(rename = "Variables")]
+    variables: MailjetVariables,
+}
+
+impl MailjetMessage {
+    fn new(sub: &Subscription, updates: Vec<Update>) -> MailjetMessage {
+        MailjetMessage {
+            to: vec![MailjetTo {
+                email: sub.email.clone(),
+                name: "Anonymous Panter".into(),
+            }],
+            template_id: 1_153_883, // todo make flexible
+            template_language: true,
+            variables: MailjetVariables {
+                updates: updates
+                    .iter()
+                    .map(|update| MailjetUpdate {
+                        title: update.title.clone(),
+                        url: update.url.clone(),
+                    })
+                    .collect(),
+            },
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct MailjetTo {
+    #[serde(rename = "Email")]
+    email: String,
+    #[serde(rename = "Name")]
+    name: String,
+}
+
+#[derive(Serialize)]
+struct MailjetVariables {
+    updates: Vec<MailjetUpdate>,
+}
+
+#[derive(Serialize)]
+struct MailjetUpdate {
+    title: String,
+    url: String,
 }
 
 fn next_due_date_for_subscription(
@@ -131,29 +222,6 @@ fn next_due_date_for_subscription(
             }
         }
     }
-}
-
-fn send_email(recipient: String, email_content: String) -> Result<(), String> {
-    let email = Email::builder()
-        .to(recipient)
-        .from("digster@digester.io")
-        .subject("your digest is ready")
-        .text(email_content)
-        .build()
-        .unwrap();
-    // todo use tls
-    let mut mailer = SmtpClient::new(("smtp.mailtrap.io", 25), ClientSecurity::None)
-        .unwrap()
-        .credentials(Credentials::new(
-            "5037062aefe9c9652".to_string(),
-            "6e7e4d68510493".to_string(),
-        ))
-        .authentication_mechanism(Mechanism::Plain)
-        .transport();
-    mailer
-        .send(email.into())
-        .map(|_| ())
-        .map_err(|err| format!("Failed to send email: {:?}", err))
 }
 
 #[allow(dead_code)]
