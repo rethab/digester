@@ -39,30 +39,40 @@ impl<'r> Responder<'r> for JsonResponse {
     }
 }
 
+#[derive(Clone)]
 pub struct Protected(pub iam::Session);
+
+static UNAUTHORIZED: request::Outcome<Protected, ()> =
+    Outcome::Failure((HttpStatus::Unauthorized, ()));
+static INTERNAL_SERVER_ERROR: request::Outcome<Protected, ()> =
+    Outcome::Failure((HttpStatus::InternalServerError, ()));
 
 impl<'a, 'r> FromRequest<'a, 'r> for Protected {
     type Error = ();
-    // todo check how failure can be handled
+    // todo log internal server errors
     fn from_request(req: &'a Request<'r>) -> request::Outcome<Protected, ()> {
-        match Cookies::from_request(req) {
-            Outcome::Success(cookies) => {
-                match cookies.get("SESSION_ID") {
-                    None => Outcome::Forward(()),
-                    Some(cookie) => {
-                        // todo parse fails on garbage input, need to handle
-                        let session_id =
-                            Uuid::parse_str(cookie.value()).expect("failed to parse uuid");
-                        let redis = Redis::from_request(req)?;
-                        match iam::fetch_session(&redis, session_id) {
-                            Ok(Some(session)) => Outcome::Success(Protected(session)),
-                            Ok(None) => Outcome::Forward(()),
-                            Err(_) => Outcome::Forward(()), // todo log
-                        }
-                    }
-                }
-            }
-            _ => Outcome::Forward(()),
+        let cookies = match Cookies::from_request(req) {
+            Outcome::Success(cookies) => cookies,
+            _ => return INTERNAL_SERVER_ERROR.clone(),
+        };
+
+        let session_id = match cookies.get("SESSION_ID") {
+            None => return UNAUTHORIZED.clone(),
+            Some(cookie) => match Uuid::parse_str(cookie.value()) {
+                Ok(session_id) => session_id,
+                Err(_) => return UNAUTHORIZED.clone(),
+            },
+        };
+
+        let redis = match Redis::from_request(req) {
+            Outcome::Success(redis) => redis,
+            _ => return INTERNAL_SERVER_ERROR.clone(),
+        };
+
+        match iam::fetch_session(&redis, session_id) {
+            Ok(Some(session)) => Outcome::Success(Protected(session)),
+            Ok(None) => UNAUTHORIZED.clone(),
+            Err(_) => INTERNAL_SERVER_ERROR.clone(),
         }
     }
 }

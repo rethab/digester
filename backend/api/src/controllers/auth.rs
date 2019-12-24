@@ -15,10 +15,7 @@ pub struct CookieConfig {
 }
 
 pub fn mount(rocket: Rocket) -> Rocket {
-    rocket.mount(
-        "/auth",
-        routes![me, me_unauthenticated, logout, github_oauth_exchange],
-    )
+    rocket.mount("/auth", routes![me, logout, github_oauth_exchange])
 }
 
 // creates the session cookie. a None value creates a removal cookie
@@ -95,11 +92,6 @@ fn me(session: Protected) -> JsonResponse {
     JsonResponse::Ok(json! ({
         "username": session.0.username
     }))
-}
-
-#[get("/me", rank = 2)]
-fn me_unauthenticated() -> JsonResponse {
-    JsonResponse::Unauthorized
 }
 
 #[post("/logout")]

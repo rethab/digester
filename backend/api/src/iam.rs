@@ -34,6 +34,8 @@ pub struct ProviderUserInfo {
     email: String,
     username: String,
 }
+
+#[derive(Clone)]
 pub struct Session {
     pub id: Uuid,
     pub user_id: i32,

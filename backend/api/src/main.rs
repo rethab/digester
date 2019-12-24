@@ -24,6 +24,11 @@ fn not_found() -> JsonResponse {
     JsonResponse::NotFound
 }
 
+#[catch(401)]
+fn unauthorized() -> JsonResponse {
+    JsonResponse::Unauthorized
+}
+
 fn main() -> Result<(), String> {
     let github_identity_provider = AdHoc::on_attach("Github Identity Provider", |rocket| {
         let github =
@@ -78,7 +83,7 @@ fn main() -> Result<(), String> {
         .attach(github_identity_provider)
         .attach(github_api_token)
         .attach(cookie_config)
-        .register(catchers![internal_error, not_found])
+        .register(catchers![internal_error, not_found, unauthorized])
         .launch();
 
     Ok(())
