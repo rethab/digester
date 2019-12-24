@@ -50,7 +50,7 @@ const router = new VueRouter({
 router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!store.getters.isAuthenticated) {
-      next({ name: 'auth-login', query: { requireAuth: true }, meta: { message: 'Please login' } })
+      next({ name: 'auth-login', query: { requireAuth: true } })
     } else {
       next()
     }

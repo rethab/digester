@@ -25,6 +25,12 @@ function run_api() {
   popd
 }
 
+function run_fe() {
+  pushd frontend
+  npm run serve
+  popd
+}
+
 function run_db() {
   docker-compose up -d
 }
@@ -55,6 +61,7 @@ case $CMD in
   fetcher)  run_fetcher ;;
   digester) run_digester ;;
   api)      run_api ;;
+  fe)       run_fe ;;
   db)       run_db ;;
   kill-db)  kill_db ;;
   build-db) build_db ;;
@@ -63,7 +70,7 @@ case $CMD in
   logs-db)  run_db_logs ;;
   *)
     echo "unknown command.."
-    echo "known commands are: fetcher, digester, api, db, kill-db, build-db, psql, redis, logs-db"
+    echo "known commands are: fetcher, digester, api, fe, db, kill-db, build-db, psql, redis, logs-db"
     exit 1
     ;;
 esac

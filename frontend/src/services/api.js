@@ -17,13 +17,12 @@ export default () => {
         // do nothing with success
         return resp;
     }, err => {
-        if (err.status === 401 && err.config && !err.config.__isRetryRequest) {
+        if (err.response.status === 401) {
             store.dispatch("unauthenticated").then(() => {
-                router.push({ name: 'auth-login', message: 'Please login again' });
+                router.push({ name: 'auth-login', query: { sessionExpired: true } });
             });
-        } else {
-            return Promise.reject(err);
         }
+        return Promise.reject(err);
     });
 
 

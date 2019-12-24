@@ -1,7 +1,5 @@
 <template>
-  <v-container>
-    <span class="display-1">Coming soon..</span>
-  </v-container>
+  <span class="display-1">Coming soon..</span>
 </template>
 
 <script>

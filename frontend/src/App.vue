@@ -1,13 +1,6 @@
 <template>
   <v-app>
-    <v-app-bar app color="primary" dark>
-      <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
-      <v-toolbar-title>Digester</v-toolbar-title>
-    </v-app-bar>
-    <v-content>
-      <router-view />
-    </v-content>
-    <v-navigation-drawer v-model="drawer" temporary absolute>
+    <v-navigation-drawer v-model="drawer" app temporary absolute>
       <v-list-item>
         <v-list-item-content>
           <v-list-item-title class="title">Digester</v-list-item-title>
@@ -45,6 +38,17 @@
         </div>
       </template>
     </v-navigation-drawer>
+
+    <v-app-bar app color="primary" dark>
+      <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
+      <v-toolbar-title>Digester</v-toolbar-title>
+    </v-app-bar>
+
+    <v-content>
+      <v-container fluid>
+        <router-view />
+      </v-container>
+    </v-content>
   </v-app>
 </template>
 
