@@ -1,46 +1,14 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
-import Api from '@/services/api';
 import auth from '@/store/modules/auth.js';
+import subscriptions from '@/store/modules/subscriptions.js';
 
 Vue.use(Vuex)
 
 export default new Vuex.Store({
   strict: process.env.NODE_ENV != 'production',
   modules: {
-    auth
+    auth,
+    subscriptions
   },
-  state: {
-    subscriptions: [],
-  },
-  mutations: {
-    SET_SUBSCRIPTIONS(state, subscriptions) {
-      state.subscriptions = subscriptions;
-    },
-    ADD_SUBSCRIPTION(state, subscription) {
-      state.subscriptions.unshift(subscription);
-    },
-  },
-  actions: {
-    async loadSubscriptions({ commit }) {
-      let response = await Api().get("subscriptions");
-      commit('SET_SUBSCRIPTIONS', response.data);
-    },
-    async subscribe({ commit }, subscription) {
-      return new Promise((resolve, reject) => {
-        Api().post("subscriptions/add", {
-          channelName: subscription.name,
-          channelType: subscription.type,
-          frequency: subscription.frequency,
-          day: subscription.day,
-          time: subscription.time + ":00.00",
-        }).then(resp => {
-          commit('ADD_SUBSCRIPTION', resp.data);
-          resolve(subscription);
-        }).catch(err => {
-          reject(err)
-        });
-      })
-    },
-  }
 })

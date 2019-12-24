@@ -64,7 +64,7 @@ export default {
       frequency: {
         frequency: "Weekly",
         day: "Sat",
-        hour: "09:00"
+        time: "09:00:00"
       }
     };
   },
@@ -82,7 +82,7 @@ export default {
             name: this.repository,
             frequency: this.frequency.frequency,
             day: this.frequency.day,
-            time: this.frequency.hour
+            time: this.frequency.time
           })
           .then(() => {
             this.repository = "";

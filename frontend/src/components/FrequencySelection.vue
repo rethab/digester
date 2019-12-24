@@ -7,7 +7,7 @@
       <v-select v-model="value.day" :disabled="!isWeekly" :items="days" append-icon></v-select>
     </v-col>
     <v-col cols="4">
-      <v-select v-model="value.hour" :items="hours" append-icon></v-select>
+      <v-select v-model="value.time" :items="times" append-icon></v-select>
     </v-col>
   </v-row>
 </template>
@@ -20,16 +20,11 @@ export default {
       required: true
     }
   },
-  watch: {
-    value() {
-      this.$emit("input", this.value);
-    }
-  },
   data() {
     return {
       frequencies: ["Weekly", "Daily"],
       days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-      hours: []
+      times: []
     };
   },
   computed: {
@@ -38,13 +33,19 @@ export default {
     }
   },
   mounted() {
-    var hours = [];
+    var times = [];
     for (var h = 1; h < 25; h++) {
       var formatted = h < 10 ? "0" + h : "" + h;
-      formatted = formatted + ":00";
-      hours.push(formatted);
+      var text = formatted + ":00"; // HH:MM
+      // backend also wants seconds and millis
+      var value = text + ":00"; // HH:MM:SS
+      times.push({
+        text: text,
+        value: value
+      });
     }
-    this.hours = hours;
+    console.log(times);
+    this.times = times;
   }
 };
 </script>
