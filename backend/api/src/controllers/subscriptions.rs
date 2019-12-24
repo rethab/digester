@@ -116,7 +116,10 @@ fn add(
 
     match insert_subscription(&db, valid_subscription, &channel, &identity) {
         Ok(sub) => Subscription::from_db(sub, channel).into(),
-        Err(_) => JsonResponse::InternalServerError,
+        Err(db::InsertError::Duplicate) => {
+            JsonResponse::BadRequest("Already subscribed to repository".to_owned())
+        }
+        Err(db::InsertError::Unknown) => JsonResponse::InternalServerError,
     }
 }
 
@@ -180,7 +183,7 @@ fn insert_subscription(
     sub: NewSubscription,
     chan: &db::Channel,
     identity: &db::Identity,
-) -> Result<db::Subscription, String> {
+) -> Result<db::Subscription, db::InsertError> {
     let new_subscription = db::NewSubscription {
         email: identity.email.clone(),
         channel_id: chan.id,

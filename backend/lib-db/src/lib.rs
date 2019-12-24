@@ -247,14 +247,14 @@ pub fn subscriptions_find_by_user_id(
 pub fn subscriptions_insert(
     conn: &PgConnection,
     sub: NewSubscription,
-) -> Result<Subscription, String> {
+) -> Result<Subscription, InsertError> {
     use schema::subscriptions;
 
     diesel::insert_into(subscriptions::table)
         .values(&sub)
         .returning(subscriptions::all_columns)
         .get_result(conn)
-        .map_err(|err| format!("Failed to insert new subscription: {:?}", err))
+        .map_err(InsertError::from_diesel)
 }
 
 pub fn subscriptions_update(
