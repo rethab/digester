@@ -171,6 +171,26 @@ pub fn updates_find_new(
     result.map_err(|err| format!("Failed to load updates: {:?}", err))
 }
 
+pub fn subscriptions_find_by_id(
+    conn: &PgConnection,
+    id: i32,
+    user_id: i32,
+) -> Result<Option<(Subscription, Channel)>, String> {
+    use schema::channels;
+    use schema::subscriptions;
+    subscriptions::table
+        .inner_join(channels::table.on(subscriptions::channel_id.eq(channels::id)))
+        .filter(
+            subscriptions::id
+                .eq(id)
+                .and(subscriptions::user_id.eq(user_id)),
+        )
+        .select((subscriptions::all_columns, channels::all_columns))
+        .load::<(Subscription, Channel)>(conn)
+        .map(|subs| subs.into_iter().next())
+        .map_err(|err| format!("Failed to load subscription by id: {:?}", err))
+}
+
 pub fn subscriptions_find_by_digest(
     conn: &Connection,
     digest: &Digest,
@@ -235,6 +255,14 @@ pub fn subscriptions_insert(
         .returning(subscriptions::all_columns)
         .get_result(conn)
         .map_err(|err| format!("Failed to insert new subscription: {:?}", err))
+}
+
+pub fn subscriptions_update(
+    conn: &PgConnection,
+    sub: Subscription,
+) -> Result<Subscription, String> {
+    sub.save_changes(conn)
+        .map_err(|err| format!("Failed to update single subscription: {:?}", err))
 }
 
 pub fn digests_insert(conn: &Connection, digest: &InsertDigest) -> Result<(), InsertError> {

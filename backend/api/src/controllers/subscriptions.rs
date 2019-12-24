@@ -9,13 +9,14 @@ use rocket::{Rocket, State};
 use rocket_contrib::json::{Json, JsonValue};
 
 pub fn mount(rocket: Rocket) -> Rocket {
-    rocket.mount("/subscriptions", routes![list, add])
+    rocket.mount("/subscriptions", routes![list, add, update])
 }
 
 pub struct GithubApiToken(pub String);
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct Subscription {
+    id: i32,
     #[serde(rename = "channelName")]
     channel_name: String,
     #[serde(rename = "channelType")]
@@ -28,6 +29,7 @@ struct Subscription {
 impl Subscription {
     fn with_name(self, name: String) -> Self {
         Self {
+            id: self.id,
             channel_name: name,
             channel_type: self.channel_type,
             frequency: self.frequency,
@@ -58,6 +60,7 @@ impl Into<JsonResponse> for Vec<Subscription> {
 impl Subscription {
     fn from_db(sub: db::Subscription, chan: db::Channel) -> Subscription {
         Subscription {
+            id: sub.id,
             channel_name: chan.name,
             channel_type: chan.channel_type,
             frequency: sub.frequency,
@@ -102,6 +105,32 @@ fn add(
     };
 
     match insert_subscription(&db, valid_subscription, &channel, &identity) {
+        Ok(sub) => Subscription::from_db(sub, channel).into(),
+        Err(_) => JsonResponse::InternalServerError,
+    }
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+struct UpdatedSubscription {
+    frequency: Frequency,
+    day: Option<Day>,
+    time: NaiveTime,
+}
+
+#[put("/<id>", data = "<updated_subscription>")]
+fn update(
+    session: Protected,
+    db: DigesterDbConn,
+    id: i32,
+    updated_subscription: Json<UpdatedSubscription>,
+) -> JsonResponse {
+    let (original, channel) = match db::subscriptions_find_by_id(&db.0, id, session.0.user_id) {
+        Ok(Some((sub, chan))) => (sub, chan),
+        Ok(None) => return JsonResponse::NotFound,
+        Err(_) => return JsonResponse::InternalServerError,
+    };
+
+    match update_subscription(&db, updated_subscription.0, original) {
         Ok(sub) => Subscription::from_db(sub, channel).into(),
         Err(_) => JsonResponse::InternalServerError,
     }
@@ -153,6 +182,23 @@ fn insert_subscription(
     db::subscriptions_insert(&conn.0, new_subscription)
 }
 
+fn update_subscription(
+    conn: &DigesterDbConn,
+    updated: UpdatedSubscription,
+    original: db::Subscription,
+) -> Result<db::Subscription, String> {
+    let db_sub = db::Subscription {
+        id: original.id,
+        email: original.email,
+        channel_id: original.channel_id,
+        user_id: original.user_id,
+        frequency: updated.frequency,
+        day: updated.day,
+        time: updated.time,
+    };
+    db::subscriptions_update(&conn.0, db_sub)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -170,6 +216,7 @@ mod tests {
         )
         .expect("Failed to parse");
         let exp = Subscription {
+            id: 1,
             channel_name: "rethab/dotfiles".into(),
             channel_type: ChannelType::GithubRelease,
             frequency: Frequency::Weekly,

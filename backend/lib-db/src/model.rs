@@ -34,7 +34,7 @@ pub struct User {
     pub id: i32,
 }
 
-#[derive(Queryable)]
+#[derive(Clone, Queryable)]
 pub struct Channel {
     pub id: i32,
     pub channel_type: ChannelType,
@@ -108,7 +108,8 @@ impl Into<chrono::Weekday> for Day {
     }
 }
 
-#[derive(Debug, Queryable)]
+#[derive(Debug, Queryable, AsChangeset, Identifiable)]
+#[changeset_options(treat_none_as_null = "true")]
 pub struct Subscription {
     pub id: i32,
     pub email: String,
