@@ -1,0 +1,6 @@
+# for SPA, we need these redirects.
+#
+# while we could in theory add them to the netlify.toml,
+# that doesn't seem to work: https://stackoverflow.com/questions/59308045/netlify-deployment-issue-netlify-toml-settings-for-spa
+
+/*	/index.html	200
