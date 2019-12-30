@@ -12,6 +12,7 @@ use std::env;
 
 use api::controllers::auth;
 use api::controllers::common::*;
+use api::controllers::settings;
 use api::controllers::subscriptions;
 
 #[catch(500)]
@@ -75,6 +76,7 @@ fn main() -> Result<(), String> {
 
     rocket = auth::mount(rocket);
     rocket = subscriptions::mount(rocket);
+    rocket = settings::mount(rocket);
 
     rocket
         .attach(DigesterDbConn::fairing())

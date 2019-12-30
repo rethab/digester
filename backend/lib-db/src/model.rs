@@ -32,6 +32,7 @@ pub struct NewIdentity {
 #[derive(Queryable)]
 pub struct User {
     pub id: i32,
+    pub timezone: Option<Timezone>,
 }
 
 #[derive(Clone, Queryable)]
@@ -145,6 +146,27 @@ pub struct Digest {
     pub subscription_id: i32,
     pub due: DateTime<Utc>,
     pub sent: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, PartialEq, FromSqlRow, AsExpression, Serialize, Deserialize)]
+#[sql_type = "Text"]
+pub struct Timezone(pub chrono_tz::Tz);
+
+impl ToSql<Text, Pg> for Timezone {
+    fn to_sql<W: Write>(&self, out: &mut Output<W, Pg>) -> serialize::Result {
+        out.write_all(self.0.name().as_bytes())?;
+        Ok(IsNull::No)
+    }
+}
+
+impl FromSql<Text, Pg> for Timezone {
+    fn from_sql(maybe_bytes: Option<&[u8]>) -> deserialize::Result<Self> {
+        let string = String::from_utf8_lossy(not_none!(maybe_bytes));
+        match string.parse() {
+            Ok(tz) => Ok(Timezone(tz)),
+            Err(err) => Err(format!("Failed to parse {} as timezone: {:?}", string, err).into()),
+        }
+    }
 }
 
 impl ToSql<Text, Pg> for Frequency {

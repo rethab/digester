@@ -2,6 +2,7 @@
 extern crate diesel;
 
 use chrono::{DateTime, Duration, Utc};
+use chrono_tz::Tz;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::result;
@@ -374,6 +375,15 @@ pub fn users_find_by_provider(
                 Ok(uis.into_iter().next())
             }
         })
+}
+
+pub fn users_update_timezone(conn: &PgConnection, user_id: i32, new_tz: Tz) -> Result<(), String> {
+    use schema::users::dsl::*;
+    diesel::update(users.find(user_id))
+        .set(timezone.eq(Timezone(new_tz)))
+        .execute(conn)
+        .map_err(|err| format!("failed to update timezone of user {}: {:?}", user_id, err))
+        .map(|_| ())
 }
 
 pub struct NewUserData {

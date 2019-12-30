@@ -86,7 +86,7 @@ impl TryInto<Update> for ReleaseResponse {
             .unwrap_or(self.tag_name);
 
         Ok(Update {
-            title: title,
+            title,
             url: self.html_url,
             published,
         })

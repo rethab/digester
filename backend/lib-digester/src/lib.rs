@@ -69,11 +69,7 @@ impl App<'_> {
         }
     }
 
-    fn send_digest(
-        &self,
-        user: &User,
-        d_and_s: &Vec<(Digest, Subscription)>,
-    ) -> Result<(), String> {
+    fn send_digest(&self, user: &User, d_and_s: &[(Digest, Subscription)]) -> Result<(), String> {
         let mut mailjet_subscriptions = Vec::with_capacity(d_and_s.len());
         for (digest, subscription) in d_and_s {
             // we send new updates since the last digest or since
@@ -178,7 +174,7 @@ impl MailjetMessage {
             variables: MailjetVariables {
                 update_subscriptions_url: "https://digester-integration.rethab.ch/subs".into(),
                 add_subscription_url: "https://digester-integration.rethab.ch/subs".into(),
-                subscriptions: subscriptions,
+                subscriptions,
             },
         }
     }
@@ -217,7 +213,7 @@ impl MailjetSubscription {
     fn new(title: &str, updates: Vec<MailjetUpdate>) -> MailjetSubscription {
         MailjetSubscription {
             title: title.into(),
-            updates: updates,
+            updates,
         }
     }
 }

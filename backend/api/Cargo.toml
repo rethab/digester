@@ -8,6 +8,7 @@ edition = "2018"
 lib-channels = { path = "../lib-channels" } 
 lib-db = { path = "../lib-db" } 
 chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = {version = "0.4", features = ["serde"] }
 rocket = "0.4.2"
 rocket_cors = "0.5.1"
 rocket_oauth2 = "0.2.0-rc.1"

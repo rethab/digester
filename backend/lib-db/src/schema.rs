@@ -1,6 +1,7 @@
 table! {
     users(id) {
         id -> Integer,
+        timezone -> Nullable<Text>,
     }
 }
 
