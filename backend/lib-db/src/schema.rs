@@ -45,6 +45,7 @@ table! {
       frequency -> Text,
       day -> Nullable<Text>,
       time -> Time,
+      inserted -> Timestamptz,
     }
 }
 
@@ -58,5 +59,7 @@ table! {
 }
 
 allow_tables_to_appear_in_same_query!(subscriptions, digests);
+allow_tables_to_appear_in_same_query!(subscriptions, users);
+allow_tables_to_appear_in_same_query!(digests, users);
 allow_tables_to_appear_in_same_query!(subscriptions, channels);
 allow_tables_to_appear_in_same_query!(users, identities);

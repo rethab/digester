@@ -23,11 +23,21 @@ https://api.mailjet.com/v3.1/send \
         }
       ],
       "Subject": "Your digest is ready",
+      "TemplateErrorReporting": {
+        "Email": "rethab@rethab.ch",
+        "Name": "Reto"
+      },
+      "TemplateErrorDeliver": false,
       "TemplateID": 1153883,
       "TemplateLanguage": true,
       "Variables": {
-        "updates": [{"url": "google.com", "title": "google"}],
-	"recipient_name": "rethab"
+        "update_subscriptions_url": "https://google.com",
+        "add_subscription_url": "https://google.com",
+        "subscriptions": [
+	  {"title": "foo", "updates": [
+            {"url": "https://google.nl", "title": "v01.243"}
+          ]}
+	]
       }
     }
   ]

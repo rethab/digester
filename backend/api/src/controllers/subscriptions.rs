@@ -208,6 +208,7 @@ fn update_subscription(
         frequency: updated.frequency,
         day: updated.day,
         time: updated.time,
+        inserted: original.inserted,
     };
     db::subscriptions_update(&conn.0, db_sub).map(|sub| {
         if let Err(err) = db::digests_remove_unsent_for_subscription(&conn.0, &sub) {

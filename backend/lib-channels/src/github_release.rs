@@ -40,7 +40,7 @@ impl GithubRelease {
         for release in releases {
             match release.try_into() {
                 Ok(update) if keep(&update) => updates.push(update),
-                Ok(update) => println!("Igoring old update {}", update.title),
+                Ok(_) => {}
                 Err(err) => return Err(format!("Failed to parse reponse: {}", err)),
             }
         }
@@ -73,8 +73,20 @@ impl TryInto<Update> for ReleaseResponse {
                     self.published_at, err
                 )
             })?;
+        let title = self
+            .name
+            .and_then(|name| {
+                let trimmed = name.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.into())
+                }
+            })
+            .unwrap_or(self.tag_name);
+
         Ok(Update {
-            title: self.name.unwrap_or(self.tag_name),
+            title: title,
             url: self.html_url,
             published,
         })

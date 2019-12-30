@@ -118,6 +118,7 @@ pub struct Subscription {
     pub frequency: Frequency,
     pub day: Option<Day>,
     pub time: NaiveTime,
+    pub inserted: DateTime<Utc>,
 }
 
 #[derive(Insertable)]

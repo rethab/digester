@@ -26,6 +26,14 @@ pub fn connection_from_str(uri: &str) -> Result<Connection, String> {
         .map(Connection)
 }
 
+pub fn channels_find_by_id(conn: &Connection, channel_id: i32) -> Result<Channel, String> {
+    use schema::channels::dsl::*;
+    channels
+        .find(channel_id)
+        .get_result(&conn.0)
+        .map_err(|err| format!("Failed to fetch channel with id {}: {:?}", channel_id, err))
+}
+
 pub fn channels_find_by_last_fetched(
     conn: &Connection,
     fetch_frequency: Duration,
@@ -152,23 +160,17 @@ pub fn updates_insert_new(conn: &Connection, update: &NewUpdate) -> Result<(), I
 pub fn updates_find_new(
     conn: &Connection,
     subscription: &Subscription,
-    maybe_previous_digest_sent: Option<DateTime<Utc>>,
+    since: DateTime<Utc>,
 ) -> Result<Vec<Update>, String> {
     use schema::updates::dsl::*;
-    let result = if let Some(previous_digest_sent) = maybe_previous_digest_sent {
-        updates
-            .filter(
-                channel_id
-                    .eq(subscription.channel_id)
-                    .and(inserted.gt(previous_digest_sent)),
-            )
-            .load(&conn.0)
-    } else {
-        updates
-            .filter(channel_id.eq(subscription.channel_id))
-            .load(&conn.0)
-    };
-    result.map_err(|err| format!("Failed to load updates: {:?}", err))
+    updates
+        .filter(
+            channel_id
+                .eq(subscription.channel_id)
+                .and(published.gt(since)),
+        )
+        .load(&conn.0)
+        .map_err(|err| format!("Failed to load updates: {:?}", err))
 }
 
 pub fn subscriptions_find_by_id(
@@ -274,13 +276,39 @@ pub fn digests_insert(conn: &Connection, digest: &InsertDigest) -> Result<(), In
         .map(|_| ())
 }
 
-pub fn digests_find_due(conn: &Connection) -> Result<Vec<Digest>, String> {
+pub fn digests_find_users_with_due(conn: &Connection) -> Result<Vec<User>, String> {
     use diesel::expression::dsl::now;
-    use schema::digests::dsl::*;
-    digests
-        .filter(due.lt(now).and(sent.is_null()))
-        .load::<Digest>(&conn.0)
-        .map_err(|err| format!("failed to retrieve due digests: {:?}", err))
+    use schema::digests;
+    use schema::subscriptions;
+    use schema::users;
+    digests::table
+        .inner_join(subscriptions::table.on(digests::subscription_id.eq(subscriptions::id)))
+        .inner_join(users::table.on(subscriptions::user_id.eq(users::id)))
+        .filter(digests::due.lt(now).and(digests::sent.is_null()))
+        .distinct()
+        .select(users::all_columns)
+        .load::<User>(&conn.0)
+        .map_err(|err| format!("failed to retrieve users with due digests: {:?}", err))
+}
+
+pub fn digests_find_due_for_user(
+    conn: &Connection,
+    user: &User,
+) -> Result<Vec<(Digest, Subscription)>, String> {
+    use diesel::expression::dsl::now;
+    use schema::digests;
+    use schema::subscriptions;
+    digests::table
+        .inner_join(subscriptions::table.on(digests::subscription_id.eq(subscriptions::id)))
+        .filter(
+            digests::due
+                .lt(now)
+                .and(digests::sent.is_null())
+                .and(subscriptions::user_id.eq(user.id)),
+        )
+        .select((digests::all_columns, subscriptions::all_columns))
+        .load::<(Digest, Subscription)>(&conn.0)
+        .map_err(|err| format!("failed to retrieve due digests for user: {:?}", err))
 }
 pub fn digests_find_previous(conn: &Connection, digest: &Digest) -> Result<Option<Digest>, String> {
     use schema::digests::dsl::*;

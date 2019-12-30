@@ -1,6 +1,6 @@
 use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Utc, Weekday};
 use lib_db as db;
-use lib_db::{Day, Digest, Frequency, InsertDigest, Subscription, Update};
+use lib_db::{Day, Digest, Frequency, InsertDigest, Subscription, User};
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Client;
 use serde::Serialize;
@@ -31,12 +31,17 @@ impl App<'_> {
             self.insert_next_digest(&subscription)?;
         }
 
-        let digests = db::digests_find_due(&self.db_conn)?;
-        println!("Found {} digests to send", digests.len());
+        let users = db::digests_find_users_with_due(&self.db_conn)?;
+        println!("Found {} users with due digests", users.len());
 
-        for digest in digests {
-            match self.send_digest(&digest) {
-                Ok(_) => db::digests_set_sent(&self.db_conn, &digest)?,
+        for user in users {
+            let d_and_s = db::digests_find_due_for_user(&self.db_conn, &user)?;
+            match self.send_digest(&user, &d_and_s) {
+                Ok(_) => {
+                    for (digest, _) in d_and_s {
+                        db::digests_set_sent(&self.db_conn, &digest)?;
+                    }
+                }
                 Err(err) => eprintln!("Failed to send digest: {:?}", err),
             }
         }
@@ -64,22 +69,44 @@ impl App<'_> {
         }
     }
 
-    fn send_digest(&self, digest: &Digest) -> Result<(), String> {
-        // we send new updates since the last digest
-        let previous_digest_sent =
-            db::digests_find_previous(&self.db_conn, &digest)?.and_then(|d| d.sent);
-        let subscription = db::subscriptions_find_by_digest(&self.db_conn, &digest)?;
-        let updates = db::updates_find_new(&self.db_conn, &subscription, previous_digest_sent)?;
+    fn send_digest(
+        &self,
+        user: &User,
+        d_and_s: &Vec<(Digest, Subscription)>,
+    ) -> Result<(), String> {
+        let mut mailjet_subscriptions = Vec::with_capacity(d_and_s.len());
+        for (digest, subscription) in d_and_s {
+            // we send new updates since the last digest or since
+            // when the subscription was created if this is the first digest
+            let updates_since = db::digests_find_previous(&self.db_conn, &digest)?
+                .and_then(|d| d.sent)
+                .unwrap_or(subscription.inserted);
+            let updates = db::updates_find_new(&self.db_conn, &subscription, updates_since)?;
 
-        if updates.is_empty() {
-            // todo send marketing e-mail to add new subscriptions
+            if !updates.is_empty() {
+                let channel = db::channels_find_by_id(&self.db_conn, subscription.channel_id)?;
+                let mailjet_updates = updates
+                    .into_iter()
+                    .map(|u| MailjetUpdate {
+                        title: u.title,
+                        url: u.url,
+                    })
+                    .collect();
+                mailjet_subscriptions
+                    .push(MailjetSubscription::new(&channel.name, mailjet_updates));
+            }
+        }
+
+        if mailjet_subscriptions.is_empty() {
+            // happens if user has a due digest, but we have no updates..
             println!(
-                "No updates to send for Subscription {} to {}",
-                subscription.id, subscription.email
+                "No updates to send for User {} in any of their digests",
+                user.id
             );
             Ok(())
         } else {
-            let message = MailjetMessage::new(&subscription, updates);
+            let recipient = d_and_s[0].1.email.clone();
+            let message = MailjetMessage::new(recipient, mailjet_subscriptions);
             self.send_email(message)
         }
     }
@@ -125,27 +152,33 @@ struct MailjetMessage {
     template_id: i32,
     #[serde(rename = "TemplateLanguage")]
     template_language: bool,
+    #[serde(rename = "TemplateErrorReporting")]
+    template_error_reporting: MailjetTemplateErrorReporting,
+    #[serde(rename = "TemplateErrorDeliver")]
+    template_error_deliver: bool,
     #[serde(rename = "Variables")]
     variables: MailjetVariables,
 }
 
 impl MailjetMessage {
-    fn new(sub: &Subscription, updates: Vec<Update>) -> MailjetMessage {
+    fn new(email: String, subscriptions: Vec<MailjetSubscription>) -> MailjetMessage {
         MailjetMessage {
             to: vec![MailjetTo {
-                email: sub.email.clone(),
+                email: email,
                 name: "Anonymous Panter".into(),
             }],
             template_id: 1_153_883, // todo make flexible
             template_language: true,
+            template_error_reporting: MailjetTemplateErrorReporting {
+                email: "rethab@pm.me".into(),
+                name: "Ret".into(),
+            },
+            template_error_deliver: true,
+            // todo make flexible
             variables: MailjetVariables {
-                updates: updates
-                    .iter()
-                    .map(|update| MailjetUpdate {
-                        title: update.title.clone(),
-                        url: update.url.clone(),
-                    })
-                    .collect(),
+                update_subscriptions_url: "https://digester-integration.rethab.ch/subs".into(),
+                add_subscription_url: "https://digester-integration.rethab.ch/subs".into(),
+                subscriptions: subscriptions,
             },
         }
     }
@@ -160,8 +193,33 @@ struct MailjetTo {
 }
 
 #[derive(Serialize)]
+struct MailjetTemplateErrorReporting {
+    #[serde(rename = "Email")]
+    email: String,
+    #[serde(rename = "Name")]
+    name: String,
+}
+
+#[derive(Serialize)]
 struct MailjetVariables {
+    update_subscriptions_url: String,
+    add_subscription_url: String,
+    subscriptions: Vec<MailjetSubscription>,
+}
+
+#[derive(Serialize)]
+struct MailjetSubscription {
+    title: String,
     updates: Vec<MailjetUpdate>,
+}
+
+impl MailjetSubscription {
+    fn new(title: &str, updates: Vec<MailjetUpdate>) -> MailjetSubscription {
+        MailjetSubscription {
+            title: title.into(),
+            updates: updates,
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -318,6 +376,7 @@ mod tests {
             frequency: Frequency::Daily,
             day: None,
             time: NaiveTime::from_hms(hour, minute, 0),
+            inserted: Utc::now(),
         }
     }
 
@@ -330,6 +389,7 @@ mod tests {
             frequency: Frequency::Weekly,
             day: Some(day),
             time: NaiveTime::from_hms(hour, minute, 0),
+            inserted: Utc::now(),
         }
     }
 

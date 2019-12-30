@@ -23,7 +23,9 @@ impl App<'_> {
         let channels = self.find_due_channels(fetch_frequency)?;
 
         if channels.is_empty() {
-            println!("Found no channels to update")
+            println!("Found no channels to update");
+        } else {
+            println!("Found {} channels to update", channels.len());
         }
 
         for channel in channels {
@@ -42,6 +44,12 @@ impl App<'_> {
         let c = self.get_channel(channel);
 
         let updates = c.fetch_updates(&channel.name, channel.last_fetched)?;
+
+        println!(
+            "Found {} updates in channel {}",
+            updates.len(),
+            channel.name
+        );
 
         for update in updates {
             let new_update = NewUpdate {
@@ -85,7 +93,6 @@ impl App<'_> {
             }
             Ok(()) => {
                 db::channels_update_last_fetched(&self.db, channel)?;
-                println!("Updated last_fetched of channel {}", channel.id);
                 Ok(())
             }
         }
