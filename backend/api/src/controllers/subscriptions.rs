@@ -25,7 +25,7 @@ struct NewSubscription {
     time: NaiveTime,
 }
 
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Serialize, Clone, Debug, PartialEq)]
 struct Subscription {
     id: i32,
     #[serde(rename = "channelName")]
@@ -51,9 +51,15 @@ impl NewSubscription {
 
 impl Into<JsonResponse> for Subscription {
     fn into(self) -> JsonResponse {
-        match serde_json::to_value(self) {
+        match serde_json::to_value(self.clone()) {
             Ok(v) => JsonResponse::Ok(JsonValue(v)),
-            Err(_) => JsonResponse::InternalServerError, // todo log
+            Err(err) => {
+                eprintln!(
+                    "Failed to convert Subscription {:?} into JsonResponse: {:?}",
+                    self, err
+                );
+                JsonResponse::InternalServerError
+            }
         }
     }
 }
@@ -62,7 +68,13 @@ impl Into<JsonResponse> for Vec<Subscription> {
     fn into(self) -> JsonResponse {
         match serde_json::to_value(self) {
             Ok(v) => JsonResponse::Ok(JsonValue(v)),
-            Err(_) => JsonResponse::InternalServerError, // todo log
+            Err(err) => {
+                eprintln!(
+                    "Failed to convert Vec<Subscription> into JsonResponse: {:?}",
+                    err
+                );
+                JsonResponse::InternalServerError
+            }
         }
     }
 }
@@ -111,7 +123,13 @@ fn add(
 
     let channel = match insert_channel_if_not_exists(&db, &valid_subscription) {
         Ok(c) => c,
-        Err(_) => return JsonResponse::InternalServerError, // todo log
+        Err(err) => {
+            eprintln!(
+                "Failed to insert new channel for subscription {:?}: {:?}",
+                valid_subscription, err
+            );
+            return JsonResponse::InternalServerError;
+        }
     };
 
     match insert_subscription(&db, valid_subscription, &channel, &identity) {

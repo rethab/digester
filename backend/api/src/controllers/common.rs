@@ -49,11 +49,13 @@ static INTERNAL_SERVER_ERROR: request::Outcome<Protected, ()> =
 
 impl<'a, 'r> FromRequest<'a, 'r> for Protected {
     type Error = ();
-    // todo log internal server errors
     fn from_request(req: &'a Request<'r>) -> request::Outcome<Protected, ()> {
         let cookies = match Cookies::from_request(req) {
             Outcome::Success(cookies) => cookies,
-            _ => return INTERNAL_SERVER_ERROR.clone(),
+            other => {
+                eprintln!("Failed to get cookies from request: {:?}", other);
+                return INTERNAL_SERVER_ERROR.clone();
+            }
         };
 
         let session_id = match cookies.get("SESSION_ID") {
@@ -66,13 +68,19 @@ impl<'a, 'r> FromRequest<'a, 'r> for Protected {
 
         let redis = match Redis::from_request(req) {
             Outcome::Success(redis) => redis,
-            _ => return INTERNAL_SERVER_ERROR.clone(),
+            other => {
+                eprintln!("Failed to get redis from request: {:?}", other);
+                return INTERNAL_SERVER_ERROR.clone();
+            }
         };
 
         match iam::fetch_session(&redis, session_id) {
             Ok(Some(session)) => Outcome::Success(Protected(session)),
             Ok(None) => UNAUTHORIZED.clone(),
-            Err(_) => INTERNAL_SERVER_ERROR.clone(),
+            Err(err) => {
+                eprintln!("Failed to fetch session: {:?}", err);
+                INTERNAL_SERVER_ERROR.clone()
+            }
         }
     }
 }

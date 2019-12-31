@@ -102,14 +102,26 @@ impl Channel for GithubRelease {
         // todo handle rate limiting
         match query.execute::<Value>() {
             Ok((_, status, Some(json))) if status == StatusCode::OK => {
-                serde_json::from_value::<RepoResponse>(json)
+                serde_json::from_value::<RepoResponse>(json.clone())
                     .map(|repo| repo.full_name)
-                    .map_err(|_| ValidationError::TechnicalError) // todo log
+                    .map_err(|err| {
+                        eprintln!(
+                            "Failed to parse RepoResponse from json {:?}: {:?}",
+                            json, err
+                        );
+                        ValidationError::TechnicalError
+                    })
             }
             Ok((_, status, _)) if status == StatusCode::NOT_FOUND => {
                 Err(ValidationError::ChannelNotFound)
             }
-            _ => Err(ValidationError::TechnicalError), // todo log
+            other => {
+                eprintln!(
+                    "Failed to query github whether repo {} is valid: {:?}",
+                    name, other
+                );
+                Err(ValidationError::TechnicalError)
+            }
         }
     }
     fn fetch_updates(

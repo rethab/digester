@@ -76,7 +76,7 @@ pub enum ChannelType {
     GithubRelease,
 }
 
-#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, FromSqlRow, AsExpression, Serialize, Deserialize)]
 #[sql_type = "Text"]
 pub enum Frequency {
     Daily,

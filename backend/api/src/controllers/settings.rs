@@ -13,16 +13,19 @@ struct UpdatedSettings {
     timezone: Tz,
 }
 
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, Clone, PartialEq)]
 struct Settings {
     timezone: Option<Tz>,
 }
 
 impl Into<JsonResponse> for Settings {
     fn into(self) -> JsonResponse {
-        match serde_json::to_value(self) {
+        match serde_json::to_value(self.clone()) {
             Ok(v) => JsonResponse::Ok(JsonValue(v)),
-            Err(_) => JsonResponse::InternalServerError, // todo log
+            Err(err) => {
+                eprintln!("Failed to serialize Settings {:?}: {:?}", self, err);
+                JsonResponse::InternalServerError
+            }
         }
     }
 }
