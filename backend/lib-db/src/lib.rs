@@ -386,6 +386,14 @@ pub fn users_update_timezone(conn: &PgConnection, user_id: i32, new_tz: Tz) -> R
         .map(|_| ())
 }
 
+pub fn users_find_by_id(conn: &PgConnection, user_id: i32) -> Result<User, String> {
+    use schema::users::dsl::*;
+    users
+        .find(user_id)
+        .get_result(conn)
+        .map_err(|err| format!("Failed to fetch user {}: {:?}", user_id, err))
+}
+
 pub struct NewUserData {
     pub provider: String,
     pub pid: String,
