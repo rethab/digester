@@ -20,17 +20,23 @@ const actions = {
                 });
         });
     },
-    loadTimezone({ commit }) {
+    loadTimezone({ commit, getters }) {
         return new Promise((resolve, reject) => {
-            Api().get("/settings/")
-                .then(resp => {
-                    if (resp.data.timezone) {
-                        commit("SET_TIMEZONE", resp.data.timezone);
-                    }
-                    resolve(resp);
-                }).catch(err => {
-                    reject(err);
-                });
+            // only load timezone if we don't know it already
+            if (getters.timezone === null) {
+                Api().get("/settings/")
+                    .then(resp => {
+                        if (resp.data.timezone) {
+                            commit("SET_TIMEZONE", resp.data.timezone);
+                        }
+                        resolve(resp);
+                    }).catch(err => {
+                        reject(err);
+                    });
+            } else {
+                // fake server response
+                resolve({ data: { timezone: getters.timezone } });
+            }
         });
     },
 }

@@ -59,11 +59,13 @@ fn github_oauth_exchange(
     use iam::AuthenticationError;
     let code = iam::AuthorizationCode(oauth_data.0.code);
     match iam::authenticate::<iam::Github>(&db.0, &mut redis.0, &provider, code) {
-        Ok(session) => {
+        Ok((user, session)) => {
             let cookie = create_session_cookie(Some(session.id), &cookie_config);
             cookies.add(cookie);
             JsonResponse::Ok(json!({
                 "username": session.username,
+                // on the first login, we're trying to automatically set the timezone.
+                "first_login": user.first_login,
                 // we need to pass an access token back, because vue-authenticate looks at the
                 // response and wants to extract the access token and store it in some storage.
                 // After that, they call isAuthenticated(), which throws an error if nothing is

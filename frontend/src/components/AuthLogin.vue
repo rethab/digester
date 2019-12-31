@@ -35,8 +35,12 @@ export default {
           vueAuth: this.$auth,
           provider: provider
         })
-        .then(() => {
-          this.$router.push({ name: "subscriptions" });
+        .then(resp => {
+          if (resp.data.first_login) {
+            this.$router.push({ name: "home", query: { firstLogin: true } });
+          } else {
+            this.$router.push({ name: "subscriptions" });
+          }
         })
         .catch(() => {});
     }

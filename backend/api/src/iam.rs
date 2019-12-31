@@ -17,13 +17,15 @@ use uuid::Uuid;
 pub struct User {
     id: i32,
     username: String,
+    pub first_login: bool,
 }
 
 impl User {
-    fn from_db(user: db::User, identity: db::Identity) -> User {
+    fn from_db(user: db::User, identity: db::Identity, first_login: bool) -> User {
         User {
             id: user.id,
             username: identity.username,
+            first_login,
         }
     }
 }
@@ -192,13 +194,13 @@ pub fn authenticate<P: IdentityProvider>(
     cache: &mut RedisConnection,
     provider: &P,
     code: AuthorizationCode,
-) -> Result<Session, AuthenticationError> {
+) -> Result<(User, Session), AuthenticationError> {
     let access_token = provider.exchange_token(code)?;
     let user_info = provider.fetch_user_info(access_token)?;
     let user = fetch_or_insert_user_in_db(conn, &user_info)
         .map_err(AuthenticationError::UnknownFailure)?;
     let session = create_session(cache, &user).map_err(AuthenticationError::UnknownFailure)?;
-    Ok(session)
+    Ok((user, session))
 }
 
 pub fn fetch_session(cache: &RedisConnection, session_id: Uuid) -> Result<Option<Session>, String> {
@@ -218,7 +220,7 @@ fn fetch_or_insert_user_in_db(
     let maybe_user = db::users_find_by_provider(conn, user_info.provider, &user_info.pid)
         .map_err(|err| format!("error while looking up user in db: {}", err))?;
     match maybe_user {
-        Some((user, identity)) => Ok(User::from_db(user, identity)),
+        Some((user, identity)) => Ok(User::from_db(user, identity, false)),
         None => {
             let new_identity = db::NewUserData {
                 provider: user_info.provider.to_owned(),
@@ -227,7 +229,7 @@ fn fetch_or_insert_user_in_db(
                 username: user_info.username.to_owned(),
             };
             let (user, identity) = db::users_insert(conn, new_identity)?;
-            Ok(User::from_db(user, identity))
+            Ok(User::from_db(user, identity, true))
         }
     }
 }
