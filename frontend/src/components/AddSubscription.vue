@@ -91,7 +91,9 @@ export default {
             if (err.response.data.error) {
               this.repositoryErrors.push(err.response.data.error);
             } else {
-              // todo
+              this.repositoryErrors.push(
+                "Something went wrong. Please try again."
+              );
             }
           });
       }

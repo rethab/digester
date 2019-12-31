@@ -92,7 +92,9 @@ export default {
             if (err.response.data.error) {
               this.timezoneErrors.push(err.response.data.error);
             } else {
-              // todo
+              this.timezoneErrors.push(
+                "Something went wrong. Please try again."
+              );
             }
           });
       }
