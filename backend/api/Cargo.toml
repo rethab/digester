@@ -9,20 +9,20 @@ lib-channels = { path = "../lib-channels" }
 lib-db = { path = "../lib-db" } 
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = {version = "0.4", features = ["serde"] }
-rocket = "0.4.2"
-rocket_cors = "0.5.1"
+rocket = "0.4"
+rocket_cors = "0.5"
 rocket_oauth2 = "0.2.0-rc.1"
 diesel = { version = "1.0.0", default-features = false, features = ["postgres", "chrono"] } 
-time = "0.1.42"
+time = "0.1"
 serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
-serde_cbor = "0.10.2"
-redis = "0.9.1"
-uuid = { version = "0.8.1", features = ["v4"] }
+serde_cbor = "0.10"
+redis = "0.9"
+uuid = { version = "0.8", features = ["v4"] }
 
 [dependencies.rocket_contrib]
-version = "0.4.2"
+version = "0.4"
 default-features = false
 features = ["json", "diesel_postgres_pool", "redis_pool"]
 

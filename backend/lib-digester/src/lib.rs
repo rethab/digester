@@ -1,4 +1,5 @@
 use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Utc, Weekday};
+use chrono_tz::Tz;
 use lib_db as db;
 use lib_db::{Day, Digest, Frequency, InsertDigest, Subscription, User};
 use reqwest::header::CONTENT_TYPE;
@@ -23,7 +24,7 @@ impl App<'_> {
     pub fn run(&self) -> Result<(), String> {
         let subscriptions = db::subscriptions_find_without_due_digest(&self.db_conn)?;
         println!(
-            "Found {} subscriptions without due digest",
+            "{} subscriptions need a digest (unsent)",
             subscriptions.len()
         );
 
@@ -50,9 +51,16 @@ impl App<'_> {
     }
 
     fn insert_next_digest(&self, subscription: &Subscription) -> Result<(), String> {
+        let user = db::users_find_by_id0(&self.db_conn, subscription.user_id)?;
+        let timezone = user.timezone.map(|tz| tz.0).unwrap_or(Tz::UTC);
+
+        let now_in_tz: DateTime<Tz> = timezone.from_utc_datetime(&Utc::now().naive_utc());
+        let due_in_tz = next_due_date_for_subscription(subscription, now_in_tz);
+        let due_date = due_in_tz.with_timezone(&Utc);
+
         let digest = InsertDigest {
             subscription_id: subscription.id,
-            due: next_due_date_for_subscription(subscription, Utc::now()),
+            due: due_date,
         };
         match db::digests_insert(&self.db_conn, &digest) {
             Ok(()) => Ok(()),
@@ -224,10 +232,7 @@ struct MailjetUpdate {
     url: String,
 }
 
-fn next_due_date_for_subscription(
-    subscription: &Subscription,
-    now: DateTime<Utc>,
-) -> DateTime<Utc> {
+fn next_due_date_for_subscription(subscription: &Subscription, now: DateTime<Tz>) -> DateTime<Tz> {
     match subscription.frequency {
         Frequency::Daily => {
             let due_time = subscription.time;
@@ -282,6 +287,7 @@ fn next_due_date_for_subscription(
 mod tests {
     use super::*;
     use chrono::naive::NaiveTime;
+    use chrono_tz::Europe::Zurich;
 
     #[test]
     fn digester_due_daily_tomorrow() {
@@ -389,23 +395,17 @@ mod tests {
         }
     }
 
-    fn day(weekday: Weekday, hour: u32, minute: u32) -> DateTime<Utc> {
+    fn day(weekday: Weekday, hour: u32, minute: u32) -> DateTime<Tz> {
         // 2nd december is a monday, so if we are passed monday, then 'day' will be 2
         let day = weekday.number_from_monday() + 1;
-        Utc.ymd(2019, 12, day).and_hms(hour, minute, 0)
+        Zurich.ymd(2019, 12, day).and_hms(hour, minute, 0)
     }
 
-    fn today(hour: u32, minute: u32) -> DateTime<Utc> {
-        Utc::now()
-            .with_hour(hour)
-            .unwrap()
-            .with_minute(minute)
-            .unwrap()
-            .with_nanosecond(0)
-            .unwrap()
+    fn today(hour: u32, minute: u32) -> DateTime<Tz> {
+        Zurich.ymd(1990, 5, 6).and_hms(hour, minute, 0)
     }
 
-    fn tomorrow(hour: u32, minute: u32) -> DateTime<Utc> {
+    fn tomorrow(hour: u32, minute: u32) -> DateTime<Tz> {
         today(hour, minute) + Duration::days(1)
     }
 }

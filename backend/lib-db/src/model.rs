@@ -148,7 +148,7 @@ pub struct Digest {
     pub sent: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, PartialEq, FromSqlRow, AsExpression, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, FromSqlRow, AsExpression)]
 #[sql_type = "Text"]
 pub struct Timezone(pub chrono_tz::Tz);
 

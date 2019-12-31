@@ -52,9 +52,28 @@ fn update(
 ) -> JsonResponse {
     let user_id = session.0.user_id;
     let new_tz = updated_settings.0.timezone;
+    let user = match db::users_find_by_id(&db.0, user_id) {
+        Ok(user) => user,
+        Err(err) => {
+            eprintln!("Failed to load user with id {}: {:?}", user_id, err);
+            return JsonResponse::InternalServerError;
+        }
+    };
+
+    // avoid unnecessary updates (invalidating digests could be painful)
+    if user.timezone.as_ref().map(|tz| tz.0).contains(&new_tz) {
+        return JsonResponse::Ok(json!({}));
+    }
+
     match db::users_update_timezone(&db.0, user_id, new_tz) {
         Ok(()) => {
             println!("Updated timezone of user {} to {:?}", user_id, new_tz);
+            if let Err(err) = db::digests_remove_unsent_for_user(&db.0, &user) {
+                eprintln!(
+                    "Failed to invalidate digests after timezone update for user {}: {:?}",
+                    user_id, err
+                );
+            }
             JsonResponse::Ok(json!({}))
         }
         Err(err) => {

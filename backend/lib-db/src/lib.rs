@@ -347,6 +347,14 @@ pub fn digests_remove_unsent_for_subscription(
         .map_err(|err| format!("Failed remove digest for subscription {:?}", err))
 }
 
+pub fn digests_remove_unsent_for_user(conn: &PgConnection, user: &User) -> Result<(), String> {
+    let subs = subscriptions_find_by_user_id(conn, user.id)?;
+    for (sub, _) in subs {
+        digests_remove_unsent_for_subscription(conn, &sub)?;
+    }
+    Ok(())
+}
+
 pub fn users_find_by_provider(
     conn: &PgConnection,
     provider: &str,
@@ -392,6 +400,10 @@ pub fn users_find_by_id(conn: &PgConnection, user_id: i32) -> Result<User, Strin
         .find(user_id)
         .get_result(conn)
         .map_err(|err| format!("Failed to fetch user {}: {:?}", user_id, err))
+}
+
+pub fn users_find_by_id0(conn: &Connection, user_id: i32) -> Result<User, String> {
+    users_find_by_id(&conn.0, user_id)
 }
 
 pub struct NewUserData {
