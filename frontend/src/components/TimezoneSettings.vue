@@ -66,7 +66,7 @@ export default {
       };
 
       if (this.condensedView) {
-        defaultProps.maxHeight = 130;
+        defaultProps.maxHeight = 200;
         defaultProps.top = true;
       }
       return defaultProps;
