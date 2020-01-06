@@ -7,18 +7,20 @@
         <span v-else>Please login with one of the below methods</span>
       </v-card-subtitle>
       <v-card-text>
-        <v-btn dark @click="authenticate('github')">
-          Github
-          <v-icon small class="pl-1">mdi-github-circle</v-icon>
-        </v-btn>
+        <GithubLoginBtn />
       </v-card-text>
     </v-card>
   </v-container>
 </template>
 
 <script>
+import GithubLoginBtn from "@/components/GithubLoginBtn.vue";
+
 export default {
   name: "auth-login",
+  components: {
+    GithubLoginBtn
+  },
   data() {
     return {
       message: this.$route.query.requireAuth
@@ -27,23 +29,6 @@ export default {
         ? "Your session has expired. Please login again:"
         : null
     };
-  },
-  methods: {
-    authenticate(provider) {
-      this.$store
-        .dispatch("authenticate", {
-          vueAuth: this.$auth,
-          provider: provider
-        })
-        .then(resp => {
-          if (resp.data.first_login) {
-            this.$router.push({ name: "home", query: { firstLogin: true } });
-          } else {
-            this.$router.push({ name: "subscriptions" });
-          }
-        })
-        .catch(() => {});
-    }
   }
 };
 </script>

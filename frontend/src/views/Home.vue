@@ -1,5 +1,6 @@
 <template>
   <v-container>
+    <InitializeTimezone v-if="isAuthenticated && firstLogin" />
     <v-row>
       <v-col>
         <h1 class="display-4 d-flex justify-center font-weight-medium">Introducing Digester</h1>
@@ -66,6 +67,19 @@
       </v-col>
     </v-row>
 
+    <v-row style="height: 200px" class="mt-6" align="center" justify="center">
+      <v-col cols="3">
+        <v-img height="200px" contain src="following_the_idea.svg"></v-img>
+      </v-col>
+      <v-col cols="6">
+        <h2 class="headline mb-5">Supported Features</h2>
+        <p
+          class="body-1"
+        >You can currently subscribe to Github releases via E-Mail. This means you'll get digests for new versions of your favourite projects.</p>
+        <p>More features are coming soon: We plan to support digests via Slack instead of E-Mail and many more sources such as YouTube, Blogs/RSS and many more.</p>
+      </v-col>
+    </v-row>
+
     <section id="howitworks">
       <v-row class="mt-6" align="center" justify="center">
         <v-col cols="9">
@@ -91,22 +105,26 @@
       <v-col cols="9">
         <section id="login">
           <h1 class="display-2 d-flex justify-center font-weight-medium">Try Now For Free</h1>
-          <p class="mt-3 headline font-italic d-flex justify-center">Sign in using GitHub</p>
+          <div v-if="!isAuthenticated" class="text-center">
+            <p
+              class="font-italic mt-5"
+            >Click on the button below to sign in and start creating subscriptions.</p>
+            <GithubLoginBtn />
+          </div>
+          <div v-else class="text-center">
+            <p class="mt-5">
+              Hooray! You are already logged in. Head over to
+              <v-btn to="/subs" text outlined small color="primary">subscriptions</v-btn>and start profiting.
+            </p>
+          </div>
         </section>
       </v-col>
     </v-row>
-
-    <AuthLogin v-if="!isAuthenticated" />
-    <InitializeTimezone v-if="isAuthenticated && firstLogin" />
-    <p
-      v-else
-      class="d-flex justify-center mt-10"
-    >You are logged in. Please use the menu on the left.</p>
   </v-container>
 </template>
 
 <script>
-import AuthLogin from "@/components/AuthLogin.vue";
+import GithubLoginBtn from "@/components/GithubLoginBtn.vue";
 import InitializeTimezone from "@/components/InitializeTimezone.vue";
 export default {
   data() {
@@ -115,8 +133,8 @@ export default {
     };
   },
   components: {
-    AuthLogin,
-    InitializeTimezone
+    InitializeTimezone,
+    GithubLoginBtn
   },
   computed: {
     isAuthenticated() {
