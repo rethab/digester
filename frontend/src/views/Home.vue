@@ -22,9 +22,29 @@
       </v-col>
     </v-row>
 
+    <v-row>
+      <v-col justify="center">
+        <div class="text-center">
+          <v-btn
+            @click="$vuetify.goTo('#login')"
+            class="mx-4"
+            color="primary"
+            large
+          >Try now for Free</v-btn>
+          <v-btn
+            @click="$vuetify.goTo('#howitworks')"
+            class="mx-4"
+            color="primary"
+            outlined
+            large
+          >how it works</v-btn>
+        </div>
+      </v-col>
+    </v-row>
+
     <v-row style="height: 200px" class="mt-3" align="center" justify="center">
       <v-col cols="3">
-        <v-img height="200px" contain src="http://localhost:8080/focus_working.svg"></v-img>
+        <v-img height="200px" contain src="focus_working.svg"></v-img>
       </v-col>
       <v-col cols="6">
         <h2 class="headline mb-5">Focus On What Matters</h2>
@@ -42,7 +62,37 @@
         >Say no to FOMO. Digester's ability to bundle updates allows you to spend time with your family while knowing you'll get your updates eventually.</p>
       </v-col>
       <v-col cols="3">
-        <v-img height="200px" contain src="http://localhost:8080/family_3.svg"></v-img>
+        <v-img height="200px" contain src="family_3.svg"></v-img>
+      </v-col>
+    </v-row>
+
+    <section id="howitworks">
+      <v-row class="mt-6" align="center" justify="center">
+        <v-col cols="9">
+          <h1 class="display-2 d-flex justify-center font-weight-medium">How It Works</h1>
+          <p
+            class="mt-3 headline font-italic d-flex justify-center"
+          >Create Subscription. Receive Digests. Relax.</p>
+          <v-card elevation="24">
+            <v-carousel light show-arrows-on-hover cycle>
+              <v-carousel-item>
+                <v-img contain src="add-subscription.png"></v-img>
+              </v-carousel-item>
+              <v-carousel-item>
+                <v-img contain src="digest-email-cut.png"></v-img>
+              </v-carousel-item>
+            </v-carousel>
+          </v-card>
+        </v-col>
+      </v-row>
+    </section>
+
+    <v-row class="mt-6" align="center" justify="center">
+      <v-col cols="9">
+        <section id="login">
+          <h1 class="display-2 d-flex justify-center font-weight-medium">Try Now For Free</h1>
+          <p class="mt-3 headline font-italic d-flex justify-center">Sign in using GitHub</p>
+        </section>
       </v-col>
     </v-row>
 
