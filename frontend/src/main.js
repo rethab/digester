@@ -1,4 +1,5 @@
 import Vue from 'vue'
+import VueTyped from 'vue-typed-js'
 import VueAxios from 'vue-axios';
 import VueAuthenticate from 'vue-authenticate';
 import App from './App.vue'
@@ -9,6 +10,7 @@ import vuetify from './plugins/vuetify';
 
 Vue.config.productionTip = false
 
+Vue.use(VueTyped);
 Vue.use(VueAxios, Axios);
 Vue.use(VueAuthenticate, {
   withCredentials: true,
