@@ -1,10 +1,10 @@
 <template>
   <v-container>
     <InitializeTimezone v-if="isAuthenticated && firstLogin" />
-    <v-row>
-      <v-col>
-        <h1 class="display-4 d-flex justify-center font-weight-medium">Introducing Digester</h1>
-        <p class="mt-5 headline font-italic d-flex justify-center">
+    <v-row justify="center">
+      <v-col class="text-center">
+        <h1 class="display-2 font-weight-medium">Introducing Digester</h1>
+        <p class="title mt-5 font-weight-regular font-italic d-flex justify-center">
           <vue-typed-js
             :strings="['weekly', 'daily']"
             :startDelay="0"
@@ -23,69 +23,48 @@
       </v-col>
     </v-row>
 
-    <v-row>
-      <v-col justify="center">
-        <div class="text-center">
-          <v-btn
-            @click="$vuetify.goTo('#login')"
-            class="mx-4"
-            color="primary"
-            large
-          >Try now for Free</v-btn>
-          <v-btn
-            @click="$vuetify.goTo('#howitworks')"
-            class="mx-4"
-            color="primary"
-            outlined
-            large
-          >how it works</v-btn>
-        </div>
+    <v-row justify="center">
+      <v-col class="text-center" sm="6" md="3">
+        <v-btn @click="$vuetify.goTo('#login')" class="mx-4" color="primary" large>Try now for Free</v-btn>
+      </v-col>
+      <v-col class="text-center" sm="6" md="3">
+        <v-btn
+          @click="$vuetify.goTo('#howitworks')"
+          class="mx-4"
+          color="primary"
+          outlined
+          large
+        >how it works</v-btn>
       </v-col>
     </v-row>
 
-    <v-row style="height: 200px" class="mt-3" align="center" justify="center">
-      <v-col cols="3">
-        <v-img height="200px" contain src="focus_working.svg"></v-img>
-      </v-col>
-      <v-col cols="6">
-        <h2 class="headline mb-5">Focus On What Matters</h2>
-        <p
-          class="body-1"
-        >Digester allows you to get updates when you want them. Saying no to constant interruptions lets you focus on work during work time.</p>
-      </v-col>
-    </v-row>
+    <LandingPageCard
+      img-src="focus_working.svg"
+      :img-left="true"
+      title="Focus on What Matters"
+      content="Digester allows you to get updates when you want them. Saying no to constant interruptions lets you focus on work during work time."
+    />
 
-    <v-row style="height: 200px" class="mt-6" align="center" justify="center">
-      <v-col cols="6">
-        <h2 class="headline mb-5">Spend More Time With Your Family</h2>
-        <p
-          class="body-1"
-        >Say no to FOMO. Digester's ability to bundle updates allows you to spend time with your family while knowing you'll get your updates eventually.</p>
-      </v-col>
-      <v-col cols="3">
-        <v-img height="200px" contain src="family_3.svg"></v-img>
-      </v-col>
-    </v-row>
+    <LandingPageCard
+      img-src="family_3.svg"
+      :img-left="false"
+      title="Spend More Time With Your Family"
+      content="Say no to FOMO. Digester's ability to bundle updates allows you to spend time with your family while knowing you'll get your updates eventually."
+    />
 
-    <v-row style="height: 200px" class="mt-6" align="center" justify="center">
-      <v-col cols="3">
-        <v-img height="200px" contain src="following_the_idea.svg"></v-img>
-      </v-col>
-      <v-col cols="6">
-        <h2 class="headline mb-5">Supported Features</h2>
-        <p
-          class="body-1"
-        >You can currently subscribe to Github releases via E-Mail. This means you'll get digests for new versions of your favourite projects.</p>
-        <p>More features are coming soon: We plan to support digests via Slack instead of E-Mail and many more sources such as YouTube, Blogs/RSS and many more.</p>
-      </v-col>
-    </v-row>
+    <LandingPageCard
+      img-src="following_the_idea.svg"
+      :img-left="true"
+      title="Supported Features"
+      content="You can currently subscribe to Github releases via E-Mail. This means you'll get digests for new versions of your favourite projects.<br /> <br />More features are coming soon: We plan to support digests via Slack instead of E-Mail and many more sources such as YouTube, Blogs/RSS and many more."
+    />
 
     <section id="howitworks">
       <v-row class="mt-6" align="center" justify="center">
-        <v-col cols="9">
-          <h1 class="display-2 d-flex justify-center font-weight-medium">How It Works</h1>
+        <v-col cols="9" class="text-center">
+          <h1 class="display-1 font-weight-regular">How It Works</h1>
           <p
-            class="mt-3 headline font-italic d-flex justify-center"
+            class="mt-3 title font-weight-regular font-italic"
           >Create Subscription. Receive Digests. Relax.</p>
           <v-card elevation="24">
             <v-carousel light show-arrows-on-hover cycle>
@@ -125,16 +104,19 @@
 
 <script>
 import GithubLoginBtn from "@/components/GithubLoginBtn.vue";
+import LandingPageCard from "@/components/LandingPageCard.vue";
 import InitializeTimezone from "@/components/InitializeTimezone.vue";
 export default {
   data() {
     return {
-      firstLogin: this.$route.query.firstLogin
+      firstLogin: this.$route.query.firstLogin,
+      mobile: this.$vuetify.breakpoint.smAndDown
     };
   },
   components: {
     InitializeTimezone,
-    GithubLoginBtn
+    GithubLoginBtn,
+    LandingPageCard
   },
   computed: {
     isAuthenticated() {
