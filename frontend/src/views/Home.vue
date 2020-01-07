@@ -64,9 +64,9 @@
     </section>
 
     <v-row class="mt-6" align="center" justify="center">
-      <v-col cols="9">
+      <v-col cols="9" class="text-center">
         <section id="login">
-          <h1 class="display-2 d-flex justify-center font-weight-medium">Try Now For Free</h1>
+          <h1 class="display-1 font-weight-regular">Try Now For Free</h1>
           <div v-if="!isAuthenticated" class="text-center">
             <p
               class="font-italic mt-5"
@@ -76,7 +76,7 @@
           <div v-else class="text-center">
             <p class="mt-5">
               Hooray! You are already logged in. Head over to
-              <v-btn to="/subs" text outlined small color="primary">subscriptions</v-btn>and start profiting.
+              <v-btn to="/subs" text outlined small class="mr-1" color="primary">subscriptions</v-btn>and start profiting.
             </p>
           </div>
         </section>
