@@ -1,4 +1,9 @@
 [build]
   base = "frontend"
   publish = "dist"
+
+[context.production]
+  command = "npm run build"
+
+[context.develop]
   command = "npm run stage"
