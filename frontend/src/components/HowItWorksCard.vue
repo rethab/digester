@@ -38,7 +38,7 @@ export default {
     },
     height() {
       const small = this.$vuetify.breakpoint.mdAndDown;
-      return small ? "350" : "600";
+      return small ? "350" : "700";
     }
   }
 };
