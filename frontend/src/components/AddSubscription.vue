@@ -37,7 +37,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn @click.stop="subscribe" class="success">Subscribe</v-btn>
+        <v-btn @click.stop="subscribe" class="primary">Subscribe</v-btn>
       </v-card-actions>
     </v-card>
   </v-container>

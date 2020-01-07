@@ -1,5 +1,5 @@
 <template>
-  <v-card color="blue" class="lighten-4">
+  <v-card color="secondary" class="lighten-4">
     <div>
       <v-card-title>
         {{value.channelName}}
@@ -14,8 +14,8 @@
         <FrequencySelection v-model="value" />
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="editing = false">Cancel</v-btn>
-          <v-btn @click.stop="save" class="success">Save</v-btn>
+          <v-btn @click="editing = false" color="secondary" outlined>Cancel</v-btn>
+          <v-btn @click.stop="save" class="primary">Save</v-btn>
         </v-card-actions>
       </v-card-subtitle>
     </div>

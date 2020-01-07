@@ -31,7 +31,7 @@
         <v-btn
           @click="$vuetify.goTo('#howitworks')"
           class="mx-4"
-          color="primary"
+          color="secondary"
           outlined
           large
         >how it works</v-btn>
@@ -76,7 +76,7 @@
           <div v-else class="text-center">
             <p class="mt-5">
               Hooray! You are already logged in. Head over to
-              <v-btn to="/subs" text outlined small class="mr-1" color="primary">subscriptions</v-btn>and start profiting.
+              <v-btn to="/subs" text outlined small class="mr-1" color="secondary">subscriptions</v-btn>and start profiting.
             </p>
           </div>
         </section>

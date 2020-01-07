@@ -17,7 +17,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn @click.stop="save" class="success">Save</v-btn>
+        <v-btn @click.stop="save" class="primary">Save</v-btn>
       </v-card-actions>
       <v-snackbar v-model="snackbar" timeout="2000" top="true">
         Settings updated
