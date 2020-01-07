@@ -19,7 +19,7 @@
         <v-spacer></v-spacer>
         <v-btn @click.stop="save" class="primary">Save</v-btn>
       </v-card-actions>
-      <v-snackbar v-model="snackbar" timeout="2000" top="true">
+      <v-snackbar v-model="snackbar" :timeout="2000" :top="true">
         Settings updated
         <v-btn dark text @click="snackbar = false">Close</v-btn>
       </v-snackbar>
