@@ -3,4 +3,6 @@
 # while we could in theory add them to the netlify.toml,
 # that doesn't seem to work: https://stackoverflow.com/questions/59308045/netlify-deployment-issue-netlify-toml-settings-for-spa
 
+/robots.txt	/robots.txt	200
+/sitemap.xml	/sitemap.xml	200
 /*	/index.html	200

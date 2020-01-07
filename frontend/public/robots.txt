@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://digester.app/sitemap.xml
