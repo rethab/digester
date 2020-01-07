@@ -1,12 +1,18 @@
 <template>
   <v-btn dark @click="authenticate('github')">
     Github
-    <v-icon small class="pl-1">mdi-github-circle</v-icon>
+    <v-icon small class="pl-1">{{ githubIcon }}</v-icon>
   </v-btn>
 </template>
 
 <script>
+import { mdiGithubCircle } from "@mdi/js";
 export default {
+  data() {
+    return {
+      githubIcon: mdiGithubCircle
+    };
+  },
   methods: {
     authenticate(provider) {
       this.$store

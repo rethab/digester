@@ -3,12 +3,12 @@
     <div>
       <v-card-title>
         {{value.channelName}}
-        <v-icon small class="pl-1">mdi-github-circle</v-icon>
+        <v-icon small class="pl-1">{{ githubIcon }}</v-icon>
       </v-card-title>
       <v-card-subtitle v-if="!editing">
-        <v-icon small>mdi-calendar</v-icon>
+        <v-icon small>{{ calendarIcon }}</v-icon>
         {{value | showFrequency}}
-        <v-icon @click="editing = true" small class="pl-3 pb-1">mdi-pencil-outline</v-icon>
+        <v-icon @click="editing = true" small class="ml-3">{{ pencilIcon }}</v-icon>
       </v-card-subtitle>
       <v-card-subtitle v-else>
         <FrequencySelection v-model="value" />
@@ -24,6 +24,7 @@
 
 <script>
 import FrequencySelection from "@/components/FrequencySelection.vue";
+import { mdiCalendar, mdiGithubCircle, mdiPencilOutline } from "@mdi/js";
 export default {
   components: {
     FrequencySelection
@@ -36,7 +37,11 @@ export default {
   },
   data() {
     return {
-      editing: false
+      editing: false,
+
+      calendarIcon: mdiCalendar,
+      githubIcon: mdiGithubCircle,
+      pencilIcon: mdiPencilOutline
     };
   },
   methods: {

@@ -12,7 +12,7 @@
       <v-divider></v-divider>
       <v-list-item link v-if="!isAuthenticated" to="/auth/login">
         <v-list-item-icon>
-          <v-icon>mdi-account</v-icon>
+          <v-icon>{{ accountIcon }}</v-icon>
         </v-list-item-icon>
         <v-list-item-content>
           <v-list-item-title>Login</v-list-item-title>
@@ -20,7 +20,7 @@
       </v-list-item>
       <v-list-item v-if="isAuthenticated" to="/subs">
         <v-list-item-icon>
-          <v-icon>mdi-playlist-check</v-icon>
+          <v-icon>{{ subsIcon }}</v-icon>
         </v-list-item-icon>
         <v-list-item-content>
           <v-list-item-title>Subscriptions</v-list-item-title>
@@ -28,7 +28,7 @@
       </v-list-item>
       <v-list-item v-if="isAuthenticated" to="/settings">
         <v-list-item-icon>
-          <v-icon>mdi-settings-outline</v-icon>
+          <v-icon>{{ settingsIcon }}</v-icon>
         </v-list-item-icon>
         <v-list-item-content>
           <v-list-item-title>Settings</v-list-item-title>
@@ -57,12 +57,18 @@
 </template>
 
 <script>
+import { mdiAccount, mdiSettingsOutline, mdiPlaylistCheck } from "@mdi/js";
+
 export default {
   name: "App",
 
   data() {
     return {
-      drawer: null
+      drawer: null,
+
+      accountIcon: mdiAccount,
+      settingsIcon: mdiSettingsOutline,
+      subsIcon: mdiPlaylistCheck
     };
   },
 
