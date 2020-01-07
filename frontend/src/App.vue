@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <v-navigation-drawer v-model="drawer" app temporary absolute>
+    <v-navigation-drawer v-model="drawer" app temporary>
       <v-list-item>
         <v-list-item-content>
           <v-list-item-title class="title">Digester</v-list-item-title>
