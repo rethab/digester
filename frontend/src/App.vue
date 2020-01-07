@@ -3,7 +3,9 @@
     <v-navigation-drawer v-model="drawer" app temporary>
       <v-list-item>
         <v-list-item-content>
-          <v-list-item-title class="title">Digester</v-list-item-title>
+          <v-list-item-title class="title">
+            <router-link to="/" style="text-decoration:none" class="black--text">Digester</router-link>
+          </v-list-item-title>
           <v-list-item-subtitle>End constant interruptions</v-list-item-subtitle>
         </v-list-item-content>
       </v-list-item>
@@ -41,7 +43,9 @@
 
     <v-app-bar app color="primary" dark>
       <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
-      <v-toolbar-title>Digester</v-toolbar-title>
+      <v-toolbar-title>
+        <router-link to="/" class="white--text" style="text-decoration:none">Digester</router-link>
+      </v-toolbar-title>
     </v-app-bar>
 
     <v-content>
