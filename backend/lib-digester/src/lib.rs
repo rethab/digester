@@ -180,8 +180,8 @@ impl MailjetMessage {
             template_error_deliver: true,
             // todo make flexible
             variables: MailjetVariables {
-                update_subscriptions_url: "https://digester-integration.rethab.ch/subs".into(),
-                add_subscription_url: "https://digester-integration.rethab.ch/subs".into(),
+                update_subscriptions_url: "https://digester.app/subs".into(),
+                add_subscription_url: "https://digester.app/subs".into(),
                 subscriptions,
             },
         }
