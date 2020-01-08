@@ -5,7 +5,10 @@ const state = {
 };
 
 const getters = {
-    subscriptions: (state) => state.subscriptions
+    subscriptions: (state) =>
+        // directly exposing the array means it is modified directly.
+        // therefore we need to deep copy it
+        JSON.parse(JSON.stringify(state.subscriptions))
 }
 
 const actions = {
