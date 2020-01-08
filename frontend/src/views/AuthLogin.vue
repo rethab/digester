@@ -18,6 +18,16 @@ export default {
     AuthLogin,
     ErrorCard
   },
+  data() {
+    return {
+      message: this.$route.query.requireAuth
+        ? "This page requires authentication. Please log in."
+        : this.$route.query.sessionExpired
+        ? "Your session has expired. Please login again."
+        : null
+    };
+  },
+
   mounted() {
     const isAuthenticated = this.$store.getters.isAuthenticated;
     if (isAuthenticated) {

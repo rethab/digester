@@ -27,13 +27,7 @@ export default {
   },
   data() {
     return {
-      mobile: this.$vuetify.breakpoint.smAndDown,
-
-      message: this.$route.query.requireAuth
-        ? "This page requires authentication. Please log in."
-        : this.$route.query.sessionExpired
-        ? "Your session has expired. Please login again."
-        : null
+      mobile: this.$vuetify.breakpoint.smAndDown
     };
   }
 };

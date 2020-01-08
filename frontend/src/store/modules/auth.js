@@ -2,18 +2,22 @@ import Api from '@/services/api.js';
 
 const state = {
     // best effort guess on whether user is logged in
-    guessAuth: localStorage.getItem('guess-auth') || false,
+    authTimestamp: localStorage.getItem('auth-ts') || null,
     username: localStorage.getItem('username') || null
 };
 
 const getters = {
-    isAuthenticated: state => state.guessAuth,
+    isAuthenticated: state => !!state.authTimestamp,
+    hoursSinceLastAuth: state => {
+        const seconds = (Date.now() / 1000) - (state.authTimestamp / 1000);
+        return seconds / (60 * 60);
+    },
     username: (state, getters) =>
         getters.isAuthenticated ? state.username : "Anonymous"
 }
 
 const actions = {
-    authenticate({ commit }, payload) {
+    authenticate({ commit, dispatch }, payload) {
         const vueAuth = payload.vueAuth,
             provider = payload.provider;
 
@@ -21,14 +25,14 @@ const actions = {
             vueAuth.authenticate(provider)
                 .then(resp => {
                     const username = resp.data.username;
-                    localStorage.setItem('guess-auth', true);
                     localStorage.setItem('username', username);
                     commit("AUTHENTICATED", {
                         username: username
                     });
+                    dispatch("updateAuthTimestamp");
                     resolve(resp);
                 }).catch(err => {
-                    localStorage.removeItem('guess-auth');
+                    localStorage.removeItem('auth-ts');
                     localStorage.removeItem('username');
                     reject(err);
                 });
@@ -51,8 +55,19 @@ const actions = {
         }
         )
     },
+    refreshAuth({ dispatch }) {
+        Api().get("/auth/me")
+            .then(() => {
+                dispatch("updateAuthTimestamp");
+            })
+    },
+    updateAuthTimestamp({ commit }) {
+        const ts = Date.now();
+        commit("SET_AUTH_TIMESTAMP", ts);
+        localStorage.setItem('auth-ts', ts);
+    },
     unauthenticated({ commit }) {
-        localStorage.removeItem('guess-auth');
+        localStorage.removeItem('auth-ts');
         localStorage.removeItem('username');
         commit('UNAUTHENTICATED');
     }
@@ -61,12 +76,14 @@ const actions = {
 
 const mutations = {
     "AUTHENTICATED": (state, user) => {
-        state.guessAuth = true;
         state.username = user.username;
     },
     "UNAUTHENTICATED": (state) => {
-        state.guessAuth = false;
+        state.authTimestamp = null;
         state.username = null;
+    },
+    "SET_AUTH_TIMESTAMP": (state, ts) => {
+        state.authTimestamp = ts;
     }
 }
 
