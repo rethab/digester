@@ -13,7 +13,6 @@ export default {
   },
   methods: {
     logout() {
-      console.log("Clicked logout..");
       this.loading = true;
       this.$store
         .dispatch("unauthenticate")
