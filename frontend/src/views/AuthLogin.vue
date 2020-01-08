@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import AuthLogin from "@/components/AuthLogin.vue";
+import AuthLogin from "@/components/auth/AuthLogin.vue";
 export default {
   components: {
     AuthLogin

@@ -5,7 +5,7 @@ import Home from '@/views/Home.vue'
 import Subscriptions from '@/views/Subscriptions.vue'
 import Settings from '@/views/Settings.vue'
 import AuthLogin from '@/views/AuthLogin.vue'
-import AuthLogout from '@/components/AuthLogout.vue'
+import AuthLogout from '@/components/auth/AuthLogout.vue'
 
 
 Vue.use(VueRouter)

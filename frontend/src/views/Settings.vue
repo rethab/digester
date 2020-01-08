@@ -6,7 +6,7 @@
 </template>
 
 <script>
-import TimezoneSettings from "@/components/TimezoneSettings.vue";
+import TimezoneSettings from "@/components/settings/TimezoneSettings.vue";
 export default {
   components: {
     TimezoneSettings

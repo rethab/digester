@@ -14,7 +14,7 @@
 </template>
 
 <script>
-import GithubLoginBtn from "@/components/GithubLoginBtn.vue";
+import GithubLoginBtn from "@/components/auth/GithubLoginBtn.vue";
 
 export default {
   name: "auth-login",

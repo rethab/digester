@@ -44,7 +44,7 @@
 </template>
 
 <script>
-import FrequencySelection from "@/components/FrequencySelection.vue";
+import FrequencySelection from "@/components/subs/FrequencySelection.vue";
 export default {
   components: {
     FrequencySelection

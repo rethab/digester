@@ -39,21 +39,21 @@
     </v-row>
 
     <LandingPageCard
-      img-src="img/focus_working.svg"
+      :img-src="require('@/assets/focus_working.svg')"
       :img-left="true"
       title="Focus on What Matters"
       content="Digester allows you to get updates when you want them. Saying no to constant interruptions lets you focus on work during work time."
     />
 
     <LandingPageCard
-      img-src="img/family_3.svg"
+      :img-src="require('@/assets/family_3.svg')"
       :img-left="false"
       title="Spend More Time With Your Family"
       content="Say no to FOMO. Digester's ability to bundle updates allows you to spend time with your family while knowing you'll get your updates eventually."
     />
 
     <LandingPageCard
-      img-src="img/following_the_idea.svg"
+      :img-src="require('@/assets/following_the_idea.svg')"
       :img-left="true"
       title="Supported Features"
       content="You can currently subscribe to Github releases via E-Mail. This means you'll get digests for new versions of your favourite projects.<br /> <br />More features are coming soon: We plan to support digests via Slack instead of E-Mail and many more sources such as YouTube, Blogs/RSS and many more."
@@ -86,10 +86,10 @@
 </template>
 
 <script>
-import GithubLoginBtn from "@/components/GithubLoginBtn.vue";
-import LandingPageCard from "@/components/LandingPageCard.vue";
-import HowItWorksCard from "@/components/HowItWorksCard.vue";
-import InitializeTimezone from "@/components/InitializeTimezone.vue";
+import GithubLoginBtn from "@/components/auth/GithubLoginBtn.vue";
+import LandingPageCard from "@/components/landing/LandingPageCard.vue";
+import HowItWorksCard from "@/components/landing/HowItWorksCard.vue";
+import InitializeTimezone from "@/components/settings/InitializeTimezone.vue";
 export default {
   data() {
     return {

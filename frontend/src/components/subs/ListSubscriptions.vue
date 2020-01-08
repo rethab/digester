@@ -12,7 +12,7 @@
 
 <script>
 import { mapGetters } from "vuex";
-import ShowSubscription from "@/components/ShowSubscription.vue";
+import ShowSubscription from "@/components/subs/ShowSubscription.vue";
 export default {
   components: {
     ShowSubscription

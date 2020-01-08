@@ -18,7 +18,7 @@
 
 <script>
 import momentTZ from "moment-timezone";
-import ErrorCard from "@/components/ErrorCard.vue";
+import ErrorCard from "@/components/common/ErrorCard.vue";
 export default {
   components: {
     ErrorCard

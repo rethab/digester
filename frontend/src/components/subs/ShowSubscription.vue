@@ -23,7 +23,7 @@
 </template>
 
 <script>
-import FrequencySelection from "@/components/FrequencySelection.vue";
+import FrequencySelection from "@/components/subs/FrequencySelection.vue";
 import { mdiCalendar, mdiGithubCircle, mdiPencilOutline } from "@mdi/js";
 export default {
   components: {

@@ -31,10 +31,10 @@ export default {
       return this.mobile ? "mobile" : "desktop";
     },
     subImgSrc() {
-      return "img/landing-sub-" + this.suffix + ".png";
+      return require("@/assets/landing-sub-" + this.suffix + ".png");
     },
     digestImgSrc() {
-      return "img/landing-digest-" + this.suffix + ".png";
+      return require("@/assets/landing-digest-" + this.suffix + ".png");
     },
     height() {
       const small = this.$vuetify.breakpoint.mdAndDown;

@@ -7,9 +7,9 @@
 </template>
 
 <script>
-import AddSubscription from "@/components/AddSubscription.vue";
-import ListSubscriptions from "@/components/ListSubscriptions.vue";
-import TimezoneCheck from "@/components/TimezoneCheck.vue";
+import AddSubscription from "@/components/subs/AddSubscription.vue";
+import ListSubscriptions from "@/components/subs/ListSubscriptions.vue";
+import TimezoneCheck from "@/components/settings/TimezoneCheck.vue";
 export default {
   components: {
     AddSubscription,
