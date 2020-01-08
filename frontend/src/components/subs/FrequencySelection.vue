@@ -1,7 +1,12 @@
 <template>
   <v-row cols="12">
     <v-col cols="5">
-      <v-select v-model="value.frequency" :items="frequencies" append-icon></v-select>
+      <v-select
+        v-model="value.frequency"
+        :items="frequencies"
+        @change="frequencyChanged"
+        append-icon
+      ></v-select>
     </v-col>
     <v-col cols="3">
       <v-select v-model="value.day" :disabled="!isWeekly" :items="days" append-icon></v-select>
@@ -22,14 +27,16 @@ export default {
   },
   data() {
     return {
+      isWeekly: this.value.frequency === "Weekly",
+
       frequencies: ["Weekly", "Daily"],
       days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
       times: []
     };
   },
-  computed: {
-    isWeekly() {
-      return this.value.frequency === "Weekly";
+  methods: {
+    frequencyChanged(newVal) {
+      this.isWeekly = newVal === "Weekly";
     }
   },
   mounted() {
