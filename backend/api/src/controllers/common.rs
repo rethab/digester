@@ -59,10 +59,16 @@ impl<'a, 'r> FromRequest<'a, 'r> for Protected {
         };
 
         let session_id = match cookies.get("SESSION_ID") {
-            None => return UNAUTHORIZED.clone(),
+            None => {
+                eprintln!("No session id sent. Returning unauthorized");
+                return UNAUTHORIZED.clone();
+            }
             Some(cookie) => match Uuid::parse_str(cookie.value()) {
                 Ok(session_id) => session_id,
-                Err(_) => return UNAUTHORIZED.clone(),
+                Err(_) => {
+                    eprintln!("Failed to parse session id. Returning unauthorized");
+                    return UNAUTHORIZED.clone();
+                }
             },
         };
 
@@ -76,7 +82,10 @@ impl<'a, 'r> FromRequest<'a, 'r> for Protected {
 
         match iam::fetch_session(&redis, session_id) {
             Ok(Some(session)) => Outcome::Success(Protected(session)),
-            Ok(None) => UNAUTHORIZED.clone(),
+            Ok(None) => {
+                eprintln!("Session id not found in iam. Returning unauthorized");
+                UNAUTHORIZED.clone()
+            }
             Err(err) => {
                 eprintln!("Failed to fetch session: {:?}", err);
                 INTERNAL_SERVER_ERROR.clone()
