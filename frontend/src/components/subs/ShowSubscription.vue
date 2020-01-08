@@ -2,7 +2,12 @@
   <v-card color="secondary" class="lighten-4">
     <div>
       <v-card-title>
-        {{value.channelName}}
+        <a
+          :href="githubLink"
+          target="_blank"
+          class="black--text"
+          style="text-decoration:none"
+        >{{value.channelName}}</a>
         <v-icon small class="pl-1">{{ githubIcon }}</v-icon>
       </v-card-title>
       <v-card-subtitle v-if="!editing">
@@ -43,6 +48,11 @@ export default {
       githubIcon: mdiGithubCircle,
       pencilIcon: mdiPencilOutline
     };
+  },
+  computed: {
+    githubLink() {
+      return `https://github.com/${this.value.channelName}/releases`;
+    }
   },
   methods: {
     save() {
