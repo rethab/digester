@@ -63,30 +63,27 @@
       <HowItWorksCard />
     </section>
 
-    <v-row class="mt-6" align="center" justify="center">
-      <v-col cols="9" class="text-center">
-        <section id="login">
+    <section id="login">
+      <v-row class="text-center mt-6" justify="center">
+        <v-col cols="9">
           <h1 class="display-1 font-weight-regular">Try Now For Free</h1>
-          <div v-if="!isAuthenticated" class="text-center">
-            <p
-              class="font-italic mt-5"
-            >Click on the button below to sign in and start creating subscriptions.</p>
-            <GithubLoginBtn />
+          <div v-if="!isAuthenticated">
+            <AuthLogin />
           </div>
-          <div v-else class="text-center">
+          <div v-else>
             <p class="mt-5">
               Hooray! You are already logged in. Head over to
               <v-btn to="/subs" text outlined small class="mr-1" color="secondary">subscriptions</v-btn>and start profiting.
             </p>
           </div>
-        </section>
-      </v-col>
-    </v-row>
+        </v-col>
+      </v-row>
+    </section>
   </v-container>
 </template>
 
 <script>
-import GithubLoginBtn from "@/components/auth/GithubLoginBtn.vue";
+import AuthLogin from "@/components/auth/AuthLogin.vue";
 import LandingPageCard from "@/components/landing/LandingPageCard.vue";
 import HowItWorksCard from "@/components/landing/HowItWorksCard.vue";
 import InitializeTimezone from "@/components/settings/InitializeTimezone.vue";
@@ -99,7 +96,7 @@ export default {
   },
   components: {
     InitializeTimezone,
-    GithubLoginBtn,
+    AuthLogin,
     LandingPageCard,
     HowItWorksCard
   },

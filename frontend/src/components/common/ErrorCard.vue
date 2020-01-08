@@ -5,7 +5,7 @@
       <v-card-text>
         <span v-html="message"></span>
       </v-card-text>
-      <v-card-actions>
+      <v-card-actions v-if="!!to">
         <v-spacer></v-spacer>
         <v-btn outlined :to="to">Fix this!</v-btn>
       </v-card-actions>
@@ -26,7 +26,7 @@ export default {
     },
     to: {
       type: String,
-      required: true
+      required: false
     }
   }
 };
