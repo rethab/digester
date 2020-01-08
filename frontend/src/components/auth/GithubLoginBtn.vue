@@ -31,7 +31,8 @@ export default {
           }
         })
         .catch(err => {
-          if (!err.response) {
+          const popupClosed = err.message === "Auth popup window closed";
+          if (!popupClosed && !err.response) {
             this.$store.dispatch("setOffline");
           }
           this.loading = false;
