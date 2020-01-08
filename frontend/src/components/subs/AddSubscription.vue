@@ -37,7 +37,11 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn @click.stop="subscribe" class="primary">Subscribe</v-btn>
+        <v-btn @click.stop="subscribe" :loading="loading" class="primary">Subscribe</v-btn>
+        <v-snackbar v-model="snackbar" :top="true">
+          Subscription added
+          <v-btn text @click="snackbar = false">Close</v-btn>
+        </v-snackbar>
       </v-card-actions>
     </v-card>
   </v-container>
@@ -52,6 +56,9 @@ export default {
   data() {
     return {
       twoRows: this.$vuetify.breakpoint.smAndDown,
+
+      loading: false,
+      snackbar: false,
 
       types: [{ text: "Github", value: "GithubRelease" }],
       type: "GithubRelease",
@@ -75,6 +82,7 @@ export default {
   },
   methods: {
     async subscribe() {
+      this.loading = true;
       if (this.validate()) {
         this.$store
           .dispatch("subscribe", {
@@ -85,9 +93,12 @@ export default {
             time: this.frequency.time
           })
           .then(() => {
+            this.loading = false;
+            this.snackbar = true;
             this.repository = "";
           })
           .catch(err => {
+            this.loading = false;
             if (err.response.data.error) {
               this.repositoryErrors.push(err.response.data.error);
             } else {
@@ -96,6 +107,8 @@ export default {
               );
             }
           });
+      } else {
+        this.loading = false;
       }
     },
     validate() {
