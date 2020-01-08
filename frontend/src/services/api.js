@@ -6,6 +6,7 @@ export default () => {
     const instance = axios.create({
         baseURL: process.env.VUE_APP_API_HOST,
         withCredentials: true,
+        timeout: 2000,
         headers: {
             Accept: "application/json",
             "Content-Type": "application/json"
@@ -17,7 +18,12 @@ export default () => {
         // do nothing with success
         return resp;
     }, err => {
-        if (err.response.status === 401) {
+        if (!err.response) {
+            // no response could mean: cors issue, offline, timeout, etc..
+            // (for the timeout, we could match on the error message)
+            // more info: https://github.com/axios/axios/issues/383
+            store.dispatch("setOffline");
+        } else if (err.response.status === 401) {
             store.dispatch("unauthenticated").then(() => {
                 router.push({ name: 'auth-login', query: { sessionExpired: true } });
             });

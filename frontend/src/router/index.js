@@ -5,7 +5,6 @@ import Home from '@/views/Home.vue'
 import Subscriptions from '@/views/Subscriptions.vue'
 import Settings from '@/views/Settings.vue'
 import AuthLogin from '@/views/AuthLogin.vue'
-import AuthLogout from '@/components/auth/AuthLogout.vue'
 
 
 Vue.use(VueRouter)
@@ -32,12 +31,6 @@ const routes = [
     path: '/auth/login',
     name: 'auth-login',
     component: AuthLogin
-  },
-  {
-    path: '/auth/logout',
-    name: 'auth-logout',
-    component: AuthLogout,
-    meta: { requiresAuth: true }
   }
 ]
 

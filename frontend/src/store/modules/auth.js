@@ -35,12 +35,21 @@ const actions = {
         });
     },
     unauthenticate({ getters, dispatch }) {
-        if (!getters.isAuthenticated) {
-            return;
+        return new Promise((resolve, reject) => {
+            if (!getters.isAuthenticated) {
+                resolve({});
+            } else {
+                Api().post("/auth/logout")
+                    .then(() => {
+                        dispatch("unauthenticated")
+                        resolve({});
+                    })
+                    .catch(err => {
+                        reject(err)
+                    });
+            }
         }
-        Api().post("/auth/logout").then(() => {
-            dispatch("unauthenticated")
-        });
+        )
     },
     unauthenticated({ commit }) {
         localStorage.removeItem('guess-auth');

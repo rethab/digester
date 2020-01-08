@@ -9,9 +9,17 @@ const getters = {
 }
 
 const actions = {
-    async loadSubscriptions({ commit }) {
-        let response = await Api().get("subscriptions");
-        commit('SET_SUBSCRIPTIONS', response.data);
+    loadSubscriptions({ commit }) {
+        return new Promise((resolve, reject) => {
+            Api().get("subscriptions")
+                .then(resp => {
+                    commit('SET_SUBSCRIPTIONS', resp.data);
+                    resolve(resp);
+                })
+                .catch(err => {
+                    reject(err)
+                })
+        })
     },
     subscribe({ commit }, subscription) {
         return new Promise((resolve, reject) => {

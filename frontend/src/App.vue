@@ -36,7 +36,7 @@
       </v-list-item>
       <template v-if="isAuthenticated" v-slot:append>
         <div class="pa-2">
-          <v-btn dark block to="/auth/logout">Logout</v-btn>
+          <v-btn dark block @click.stop="logout()">Logout</v-btn>
         </div>
       </template>
     </v-navigation-drawer>
@@ -48,6 +48,8 @@
       </v-toolbar-title>
     </v-app-bar>
 
+    <OfflineSnackbar />
+
     <v-content>
       <v-container fluid>
         <router-view />
@@ -58,9 +60,18 @@
 
 <script>
 import { mdiAccount, mdiSettingsOutline, mdiPlaylistCheck } from "@mdi/js";
+import OfflineSnackbar from "@/components/common/OfflineSnackbar.vue";
 
 export default {
   name: "App",
+
+  components: {
+    OfflineSnackbar
+  },
+
+  created() {
+    document.title = process.env.VUE_APP_TITLE;
+  },
 
   data() {
     return {
@@ -78,8 +89,12 @@ export default {
     }
   },
 
-  created() {
-    document.title = process.env.VUE_APP_TITLE;
+  methods: {
+    logout() {
+      this.$store.dispatch("unauthenticate").then(() => {
+        this.$router.push({ name: "home" });
+      });
+    }
   }
 };
 </script>

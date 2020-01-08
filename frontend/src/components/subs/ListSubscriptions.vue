@@ -1,6 +1,9 @@
 <template>
   <div>
     <v-container fluid>
+      <v-overlay absolute opacity="0.1" :value="loading">
+        <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+      </v-overlay>
       <v-row dense>
         <v-col v-for="subscription in subscriptions" :key="subscription.name" cols="12">
           <ShowSubscription :value="subscription" />
@@ -17,11 +20,25 @@ export default {
   components: {
     ShowSubscription
   },
+  data() {
+    return {
+      loading: true,
+      error: false
+    };
+  },
   computed: {
     ...mapGetters(["subscriptions"])
   },
   mounted() {
-    this.$store.dispatch("loadSubscriptions");
+    this.$store
+      .dispatch("loadSubscriptions")
+      .then(() => {
+        this.loading = false;
+      })
+      .catch(() => {
+        this.loading = false;
+        this.error = true;
+      });
   }
 };
 </script>
