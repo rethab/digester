@@ -46,6 +46,11 @@
       <v-toolbar-title>
         <router-link to="/" class="white--text" style="text-decoration:none">Digester</router-link>
       </v-toolbar-title>
+      <v-spacer></v-spacer>
+      <div v-if="isAuthenticated">
+        <v-icon>{{ accountIcon }}</v-icon>
+        {{ username }}
+      </div>
     </v-app-bar>
 
     <OfflineSnackbar />
@@ -88,6 +93,9 @@ export default {
   computed: {
     isAuthenticated() {
       return this.$store.getters.isAuthenticated;
+    },
+    username() {
+      return this.$store.getters.username;
     }
   }
 };
