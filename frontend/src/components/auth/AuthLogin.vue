@@ -4,12 +4,12 @@
       <v-col cols="12" md="6">
         <p>Privacy Policy</p>
         <p class="overline grey--text">
-          <span class="font-weight-bold">How Information is used:</span>&nbsp;
-          <span>From the login provider, we are going to retrieve your e-mail address and store it in our database. We use that e-mail address to send digests to. This information is not shared with any third party whatsoever.</span>
+          <span class="font-weight-bold">Information we collect:</span>&nbsp;
+          <span>When using this site, your IP address is recorded for statistics. When logging in, your e-mail address is stored in our database. That e-mail address is used to send digests to, but not shared with any third party whatsoever.</span>
         </p>
         <p class="overline grey--text">
           <span class="font-weight-bold">Cookie Usage:</span>&nbsp;
-          <span>When logging in, cookies are used to identify your session. These cookies are functionally necessary.</span>
+          <span>When logging in, a cookie is used to identify (remember) you. This cookie is functionally necessary.</span>
         </p>
       </v-col>
       <v-col cols="12" md="6" :order="this.mobile ? 'first' : 'last'">
