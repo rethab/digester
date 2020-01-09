@@ -1,5 +1,11 @@
 <template>
-  <v-btn dark :loading="loading" @click="authenticate('github')">
+  <v-btn
+    color="black"
+    class="white--text"
+    :loading="loading"
+    :disabled="disabled"
+    @click="authenticate('github')"
+  >
     Github
     <v-icon small class="pl-1">{{ githubIcon }}</v-icon>
   </v-btn>
@@ -8,6 +14,12 @@
 <script>
 import { mdiGithubCircle } from "@mdi/js";
 export default {
+  props: {
+    disabled: {
+      type: Boolean,
+      default: false
+    }
+  },
   data() {
     return {
       loading: false,
