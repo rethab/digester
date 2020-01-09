@@ -57,21 +57,32 @@ function run_db_logs() {
   docker-compose logs
 }
 
+function run_license_check() {
+  pushd frontend
+  ~/dev/license-locker/license-locker.sh --check
+  popd
+
+  pushd backend
+  ~/dev/license-locker/license-locker.sh --check
+  popd
+}
+
 
 case $CMD in
-  worker)      run_worker ;;
-  worker-loop) loop_worker ;;
-  api)         run_api ;;
-  fe)          run_fe ;;
-  db)          run_db ;;
-  kill-db)     kill_db ;;
-  build-db)    build_db ;;
-  psql)        run_psql ;;
-  redis)       run_redis ;;
-  logs-db)     run_db_logs ;;
+  worker)        run_worker ;;
+  worker-loop)   loop_worker ;;
+  api)           run_api ;;
+  fe)            run_fe ;;
+  db)            run_db ;;
+  kill-db)       kill_db ;;
+  build-db)      build_db ;;
+  psql)          run_psql ;;
+  redis)         run_redis ;;
+  logs-db)       run_db_logs ;;
+  license-check) run_license_check ;;
   *)
     echo "unknown command.."
-    echo "known commands are: worker, worker-loop, api, fe, db, kill-db, build-db, psql, redis, logs-db"
+    echo "known commands are: worker, worker-loop, api, fe, db, kill-db, build-db, psql, redis, logs-db, license-check"
     exit 1
     ;;
 esac
