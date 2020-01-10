@@ -20,6 +20,11 @@ fn internal_error() -> JsonResponse {
     JsonResponse::InternalServerError
 }
 
+#[catch(400)]
+fn bad_request() -> JsonResponse {
+    JsonResponse::BadRequest("I don't understand what you want".to_owned())
+}
+
 #[catch(404)]
 fn not_found() -> JsonResponse {
     JsonResponse::NotFound
@@ -28,6 +33,11 @@ fn not_found() -> JsonResponse {
 #[catch(401)]
 fn unauthorized() -> JsonResponse {
     JsonResponse::Unauthorized
+}
+
+#[catch(429)]
+fn too_many_requests() -> JsonResponse {
+    JsonResponse::TooManyRequests
 }
 
 fn main() -> Result<(), String> {
@@ -58,7 +68,13 @@ fn main() -> Result<(), String> {
         .attach(cors_fairing)
         .attach(github_identity_provider)
         .attach(github_api_token)
-        .register(catchers![internal_error, not_found, unauthorized])
+        .register(catchers![
+            internal_error,
+            not_found,
+            unauthorized,
+            too_many_requests,
+            bad_request
+        ])
         .launch();
 
     Ok(())

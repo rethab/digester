@@ -1,4 +1,5 @@
 use super::super::iam;
+use super::super::ratelimiting;
 
 use rocket::http::Status as HttpStatus;
 use rocket::http::{Cookies, Method};
@@ -25,6 +26,7 @@ pub enum JsonResponse {
     InternalServerError,
     NotFound,
     Unauthorized,
+    TooManyRequests,
 }
 impl<'r> Responder<'r> for JsonResponse {
     fn respond_to(self, req: &Request) -> response::Result<'r> {
@@ -34,6 +36,7 @@ impl<'r> Responder<'r> for JsonResponse {
             JsonResponse::InternalServerError => (json!({}), HttpStatus::InternalServerError),
             JsonResponse::NotFound => (json!({}), HttpStatus::NotFound),
             JsonResponse::Unauthorized => (json!({}), HttpStatus::Unauthorized),
+            JsonResponse::TooManyRequests => (json!({}), HttpStatus::TooManyRequests),
         };
         Custom(status, body).respond_to(req)
     }
@@ -92,6 +95,36 @@ impl<'a, 'r> FromRequest<'a, 'r> for Protected {
             Err(err) => {
                 eprintln!("Failed to fetch session: {:?}", err);
                 INTERNAL_SERVER_ERROR.clone()
+            }
+        }
+    }
+}
+
+pub struct RateLimited {}
+
+impl<'a, 'r> FromRequest<'a, 'r> for RateLimited {
+    type Error = ();
+    fn from_request(req: &'a Request<'r>) -> request::Outcome<RateLimited, ()> {
+        let mut redis = match Redis::from_request(req) {
+            Outcome::Success(redis) => redis,
+            other => {
+                eprintln!("Failed to get redis from request: {:?}", other);
+                return Outcome::Failure((HttpStatus::InternalServerError, ()));
+            }
+        };
+
+        let ip = req
+            .headers()
+            .get_one("X-Forwarded-For")
+            .unwrap_or("[no-ip]");
+
+        use ratelimiting::RateLimitError::*;
+        match ratelimiting::rate_limit(&mut redis, ip) {
+            Ok(()) => Outcome::Success(RateLimited {}),
+            Err(TooManyRequests) => Outcome::Failure((HttpStatus::TooManyRequests, ())),
+            Err(Unknown(err)) => {
+                eprintln!("Failed to rate limit ip {}: {:?}", ip, err);
+                Outcome::Failure((HttpStatus::InternalServerError, ()))
             }
         }
     }

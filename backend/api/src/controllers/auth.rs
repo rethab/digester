@@ -48,6 +48,7 @@ fn github_oauth_exchange(
     mut cookies: Cookies,
     oauth_data: Json<BlaBla>,
     provider: State<iam::Github>,
+    _r: RateLimited,
 ) -> JsonResponse {
     use iam::AuthenticationError;
     let code = iam::AuthorizationCode(oauth_data.0.code);

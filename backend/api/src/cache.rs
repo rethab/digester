@@ -51,3 +51,16 @@ pub fn session_delete(conn: &mut Connection, id: SessionId) -> Result<(), String
     conn.del(id)
         .map_err(|err| format!("Failed to delete key in redis: {:?}", err))
 }
+
+pub fn ratelimit_get(conn: &mut Connection, key: &str) -> Result<usize, String> {
+    conn.get(key)
+        .map_err(|err| format!("Failed to get key {}: {:?}", key, err))
+}
+
+pub fn ratelimit_increment(conn: &mut Connection, key: &str) -> Result<(), String> {
+    redis::pipe()
+        .incr(key, 1) // redis command incrby
+        .expire(key, 59)
+        .query(conn)
+        .map_err(|err| format!("Failed to increment and get {}: {:?}", key, err))
+}

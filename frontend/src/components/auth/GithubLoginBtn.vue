@@ -1,14 +1,20 @@
 <template>
-  <v-btn
-    color="black"
-    class="white--text"
-    :loading="loading"
-    :disabled="disabled"
-    @click="authenticate('github')"
-  >
-    Github
-    <v-icon small class="pl-1">{{ githubIcon }}</v-icon>
-  </v-btn>
+  <div>
+    <v-btn
+      color="black"
+      class="white--text"
+      :loading="loading"
+      :disabled="disabled"
+      @click="authenticate('github')"
+    >
+      Github
+      <v-icon small class="pl-1">{{ githubIcon }}</v-icon>
+    </v-btn>
+    <v-snackbar v-model="toomanyrequests" :timeout="10000" :top="true">
+      Our hamsters are turning their wheels as fast they can, but they are currently having some trouble catching up. Please try again in a few minutes.
+      <v-btn text @click="snackbar = false" color="error">Close</v-btn>
+    </v-snackbar>
+  </div>
 </template>
 
 <script>
@@ -23,6 +29,7 @@ export default {
   data() {
     return {
       loading: false,
+      toomanyrequests: false,
       githubIcon: mdiGithubCircle
     };
   },
@@ -46,6 +53,8 @@ export default {
           const popupClosed = err.message === "Auth popup window closed";
           if (!popupClosed && !err.response) {
             this.$store.dispatch("setOffline");
+          } else if (err.response && err.response.status == 429) {
+            this.toomanyrequests = true;
           }
           this.loading = false;
         });
