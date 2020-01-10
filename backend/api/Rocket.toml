@@ -23,7 +23,3 @@ redis = { url = "redis://127.0.0.1" }
 [staging.databases]
 digester = { url = "ROCKET_REPLACE_DIGESTER_URL" }
 redis = { url = "ROCKET_REPLACE_REDIS_URL" }
-
-[development.tls]
-certs = "etc/cert.pem"
-key = "etc/key.pem"
