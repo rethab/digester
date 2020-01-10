@@ -2,7 +2,7 @@ use super::super::iam;
 
 use super::common::*;
 
-use rocket::http::{Cookie, Cookies};
+use rocket::http::{Cookie, Cookies, SameSite};
 use rocket::{self, Rocket, State};
 
 use rocket_contrib::json::Json;
@@ -10,16 +10,12 @@ use rocket_contrib::json::Json;
 use time::Duration;
 use uuid::Uuid;
 
-pub struct CookieConfig {
-    pub domain: &'static str,
-}
-
 pub fn mount(rocket: Rocket) -> Rocket {
     rocket.mount("/auth", routes![me, logout, github_oauth_exchange])
 }
 
 // creates the session cookie. a None value creates a removal cookie
-fn create_session_cookie(maybe_id: Option<Uuid>, cookie_config: &CookieConfig) -> Cookie<'static> {
+fn create_session_cookie(maybe_id: Option<Uuid>) -> Cookie<'static> {
     let value = maybe_id
         .map(|id| {
             id.to_simple()
@@ -27,13 +23,12 @@ fn create_session_cookie(maybe_id: Option<Uuid>, cookie_config: &CookieConfig) -
                 .to_owned()
         })
         .unwrap_or_default();
-    // todo review cookie settings
-    Cookie::build("SESSION_ID", value)
-        .domain(cookie_config.domain)
-        .secure(false)
+    Cookie::build(SESSION_ID, value)
+        .same_site(SameSite::Strict)
+        .secure(true) // only send via https
         .path("/")
-        .http_only(false)
-        .max_age(Duration::days(1))
+        .http_only(true) // don't give client access, helps a bit with XSS
+        .max_age(Duration::weeks(48)) // more or less a year
         .finish()
 }
 
@@ -54,13 +49,12 @@ fn github_oauth_exchange(
     mut cookies: Cookies,
     oauth_data: Json<BlaBla>,
     provider: State<iam::Github>,
-    cookie_config: State<CookieConfig>,
 ) -> JsonResponse {
     use iam::AuthenticationError;
     let code = iam::AuthorizationCode(oauth_data.0.code);
     match iam::authenticate::<iam::Github>(&db.0, &mut redis.0, &provider, code) {
         Ok((user, session)) => {
-            let cookie = create_session_cookie(Some(session.id), &cookie_config);
+            let cookie = create_session_cookie(Some(session.id));
             cookies.add(cookie);
             JsonResponse::Ok(json!({
                 "username": session.username,
@@ -101,7 +95,6 @@ fn logout(
     maybe_session: Option<Protected>,
     mut redis: Redis,
     mut cookies: Cookies,
-    cookie_config: State<CookieConfig>,
 ) -> JsonResponse {
     match maybe_session {
         Some(session) => {
@@ -115,7 +108,7 @@ fn logout(
             println!("No session to destroy");
         }
     }
-    let cookie = create_session_cookie(None, &cookie_config);
+    let cookie = create_session_cookie(None);
     cookies.remove(cookie);
     JsonResponse::Ok(json!({}))
 }

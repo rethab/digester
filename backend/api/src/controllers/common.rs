@@ -47,6 +47,9 @@ static UNAUTHORIZED: request::Outcome<Protected, ()> =
 static INTERNAL_SERVER_ERROR: request::Outcome<Protected, ()> =
     Outcome::Failure((HttpStatus::InternalServerError, ()));
 
+// __Host- prefix: see cookie prefix: https://www.sjoerdlangkemper.nl/2017/02/09/cookie-prefixes/
+pub static SESSION_ID: &'static str = "__Host-SessionId";
+
 impl<'a, 'r> FromRequest<'a, 'r> for Protected {
     type Error = ();
     fn from_request(req: &'a Request<'r>) -> request::Outcome<Protected, ()> {
@@ -58,7 +61,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Protected {
             }
         };
 
-        let session_id = match cookies.get("SESSION_ID") {
+        let session_id = match cookies.get(SESSION_ID) {
             None => {
                 eprintln!("No session id sent. Returning unauthorized");
                 return UNAUTHORIZED.clone();

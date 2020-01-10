@@ -7,7 +7,13 @@ module.exports = {
   "transpileDependencies": [
     "vuetify"
   ],
+  devServer: {
+    https: true
+  },
   configureWebpack: {
+    devServer: {
+      disableHostCheck: true,
+    },
     plugins: [
       new PrerenderSPAPlugin({
         staticDir: path.join(__dirname, 'dist'),

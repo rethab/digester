@@ -9,7 +9,7 @@ lib-channels = { path = "../lib-channels" }
 lib-db = { path = "../lib-db" } 
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = {version = "0.4", features = ["serde"] }
-rocket = "0.4"
+rocket =  { version = "0.4", features = ["tls"] }
 rocket_cors = "0.5"
 rocket_oauth2 = "0.2.0-rc.1"
 diesel = { version = "1.0.0", default-features = false, features = ["postgres", "chrono"] } 
