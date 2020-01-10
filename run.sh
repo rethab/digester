@@ -6,9 +6,10 @@ set -u
 source .env.local
 
 CMD=$1
+MYSELF=$(basename "$0")
 
 function loop_worker() {
-  for n in $(seq 9999); do
+  for _ in $(seq 9999); do
     run_worker;
     sleep 5;
   done
@@ -16,7 +17,7 @@ function loop_worker() {
 
 function run_worker(){
   pushd backend/worker
-  cargo run -- --github-api-token $GITHUB_API_TOKEN --database-uri $POSTGRES_CONNECTION --mailjet-user $MAILJET_USER --mailjet-password $MAILJET_PASSWORD
+  cargo run -- --github-api-token "$GITHUB_API_TOKEN" --database-uri "$POSTGRES_CONNECTION" --mailjet-user "$MAILJET_USER" --mailjet-password "$MAILJET_PASSWORD"
   popd
 }
 
@@ -57,7 +58,19 @@ function run_db_logs() {
   docker-compose logs
 }
 
-function run_license_check() {
+function run_regenerate_integration_env() {
+  heroku config --shell --app digester-api-integration > .env.integration.local
+}
+
+function run_heroku_stg() {
+  local imgId="registry.heroku.com/digester-api-integration/web:latest"
+  docker pull $imgId
+  docker run --env-file .env.integration.local $imgId
+}
+
+function run_sanity_check() {
+
+  # check licenses
   pushd frontend
   ~/dev/license-locker/license-locker.sh --check
   popd
@@ -65,6 +78,13 @@ function run_license_check() {
   pushd backend
   ~/dev/license-locker/license-locker.sh --check
   popd
+
+  # update .bashrc
+  sed -i "s/^DIGESTER_WORDLIST=.*/DIGESTER_WORDLIST=\"worker worker-loop api fe db kill-db build-db psql redis logs-db sanity pull-stg-cfg api-stg test\"/g" ~/.bashrc
+  echo "You might have to reload your .bashrc"
+
+  # check this script
+  shellcheck -x "$MYSELF"
 }
 
 
@@ -72,6 +92,7 @@ case $CMD in
   worker)        run_worker ;;
   worker-loop)   loop_worker ;;
   api)           run_api ;;
+  api-stg)       run_heroku_stg ;;
   fe)            run_fe ;;
   db)            run_db ;;
   kill-db)       kill_db ;;
@@ -79,10 +100,10 @@ case $CMD in
   psql)          run_psql ;;
   redis)         run_redis ;;
   logs-db)       run_db_logs ;;
-  license-check) run_license_check ;;
+  pull-stg-cfg)  run_regenerate_integration_env ;;
+  sanity)        run_sanity_check ;;
   *)
     echo "unknown command.."
-    echo "known commands are: worker, worker-loop, api, fe, db, kill-db, build-db, psql, redis, logs-db, license-check"
     exit 1
     ;;
 esac
