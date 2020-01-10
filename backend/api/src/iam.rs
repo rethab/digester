@@ -6,6 +6,7 @@ use rocket_oauth2::hyper_sync_rustls_adapter::HyperSyncRustlsAdapter;
 use rocket_oauth2::Adapter;
 use rocket_oauth2::{OAuthConfig, TokenRequest};
 use serde_json::Value;
+use time::Duration;
 
 use diesel::pg::PgConnection;
 
@@ -45,6 +46,9 @@ pub struct Session {
 }
 
 impl Session {
+    pub fn lifetime() -> Duration {
+        Duration::weeks(48)
+    }
     pub fn generate(user_id: i32, username: String) -> Session {
         Session {
             id: Uuid::new_v4(),
@@ -240,6 +244,6 @@ fn create_session(c: &mut RedisConnection, user: &User) -> Result<Session, Strin
         user_id: user.id,
         username: user.username.clone(),
     };
-    cache::session_store(c, cache::SessionId(session.id), &data)?;
+    cache::session_store(c, cache::SessionId(session.id), &data, Session::lifetime())?;
     Ok(session)
 }

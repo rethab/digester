@@ -7,7 +7,6 @@ use rocket::{self, Rocket, State};
 
 use rocket_contrib::json::Json;
 
-use time::Duration;
 use uuid::Uuid;
 
 pub fn mount(rocket: Rocket) -> Rocket {
@@ -28,7 +27,7 @@ fn create_session_cookie(maybe_id: Option<Uuid>) -> Cookie<'static> {
         .secure(true) // only send via https
         .path("/")
         .http_only(true) // don't give client access, helps a bit with XSS
-        .max_age(Duration::weeks(48)) // more or less a year
+        .max_age(iam::Session::lifetime())
         .finish()
 }
 

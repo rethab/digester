@@ -48,7 +48,7 @@ static INTERNAL_SERVER_ERROR: request::Outcome<Protected, ()> =
     Outcome::Failure((HttpStatus::InternalServerError, ()));
 
 // __Host- prefix: see cookie prefix: https://www.sjoerdlangkemper.nl/2017/02/09/cookie-prefixes/
-pub static SESSION_ID: &'static str = "__Host-SessionId";
+pub static SESSION_ID: &str = "__Host-SessionId";
 
 impl<'a, 'r> FromRequest<'a, 'r> for Protected {
     type Error = ();

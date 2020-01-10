@@ -1,9 +1,11 @@
-use redis::{Commands, Connection, ToRedisArgs};
+use redis::{Commands, Connection, PipelineCommands, ToRedisArgs};
 use serde_cbor;
 use serde_derive::{Deserialize, Serialize};
+use time::Duration;
 
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub struct SessionId(pub Uuid);
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -22,11 +24,14 @@ pub fn session_store(
     conn: &mut Connection,
     id: SessionId,
     data: &SessionData,
+    lifetime: Duration,
 ) -> Result<(), String> {
     let serialized_data = serde_cbor::to_vec(data)
         .map_err(|err| format!("Failed to serialize session data: {:?}", err))?;
-    // todo set an expire value
-    conn.set(id, serialized_data)
+    redis::pipe()
+        .set(id.clone(), serialized_data)
+        .expire(id, lifetime.num_seconds() as usize)
+        .query(conn)
         .map_err(|err| format!("Failed to store session in redis: {:?}", err))
 }
 
