@@ -23,12 +23,15 @@ function run_worker(){
 
 function run_api() {
   pushd backend/api
+  cargo build
+
   # having the TLS config in Rocket.toml means rocket
   # also expects this in other environments, which we
   # don't want.
   # https://github.com/SergioBenitez/Rocket/issues/551
   export ROCKET_TLS="{certs = \"etc/cert.pem\" key = \"etc/key.pem\"}"
-  cargo run 
+
+  ~/dev/rocket-launcher/launch-rocket.sh --no-replace --app ../target/debug/api
   popd
 }
 
