@@ -1,8 +1,3 @@
 /*
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-  Content-Security-Policy: default-src 'self';
-  Content-Security-Policy: object-src 'none';
-  Content-Security-Policy: script-src 'nonce-{random}' 'unsafe-inline' 'strict-dynamic' https: http:;
-  Content-Security-Policy: base-uri 'none';
-  Content-Security-Policy: form-action 'none';
-  Content-Security-Policy: block-all-mixed-content;
+  Content-Security-Policy: default-src 'self'; object-src 'none'; script-src 'nonce-{random}' 'unsafe-inline' 'strict-dynamic' https: http:; base-uri 'none'; form-action 'none'; block-all-mixed-content;
