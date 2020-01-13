@@ -100,7 +100,7 @@ function run_sanity_check() {
   popd
 
   # update .bashrc
-  sed -i "s/^DIGESTER_WORDLIST=.*/DIGESTER_WORDLIST=\"worker worker-loop api fe db kill-db build-db psql redis logs-db sanity pull-stg-cfg api-stg test\"/g" ~/.bashrc
+  sed -i "s/^DIGESTER_RUN_WORDLIST=.*/DIGESTER_RUN_WORDLIST=\"worker worker-loop api fe db kill-db build-db psql redis logs-db sanity pull-stg-cfg api-stg test\"/g" ~/.bashrc
   echo "You might have to reload your .bashrc"
 
   # check this script
