@@ -3,7 +3,7 @@
   publish = "dist"
 
 [context.production]
-  command = "sed -i s#DIGESTER_API_HOST#api.digester.app#g _headers && npm run build"
+  command = "sed -i s#DIGESTER_API_HOST#api.digester.app#g public/_headers && npm run build"
 
 [context.develop]
-  command = "sed -i s#DIGESTER_API_HOST#api-stg.digester.app#g _headers && npm run stage"
+  command = "sed -i s#DIGESTER_API_HOST#api-stg.digester.app#g public/_headers && npm run stage"
