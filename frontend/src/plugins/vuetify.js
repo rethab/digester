@@ -14,5 +14,8 @@ export default new Vuetify({
                 secondary: '#A07D6A',
             },
         },
+        options: {
+            cspNonce: 'dc77ae858e'
+        }
     },
 });
