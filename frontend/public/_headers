@@ -1,3 +1,4 @@
 /*
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-  Content-Security-Policy: default-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; block-all-mixed-content; font-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src https://DIGESTER_API_HOST; script-src 'self';
+  Content-Security-Policy: default-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; block-all-mixed-content; font-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src https://DIGESTER_API_HOST; script-src 'self'; frame-ancestors 'none';
+  X-Frame-Options: deny
