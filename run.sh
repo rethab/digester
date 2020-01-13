@@ -25,7 +25,8 @@ function run_api() {
   pushd backend/api
   cargo build
 
-  local apidir=$(pwd)
+  local apidir;
+  apidir=$(pwd)
 
   # having the TLS config in Rocket.toml means rocket
   # also expects this in other environments, which we
@@ -34,13 +35,14 @@ function run_api() {
   export ROCKET_TLS="{certs = \"$apidir/etc/cert.pem\" key = \"$apidir/etc/key.pem\"}"
 
   # move to temp dir and modify a copy of Rocket.toml there
-  local tmpdir=$(mktemp -d)
+  local tmpdir;
+  tmpdir=$(mktemp -d)
 
-  pushd $tmpdir
+  pushd "tmpdir"
 
-  cp $apidir/Rocket.toml $tmpdir
+  cp "$apidir"/Rocket.toml "$tmpdir"
 
-  ~/dev/rocket-launcher/launch-rocket.sh --app $apidir/../target/debug/api
+  ~/dev/rocket-launcher/launch-rocket.sh --app "$apidir"/../target/debug/api
   popd
   popd
 }
