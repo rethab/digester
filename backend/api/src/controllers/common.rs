@@ -25,6 +25,7 @@ pub enum JsonResponse {
     BadRequest(String),
     InternalServerError,
     NotFound,
+    Forbidden,
     Unauthorized,
     TooManyRequests,
 }
@@ -36,6 +37,7 @@ impl<'r> Responder<'r> for JsonResponse {
             JsonResponse::InternalServerError => (json!({}), HttpStatus::InternalServerError),
             JsonResponse::NotFound => (json!({}), HttpStatus::NotFound),
             JsonResponse::Unauthorized => (json!({}), HttpStatus::Unauthorized),
+            JsonResponse::Forbidden => (json!({}), HttpStatus::Forbidden),
             JsonResponse::TooManyRequests => (json!({}), HttpStatus::TooManyRequests),
         };
         Custom(status, body).respond_to(req)

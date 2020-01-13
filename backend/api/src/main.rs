@@ -20,9 +20,9 @@ fn internal_error() -> JsonResponse {
     JsonResponse::InternalServerError
 }
 
-#[catch(400)]
-fn bad_request() -> JsonResponse {
-    JsonResponse::BadRequest("I don't understand what you want".to_owned())
+#[catch(429)]
+fn too_many_requests() -> JsonResponse {
+    JsonResponse::TooManyRequests
 }
 
 #[catch(404)]
@@ -30,14 +30,19 @@ fn not_found() -> JsonResponse {
     JsonResponse::NotFound
 }
 
+#[catch(403)]
+fn forbidden() -> JsonResponse {
+    JsonResponse::Forbidden
+}
+
 #[catch(401)]
 fn unauthorized() -> JsonResponse {
     JsonResponse::Unauthorized
 }
 
-#[catch(429)]
-fn too_many_requests() -> JsonResponse {
-    JsonResponse::TooManyRequests
+#[catch(400)]
+fn bad_request() -> JsonResponse {
+    JsonResponse::BadRequest("I don't understand what you want".to_owned())
 }
 
 fn main() -> Result<(), String> {
@@ -72,6 +77,7 @@ fn main() -> Result<(), String> {
             internal_error,
             not_found,
             unauthorized,
+            forbidden,
             too_many_requests,
             bad_request
         ])
