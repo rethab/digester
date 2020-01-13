@@ -13,9 +13,6 @@ module.exports = {
   configureWebpack: {
     devServer: {
       disableHostCheck: true,
-      headers: {
-        'Content-Security-Policy': "default-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; block-all-mixed-content; font-src https://cdn.jsdelivr.net; style-src 'self' 'nonce-dc77ae858e' https://cdn.jsdelivr.net; connect-src https://api-stg.digester.app; script-src 'self';"
-      }
     },
     plugins: [
       new PrerenderSPAPlugin({
