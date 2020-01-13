@@ -70,8 +70,12 @@ function run_psql() {
 }
 
 function run_redis() {
-  type redis-cli >/dev/null || { echo "Missing redis-cli. Install redis-tools"; exit 1; };
-  redis-cli
+  type redli >/dev/null || { echo "Missing redli. Install with $CMD install_redli"; exit 1; };
+  redli
+}
+
+function install_redli() {
+  printf 'redli needs to be installed manually from here: https://github.com/IBM-Cloud/redli\n'
 }
 
 function run_db_logs() {
@@ -100,7 +104,7 @@ function run_sanity_check() {
   popd
 
   # update .bashrc
-  sed -i "s/^DIGESTER_RUN_WORDLIST=.*/DIGESTER_RUN_WORDLIST=\"worker worker-loop api fe db kill-db build-db psql redis logs-db sanity pull-stg-cfg api-stg test\"/g" ~/.bashrc
+  sed -i "s/^DIGESTER_RUN_WORDLIST=.*/DIGESTER_RUN_WORDLIST=\"worker worker-loop api fe db kill-db build-db psql redis install-redli logs-db sanity pull-stg-cfg api-stg test\"/g" ~/.bashrc
   echo "You might have to reload your .bashrc"
 
   # check this script
@@ -119,6 +123,7 @@ case $CMD in
   build-db)      build_db ;;
   psql)          run_psql ;;
   redis)         run_redis ;;
+  install-redli) install_redli ;;
   logs-db)       run_db_logs ;;
   pull-stg-cfg)  run_regenerate_integration_env ;;
   sanity)        run_sanity_check ;;
