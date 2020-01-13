@@ -13,6 +13,9 @@ module.exports = {
   configureWebpack: {
     devServer: {
       disableHostCheck: true,
+      headers: {
+        'X-Content-Type-Options': 'nosniff'
+      }
     },
     plugins: [
       new PrerenderSPAPlugin({
