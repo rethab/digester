@@ -20,6 +20,10 @@ Vue.use(VueAuthenticate, {
     github: {
       clientId: process.env.VUE_APP_OAUTH_GITHUB_CLIENT_ID,
       redirectUri: window.location.origin,
+    },
+    facebook: {
+      clientId: process.env.VUE_APP_OAUTH_GITHUB_CLIENT_ID,
+      redirectUri: window.location.origin,
     }
   }
 });

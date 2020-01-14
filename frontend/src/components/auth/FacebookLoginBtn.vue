@@ -1,20 +1,20 @@
 <template>
   <div style="display:inline">
     <v-btn
-      color="black"
+      color="#3B5998"
       class="white--text"
       :loading="loading"
       :disabled="disabled"
       @click="$emit('authenticate')"
     >
-      Github
-      <v-icon small class="pl-1">{{ githubIcon }}</v-icon>
+      Facebook
+      <v-icon small class="pl-1">{{ facebookIcon }}</v-icon>
     </v-btn>
   </div>
 </template>
 
 <script>
-import { mdiGithubCircle } from "@mdi/js";
+import { mdiFacebook } from "@mdi/js";
 export default {
   props: {
     disabled: {
@@ -28,7 +28,7 @@ export default {
   },
   data() {
     return {
-      githubIcon: mdiGithubCircle
+      facebookIcon: mdiFacebook
     };
   }
 };
