@@ -11,7 +11,13 @@
           <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
         </div>
         <div slot="no-more"></div>
-        <div slot="no-results"></div>
+        <div slot="no-results">
+          <p>There don't seem to be any updates for you :(</p>
+          <p>
+            Do you have subscriptions? If not, you can create them over here:
+            <v-btn to="/subs" text outlined small class="mr-1" color="secondary">subscriptions</v-btn>
+          </p>
+        </div>
       </InfiniteLoading>
     </v-container>
   </div>
