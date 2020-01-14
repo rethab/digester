@@ -38,7 +38,7 @@ function run_api() {
   local tmpdir;
   tmpdir=$(mktemp -d)
 
-  pushd "tmpdir"
+  pushd "$tmpdir"
 
   cp "$apidir"/Rocket.toml "$tmpdir"
 

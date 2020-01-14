@@ -14,6 +14,7 @@ use api::controllers::auth;
 use api::controllers::common::*;
 use api::controllers::settings;
 use api::controllers::subscriptions;
+use api::controllers::updates;
 
 #[catch(500)]
 fn internal_error() -> JsonResponse {
@@ -66,6 +67,7 @@ fn main() -> Result<(), String> {
     rocket = auth::mount(rocket);
     rocket = subscriptions::mount(rocket);
     rocket = settings::mount(rocket);
+    rocket = updates::mount(rocket);
 
     rocket
         .attach(DigesterDbConn::fairing())

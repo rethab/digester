@@ -174,6 +174,23 @@ pub fn updates_find_new(
         .map_err(|err| format!("Failed to load updates: {:?}", err))
 }
 
+pub fn updates_find_by_user_id(
+    conn: &PgConnection,
+    user_id: i32,
+) -> Result<Vec<(Update, Channel)>, String> {
+    use schema::channels;
+    use schema::subscriptions;
+    use schema::updates;
+
+    subscriptions::table
+        .inner_join(channels::table.on(subscriptions::channel_id.eq(channels::id)))
+        .inner_join(updates::table.on(channels::id.eq(updates::channel_id)))
+        .filter(subscriptions::user_id.eq(user_id))
+        .select((updates::all_columns, channels::all_columns))
+        .load::<(Update, Channel)>(conn)
+        .map_err(|err| format!("Failed to load updates by id: {:?}", err))
+}
+
 pub fn subscriptions_find_by_id(
     conn: &PgConnection,
     id: i32,
