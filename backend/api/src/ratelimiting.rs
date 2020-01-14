@@ -29,6 +29,6 @@ fn current_minute() -> u64 {
     let now = SystemTime::now();
     let elapsed = now
         .duration_since(UNIX_EPOCH)
-        .expect(&format!("Clock went backwards? Now={:?}", now));
+        .unwrap_or_else(|_| panic!("Clock went backwards? Now={:?}", now));
     (elapsed.as_secs() / 60) % 60
 }

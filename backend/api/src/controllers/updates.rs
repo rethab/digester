@@ -57,17 +57,17 @@ impl Update {
             channel_type: chan.channel_type,
             title: update.title,
             url: update.url,
-            published: utc_to_tz(update.published, &user_tz),
+            published: utc_to_tz(update.published, user_tz),
         }
     }
 }
 
-fn utc_to_tz(datetime: DateTime<Utc>, tz: &Tz) -> DateTime<Tz> {
-    datetime.with_timezone(tz)
+fn utc_to_tz(datetime: DateTime<Utc>, tz: Tz) -> DateTime<Tz> {
+    datetime.with_timezone(&tz)
 }
 
-#[get("/")]
-fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
+#[get("/?<offset>&<limit>")]
+fn list(session: Protected, db: DigesterDbConn, offset: u32, limit: u32) -> JsonResponse {
     let user = match db::users_find_by_id(&db, session.0.user_id) {
         Err(err) => {
             eprintln!(
@@ -80,7 +80,7 @@ fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
     };
 
     let timezone = user.timezone.map(|tz| tz.0).unwrap_or_else(|| Tz::UTC);
-    match db::updates_find_by_user_id(&db, user.id) {
+    match db::updates_find_by_user_id(&db, user.id, offset, limit) {
         Err(_) => JsonResponse::InternalServerError,
         Ok(subs) => subs
             .into_iter()
@@ -100,6 +100,6 @@ mod tests {
     fn timezone_conversion() {
         let utc = Utc.ymd(2020, 1, 14).and_hms(9, 50, 0);
         let expected = Amsterdam.ymd(2020, 1, 14).and_hms(10, 50, 0);
-        assert_eq!(expected, utc_to_tz(utc, &Amsterdam))
+        assert_eq!(expected, utc_to_tz(utc, Amsterdam))
     }
 }

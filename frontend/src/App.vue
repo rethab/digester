@@ -26,6 +26,15 @@
           <v-list-item-title>Subscriptions</v-list-item-title>
         </v-list-item-content>
       </v-list-item>
+      <v-list-item v-if="isAuthenticated" to="/updates">
+        <v-list-item-icon>
+          <v-icon>{{ updatesIcon }}</v-icon>
+        </v-list-item-icon>
+        <v-list-item-content>
+          <v-list-item-title>Updates</v-list-item-title>
+        </v-list-item-content>
+      </v-list-item>
+      <v-divider></v-divider>
       <v-list-item v-if="isAuthenticated" to="/settings">
         <v-list-item-icon>
           <v-icon>{{ settingsIcon }}</v-icon>
@@ -64,7 +73,12 @@
 </template>
 
 <script>
-import { mdiAccount, mdiSettingsOutline, mdiPlaylistCheck } from "@mdi/js";
+import {
+  mdiAccount,
+  mdiSettingsOutline,
+  mdiPlaylistCheck,
+  mdiFormatListBulletedTriangle
+} from "@mdi/js";
 import OfflineSnackbar from "@/components/common/OfflineSnackbar.vue";
 import LogoutBtn from "@/components/auth/LogoutBtn.vue";
 
@@ -86,7 +100,8 @@ export default {
 
       accountIcon: mdiAccount,
       settingsIcon: mdiSettingsOutline,
-      subsIcon: mdiPlaylistCheck
+      subsIcon: mdiPlaylistCheck,
+      updatesIcon: mdiFormatListBulletedTriangle
     };
   },
 
