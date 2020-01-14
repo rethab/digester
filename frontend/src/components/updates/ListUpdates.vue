@@ -1,7 +1,7 @@
 <template>
   <div>
     <v-container>
-      <v-list two-line dense>
+      <v-list two-line dense class="py-0">
         <template v-for="(update, index) in updates">
           <ShowUpdate :key="index" :value="update" />
         </template>
