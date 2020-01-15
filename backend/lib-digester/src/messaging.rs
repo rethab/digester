@@ -101,8 +101,8 @@ impl MailjetMessage {
     ) -> MailjetMessage {
         MailjetMessage {
             to: vec![MailjetTo {
-                email: email,
-                name: "Anonymous Panter".into(),
+                email: email.clone(),
+                name: email,
             }],
             subject: subject,
             template_id: 1_153_883, // todo make flexible
