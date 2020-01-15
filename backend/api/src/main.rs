@@ -48,9 +48,15 @@ fn bad_request() -> JsonResponse {
 
 fn main() -> Result<(), String> {
     let github_identity_provider = AdHoc::on_attach("Github Identity Provider", |rocket| {
-        let github =
-            iam::Github::from_rocket_config(rocket.config()).expect("Failed to read github config");
+        let github = iam::github::Github::from_rocket_config(rocket.config())
+            .expect("Failed to read github config");
         Ok(rocket.manage(github))
+    });
+
+    let facebook_identity_provider = AdHoc::on_attach("Facebook Identity Provider", |rocket| {
+        let facebook = iam::facebook::Facebook::from_rocket_config(rocket.config())
+            .expect("Failed to read facebook config");
+        Ok(rocket.manage(facebook))
     });
 
     let github_api_token = AdHoc::on_attach("Github Api Token", |rocket| {
@@ -74,6 +80,7 @@ fn main() -> Result<(), String> {
         .attach(Redis::fairing())
         .attach(cors_fairing)
         .attach(github_identity_provider)
+        .attach(facebook_identity_provider)
         .attach(github_api_token)
         .register(catchers![
             internal_error,

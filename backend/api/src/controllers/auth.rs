@@ -1,5 +1,9 @@
 use super::super::iam;
 
+use iam::facebook::Facebook;
+use iam::github::Github;
+use iam::IdentityProvider;
+
 use super::common::*;
 
 use rocket::http::{Cookie, Cookies, SameSite};
@@ -34,8 +38,11 @@ fn create_session_cookie(maybe_id: Option<Uuid>) -> Cookie<'static> {
         .finish()
 }
 
+// the request we get from vue-authenticate containing the
+// 'code', which we can exchange for an access token at the
+// identity provider
 #[derive(Deserialize, Debug, PartialEq)]
-struct BlaBla {
+struct CodeRequest {
     code: String,
     #[serde(rename = "clientId")]
     client_id: String,
@@ -46,15 +53,38 @@ struct BlaBla {
 #[post("/github", data = "<oauth_data>")]
 fn github_oauth_exchange(
     db: DigesterDbConn,
-    mut redis: Redis,
-    mut cookies: Cookies,
-    oauth_data: Json<BlaBla>,
-    provider: State<iam::Github>,
+    redis: Redis,
+    cookies: Cookies,
+    oauth_data: Json<CodeRequest>,
+    provider: State<Github>,
     _r: RateLimited,
 ) -> JsonResponse {
-    use iam::AuthenticationError;
     let code = iam::AuthorizationCode(oauth_data.0.code);
-    match iam::authenticate::<iam::Github>(&db.0, &mut redis.0, &provider, code) {
+    oauth_exchange::<Github>(db, redis, cookies, provider, code)
+}
+
+#[post("/facebook", data = "<oauth_data>")]
+fn facebook_oauth_exchange(
+    db: DigesterDbConn,
+    redis: Redis,
+    cookies: Cookies,
+    oauth_data: Json<CodeRequest>,
+    provider: State<Facebook>,
+    _r: RateLimited,
+) -> JsonResponse {
+    let code = iam::AuthorizationCode(oauth_data.0.code);
+    oauth_exchange::<Facebook>(db, redis, cookies, provider, code)
+}
+
+fn oauth_exchange<P: IdentityProvider + Sync + Send>(
+    db: DigesterDbConn,
+    mut redis: Redis,
+    mut cookies: Cookies,
+    provider: State<P>,
+    code: iam::AuthorizationCode,
+) -> JsonResponse {
+    use iam::AuthenticationError;
+    match iam::authenticate::<P>(&db.0, &mut redis.0, &provider, code) {
         Ok((user, session)) => {
             let cookie = create_session_cookie(Some(session.id));
             cookies.add(cookie);
@@ -83,22 +113,6 @@ fn github_oauth_exchange(
             JsonResponse::InternalServerError
         }
     }
-}
-
-#[post("/facebook", data = "<oauth_data>")]
-fn facebook_oauth_exchange(
-    db: DigesterDbConn,
-    mut redis: Redis,
-    mut cookies: Cookies,
-    oauth_data: Json<BlaBla>,
-    provider: State<iam::Github>,
-    _r: RateLimited,
-) -> JsonResponse {
-    JsonResponse::Ok(json!({
-        "username": "via-facebook",
-        "first_login": false,
-        "access_token": "dummy"
-    }))
 }
 
 #[get("/me")]

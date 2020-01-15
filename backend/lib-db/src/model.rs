@@ -9,7 +9,7 @@ use diesel::*;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 
-#[derive(Queryable)]
+#[derive(Queryable, Clone)]
 pub struct Identity {
     pub id: i32,
     pub provider: String,

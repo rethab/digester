@@ -32,6 +32,7 @@ dependencies = [
  "lib-channels 0.1.0",
  "lib-db 0.1.0",
  "redis 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reqwest 0.9.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_contrib 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_cors 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",

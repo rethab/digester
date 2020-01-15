@@ -479,3 +479,24 @@ pub fn identities_find_by_user_id(
             )
         })
 }
+
+pub fn identities_find_by_email_or_id(
+    conn: &PgConnection,
+    provider: &str,
+    pid: &str,
+    email: &str,
+) -> Result<Vec<Identity>, String> {
+    unimplemented!()
+}
+
+pub fn identities_update_email(
+    conn: &PgConnection,
+    identity: Identity,
+    email: &str,
+) -> Result<Identity, String> {
+    unimplemented!()
+}
+
+pub fn identities_insert(conn: &PgConnection, identity: NewIdentity) -> Result<Identity, String> {
+    unimplemented!()
+}

@@ -7,6 +7,12 @@ client_id = "ROCKET_REPLACE_OAUTH_GITHUB_CLIENT_ID"
 client_secret = "ROCKET_REPLACE_OAUTH_GITHUB_CLIENT_SECRET"
 redirect_uri = "ROCKET_REPLACE_OAUTH_GITHUB_REDIRECT_URI"
 
+[global.oauth.facebook]
+provider = "Facebook"
+client_id = "ROCKET_REPLACE_OAUTH_FACEBOOK_CLIENT_ID"
+client_secret = "ROCKET_REPLACE_OAUTH_FACEBOOK_CLIENT_SECRET"
+redirect_uri = "ROCKET_REPLACE_OAUTH_FACEBOOK_REDIRECT_URI"
+
 [global.databases]
 digester = { url = "ROCKET_REPLACE_DIGESTER_URL" }
 redis = { url = "ROCKET_REPLACE_REDIS_URL" }
