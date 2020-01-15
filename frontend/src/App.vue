@@ -1,48 +1,7 @@
 <template>
   <v-app>
     <v-navigation-drawer v-model="drawer" app temporary>
-      <v-list-item>
-        <v-list-item-content>
-          <v-list-item-title class="title">
-            <router-link to="/" style="text-decoration:none" class="black--text">Digester</router-link>
-          </v-list-item-title>
-          <v-list-item-subtitle>End constant interruptions</v-list-item-subtitle>
-        </v-list-item-content>
-      </v-list-item>
-      <v-divider></v-divider>
-      <v-list-item link v-if="!isAuthenticated" to="/auth/login">
-        <v-list-item-icon>
-          <v-icon>{{ accountIcon }}</v-icon>
-        </v-list-item-icon>
-        <v-list-item-content>
-          <v-list-item-title>Login</v-list-item-title>
-        </v-list-item-content>
-      </v-list-item>
-      <v-list-item v-if="isAuthenticated" to="/subs">
-        <v-list-item-icon>
-          <v-icon>{{ subsIcon }}</v-icon>
-        </v-list-item-icon>
-        <v-list-item-content>
-          <v-list-item-title>Subscriptions</v-list-item-title>
-        </v-list-item-content>
-      </v-list-item>
-      <v-list-item v-if="isAuthenticated" to="/updates">
-        <v-list-item-icon>
-          <v-icon>{{ updatesIcon }}</v-icon>
-        </v-list-item-icon>
-        <v-list-item-content>
-          <v-list-item-title>Updates</v-list-item-title>
-        </v-list-item-content>
-      </v-list-item>
-      <v-divider></v-divider>
-      <v-list-item v-if="isAuthenticated" to="/settings">
-        <v-list-item-icon>
-          <v-icon>{{ settingsIcon }}</v-icon>
-        </v-list-item-icon>
-        <v-list-item-content>
-          <v-list-item-title>Settings</v-list-item-title>
-        </v-list-item-content>
-      </v-list-item>
+      <Navigation />
       <template v-if="isAuthenticated" v-slot:append>
         <div class="pa-2">
           <LogoutBtn />
@@ -56,9 +15,16 @@
         <router-link to="/" class="white--text" style="text-decoration:none">Digester</router-link>
       </v-toolbar-title>
       <v-spacer></v-spacer>
-      <div v-if="isAuthenticated">
-        <v-icon>{{ accountIcon }}</v-icon>
-        {{ username }}
+      <div>
+        <router-link
+          v-if="isAuthenticated"
+          to="/settings"
+          class="white--text"
+          style="text-decoration: none"
+        >
+          <v-icon>{{ accountIcon }}</v-icon>
+          {{ username }}
+        </router-link>
       </div>
     </v-app-bar>
 
@@ -73,12 +39,8 @@
 </template>
 
 <script>
-import {
-  mdiAccount,
-  mdiSettingsOutline,
-  mdiPlaylistCheck,
-  mdiFormatListBulletedTriangle
-} from "@mdi/js";
+import { mdiAccount } from "@mdi/js";
+import Navigation from "@/components/Navigation.vue";
 import OfflineSnackbar from "@/components/common/OfflineSnackbar.vue";
 import LogoutBtn from "@/components/auth/LogoutBtn.vue";
 
@@ -86,6 +48,7 @@ export default {
   name: "App",
 
   components: {
+    Navigation,
     OfflineSnackbar,
     LogoutBtn
   },
@@ -98,10 +61,7 @@ export default {
     return {
       drawer: null,
 
-      accountIcon: mdiAccount,
-      settingsIcon: mdiSettingsOutline,
-      subsIcon: mdiPlaylistCheck,
-      updatesIcon: mdiFormatListBulletedTriangle
+      accountIcon: mdiAccount
     };
   },
 
