@@ -13,7 +13,11 @@
         </p>
       </v-col>
       <v-col cols="12" md="6" :order="this.mobile ? 'first' : 'last'">
-        <h2 class="title">Available Login Methods</h2>
+        <h2 class="title">
+          Available Login Methods
+          <span v-if="!facebookLoginEnabled">*</span>
+        </h2>
+        <p v-if="!facebookLoginEnabled" class="font-italic caption">* More coming soon</p>
         <v-checkbox v-model="cookieConsent" v-if="showConsentBox">
           <template v-slot:label>
             <span class="body-2">
@@ -26,12 +30,13 @@
         <v-row>
           <v-col cols="12" md="6" class="justify-center">
             <FacebookLoginBtn
+              v-if="facebookLoginEnabled"
               v-on:authenticate="authenticate('facebook')"
               :loading="facebookLoading"
               :disabled="!cookieConsent"
             />
           </v-col>
-          <v-col cols="12" md="6" class="justify-center">
+          <v-col cols="12" :md="facebookLoginEnabled ? 6 : 12" class="justify-center">
             <GithubLoginBtn
               v-on:authenticate="authenticate('github')"
               :loading="githubLoading"
@@ -49,6 +54,7 @@
 </template>
 
 <script>
+import Features from "@/services/features.js";
 import GithubLoginBtn from "@/components/auth/GithubLoginBtn.vue";
 import FacebookLoginBtn from "@/components/auth/FacebookLoginBtn.vue";
 
@@ -61,6 +67,8 @@ export default {
   data() {
     return {
       mobile: this.$vuetify.breakpoint.smAndDown,
+
+      facebookLoginEnabled: Features().facebookLogin(),
 
       facebookLoading: false,
       githubLoading: false,
