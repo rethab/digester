@@ -11,7 +11,7 @@
       >{{value.channelName}}</a>
       |
       <span v-if="!mobile" class="ml-1">{{value.title}} |</span>
-      {{ value.published | formatDate }}
+      <span class="ml-1">{{ value.published | formatDate }}</span>
     </v-subheader>
     <v-divider :key="index + 'd'"></v-divider>
     <v-list-item :key="index + 'li'" class="mb-2" style="min-height: 25px">
@@ -57,7 +57,9 @@ export default {
     },
     formatDate(datetime) {
       return moment(datetime, "YYYY-MM-DDTHH:mm:ss").calendar(null, {
-        lastWeek: "[Last] dddd"
+        lastWeek: "[Last] dddd",
+        lastDay: "[Yesterday at] HH:mm",
+        sameDay: "[Today at] HH:mm"
       });
     }
   }
