@@ -10,7 +10,10 @@ use rocket_contrib::json::Json;
 use uuid::Uuid;
 
 pub fn mount(rocket: Rocket) -> Rocket {
-    rocket.mount("/auth", routes![me, logout, github_oauth_exchange])
+    rocket.mount(
+        "/auth",
+        routes![me, logout, facebook_oauth_exchange, github_oauth_exchange],
+    )
 }
 
 // creates the session cookie. a None value creates a removal cookie
@@ -40,7 +43,6 @@ struct BlaBla {
     redirect_uri: String,
 }
 
-// todo how to prevent malicious users from calling this? (and us essentially being a github proxy)
 #[post("/github", data = "<oauth_data>")]
 fn github_oauth_exchange(
     db: DigesterDbConn,
@@ -81,6 +83,22 @@ fn github_oauth_exchange(
             JsonResponse::InternalServerError
         }
     }
+}
+
+#[post("/facebook", data = "<oauth_data>")]
+fn facebook_oauth_exchange(
+    db: DigesterDbConn,
+    mut redis: Redis,
+    mut cookies: Cookies,
+    oauth_data: Json<BlaBla>,
+    provider: State<iam::Github>,
+    _r: RateLimited,
+) -> JsonResponse {
+    JsonResponse::Ok(json!({
+        "username": "via-facebook",
+        "first_login": false,
+        "access_token": "dummy"
+    }))
 }
 
 #[get("/me")]
