@@ -1,24 +1,34 @@
 use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Utc, Weekday};
 use chrono_tz::Tz;
 use lib_db as db;
-use lib_db::{Day, Digest, Frequency, InsertDigest, Subscription, User};
-use reqwest::header::CONTENT_TYPE;
-use reqwest::Client;
-use serde::Serialize;
+use lib_db::{Digest, Frequency, InsertDigest, Subscription, User};
+
+mod messaging;
+
+use messaging::*;
+
+pub use messaging::MailjetCredentials;
 
 pub struct App<'a> {
     db_conn: &'a db::Connection,
     mailjet: MailjetCredentials,
+    env: Env,
 }
 
-pub struct MailjetCredentials {
-    pub username: String,
-    pub password: String,
+#[derive(Debug, PartialEq)]
+pub enum Env {
+    Dev,
+    Stg,
+    Prod,
 }
 
 impl App<'_> {
-    pub fn new(db_conn: &db::Connection, mailjet: MailjetCredentials) -> App {
-        App { db_conn, mailjet }
+    pub fn new(db_conn: &db::Connection, mailjet: MailjetCredentials, env: Env) -> App {
+        App {
+            db_conn,
+            mailjet,
+            env,
+        }
     }
 
     pub fn run(&self) -> Result<(), String> {
@@ -109,127 +119,17 @@ impl App<'_> {
             );
             Ok(())
         } else {
+            println!(
+                "{} updates to send for user {}",
+                mailjet_subscriptions.len(),
+                user.id
+            );
+            let subject = messaging::create_subject(&self.env, &mailjet_subscriptions);
             let recipient = d_and_s[0].1.email.clone();
-            let message = MailjetMessage::new(recipient, mailjet_subscriptions);
-            self.send_email(message)
+            let message = MailjetMessage::new(recipient, subject, mailjet_subscriptions);
+            messaging::send_email(&self.mailjet, message)
         }
     }
-
-    fn send_email(&self, message: MailjetMessage) -> Result<(), String> {
-        let messages = MailjetMessages::new(message);
-        let result = Client::new()
-            .post("https://api.mailjet.com/v3.1/send")
-            .basic_auth(
-                self.mailjet.username.clone(),
-                Some(self.mailjet.password.clone()),
-            )
-            .header(CONTENT_TYPE, "application/json")
-            .json(&messages)
-            .send();
-        match result {
-            Ok(resp) if resp.status().is_success() => Ok(()),
-            Ok(resp) => Err(format!("Mailjet returned error: {:?}", resp)),
-            Err(err) => Err(format!("Failed to send email: {:?}", err)),
-        }
-    }
-}
-
-#[derive(Serialize)]
-struct MailjetMessages {
-    #[serde(rename = "Messages")]
-    messages: Vec<MailjetMessage>,
-}
-
-impl MailjetMessages {
-    fn new(message: MailjetMessage) -> MailjetMessages {
-        MailjetMessages {
-            messages: vec![message],
-        }
-    }
-}
-
-#[derive(Serialize)]
-struct MailjetMessage {
-    #[serde(rename = "To")]
-    to: Vec<MailjetTo>,
-    #[serde(rename = "TemplateID")]
-    template_id: i32,
-    #[serde(rename = "TemplateLanguage")]
-    template_language: bool,
-    #[serde(rename = "TemplateErrorReporting")]
-    template_error_reporting: MailjetTemplateErrorReporting,
-    #[serde(rename = "TemplateErrorDeliver")]
-    template_error_deliver: bool,
-    #[serde(rename = "Variables")]
-    variables: MailjetVariables,
-}
-
-impl MailjetMessage {
-    fn new(email: String, subscriptions: Vec<MailjetSubscription>) -> MailjetMessage {
-        MailjetMessage {
-            to: vec![MailjetTo {
-                email: email,
-                name: "Anonymous Panter".into(),
-            }],
-            template_id: 1_153_883, // todo make flexible
-            template_language: true,
-            template_error_reporting: MailjetTemplateErrorReporting {
-                email: "rethab@pm.me".into(),
-                name: "Ret".into(),
-            },
-            template_error_deliver: true,
-            // todo make flexible
-            variables: MailjetVariables {
-                update_subscriptions_url: "https://digester.app/subs".into(),
-                add_subscription_url: "https://digester.app/subs".into(),
-                subscriptions,
-            },
-        }
-    }
-}
-
-#[derive(Serialize)]
-struct MailjetTo {
-    #[serde(rename = "Email")]
-    email: String,
-    #[serde(rename = "Name")]
-    name: String,
-}
-
-#[derive(Serialize)]
-struct MailjetTemplateErrorReporting {
-    #[serde(rename = "Email")]
-    email: String,
-    #[serde(rename = "Name")]
-    name: String,
-}
-
-#[derive(Serialize)]
-struct MailjetVariables {
-    update_subscriptions_url: String,
-    add_subscription_url: String,
-    subscriptions: Vec<MailjetSubscription>,
-}
-
-#[derive(Serialize)]
-struct MailjetSubscription {
-    title: String,
-    updates: Vec<MailjetUpdate>,
-}
-
-impl MailjetSubscription {
-    fn new(title: &str, updates: Vec<MailjetUpdate>) -> MailjetSubscription {
-        MailjetSubscription {
-            title: title.into(),
-            updates,
-        }
-    }
-}
-
-#[derive(Serialize)]
-struct MailjetUpdate {
-    title: String,
-    url: String,
 }
 
 fn next_due_date_for_subscription(subscription: &Subscription, now: DateTime<Tz>) -> DateTime<Tz> {
@@ -288,6 +188,7 @@ mod tests {
     use super::*;
     use chrono::naive::NaiveTime;
     use chrono_tz::Europe::Zurich;
+    use lib_db::Day;
 
     #[test]
     fn digester_due_daily_tomorrow() {

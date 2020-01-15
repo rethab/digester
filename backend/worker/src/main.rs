@@ -3,6 +3,7 @@ use lib_channels as channels;
 use lib_db as db;
 use lib_digester as digester;
 use lib_fetcher as fetcher;
+use std::str::FromStr;
 
 use structopt::StructOpt;
 
@@ -16,6 +17,15 @@ struct Opt {
     mailjet_user: String,
     #[structopt(long)]
     mailjet_password: String,
+    #[structopt(long = "app-env", default_value = "prod")]
+    app_env: AppEnv,
+}
+
+#[derive(StructOpt, Debug)]
+enum AppEnv {
+    Dev,
+    Stg,
+    Prod,
 }
 
 fn main() -> Result<(), String> {
@@ -26,6 +36,29 @@ fn main() -> Result<(), String> {
         username: opt.mailjet_user,
         password: opt.mailjet_password,
     };
+    println!("Running worker in {:?} mode", opt.app_env);
     fetcher::App::new(&db_conn, github).run()?;
-    digester::App::new(&db_conn, mailjet).run()
+    digester::App::new(&db_conn, mailjet, opt.app_env.into()).run()
+}
+
+impl FromStr for AppEnv {
+    type Err = String;
+    fn from_str(param: &str) -> Result<Self, String> {
+        match param {
+            "dev" => Ok(AppEnv::Dev),
+            "stg" => Ok(AppEnv::Stg),
+            "prod" => Ok(AppEnv::Prod),
+            unknown => Err(format!("Invalid value for app_env: {}", unknown)),
+        }
+    }
+}
+
+impl Into<digester::Env> for AppEnv {
+    fn into(self) -> digester::Env {
+        match self {
+            AppEnv::Dev => digester::Env::Dev,
+            AppEnv::Stg => digester::Env::Stg,
+            AppEnv::Prod => digester::Env::Prod,
+        }
+    }
 }

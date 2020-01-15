@@ -17,7 +17,7 @@ function loop_worker() {
 
 function run_worker(){
   pushd backend/worker
-  cargo run -- --github-api-token "$GITHUB_API_TOKEN" --database-uri "$POSTGRES_CONNECTION" --mailjet-user "$MAILJET_USER" --mailjet-password "$MAILJET_PASSWORD"
+  cargo run -- --github-api-token "$GITHUB_API_TOKEN" --database-uri "$POSTGRES_CONNECTION" --mailjet-user "$MAILJET_USER" --mailjet-password "$MAILJET_PASSWORD" --app-env dev
   popd
 }
 
