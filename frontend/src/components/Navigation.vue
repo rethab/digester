@@ -47,7 +47,6 @@
 
 <script>
 import {
-  mdiAccount,
   mdiSettingsOutline,
   mdiPlaylistCheck,
   mdiFormatListBulletedTriangle
@@ -56,7 +55,6 @@ import {
 export default {
   data() {
     return {
-      accountIcon: mdiAccount,
       settingsIcon: mdiSettingsOutline,
       subsIcon: mdiPlaylistCheck,
       updatesIcon: mdiFormatListBulletedTriangle
