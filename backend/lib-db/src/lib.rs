@@ -439,7 +439,6 @@ pub fn users_insert(
     conn: &PgConnection,
     new_user: NewUserData,
 ) -> Result<(User, Identity), String> {
-    use schema::identities;
     use schema::users;
 
     let user: User = diesel::insert_into(users::table)
@@ -455,11 +454,7 @@ pub fn users_insert(
         email: new_user.email,
         username: new_user.username,
     };
-    let identity: Identity = diesel::insert_into(identities::table)
-        .values(new_identity)
-        .returning(identities::all_columns)
-        .get_result(conn)
-        .map_err(|err| format!("Failed to insert new identity: {:?}", err))?;
+    let identity = identities_insert(conn, new_identity)?;
 
     Ok((user, identity))
 }
@@ -486,17 +481,46 @@ pub fn identities_find_by_email_or_id(
     pid: &str,
     email: &str,
 ) -> Result<Vec<Identity>, String> {
-    unimplemented!()
+    use schema::identities;
+
+    identities::table
+        .filter(
+            identities::email.eq(email).or(identities::provider
+                .eq(provider)
+                .and(identities::pid.eq(pid))),
+        )
+        .load(conn)
+        .map_err(|err| {
+            format!(
+                "Failed to query for identities by provider={}, pid={}, email={}: {:?}",
+                provider, pid, email, err
+            )
+        })
 }
 
 pub fn identities_update_email(
     conn: &PgConnection,
     identity: Identity,
-    email: &str,
+    new_email: &str,
 ) -> Result<Identity, String> {
-    unimplemented!()
+    use schema::identities::dsl::*;
+    diesel::update(identities.find(identity.id))
+        .set(email.eq(new_email))
+        .returning(identities::all_columns())
+        .get_result(conn)
+        .map_err(|err| {
+            format!(
+                "failed to update email of identity={} {:?}",
+                identity.id, err
+            )
+        })
 }
 
 pub fn identities_insert(conn: &PgConnection, identity: NewIdentity) -> Result<Identity, String> {
-    unimplemented!()
+    use schema::identities;
+    diesel::insert_into(identities::table)
+        .values(identity)
+        .returning(identities::all_columns)
+        .get_result(conn)
+        .map_err(|err| format!("Failed to insert new identity: {:?}", err))
 }

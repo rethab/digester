@@ -185,3 +185,184 @@ fn create_session(c: &mut RedisConnection, user: &User) -> Result<Session, Strin
     cache::session_store(c, cache::SessionId(session.id), &data, Session::lifetime())?;
     Ok(session)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use diesel;
+    use diesel::pg::PgConnection;
+    use diesel::prelude::*;
+    use dockertest::waitfor::{MessageSource, MessageWait};
+    use dockertest::{Composition, DockerOperations, DockerTest, PullPolicy, Source};
+    use std::rc::Rc;
+
+    fn create_docker() -> DockerTest {
+        // Define our test
+        let source = Source::DockerHub(PullPolicy::IfNotPresent);
+        let mut test = DockerTest::new().with_default_source(source);
+
+        // Define our Composition - the Image we will start and end up as our RunningContainer
+        let postgres =
+            Composition::with_repository("postgres").with_wait_for(Rc::new(MessageWait {
+                message: "database system is ready to accept connections".to_string(),
+                source: MessageSource::Stderr,
+                timeout: 20,
+            }));
+        test.add_composition(postgres);
+        test
+    }
+
+    fn open_connection(ops: &DockerOperations) -> PgConnection {
+        let container = ops.handle("postgres").expect("retrieve postgres container");
+        let ip = container.ip();
+        // This is the default postgres serve port
+        let port = "5432";
+        let conn_string = format!("postgres://postgres:postgres@{}:{}", ip, port);
+        PgConnection::establish(&conn_string).expect("Failed to establish PG connection")
+    }
+
+    #[test]
+    fn iam_add_user() {
+        let docker = create_docker();
+        docker.run(|ops| {
+            let conn = open_connection(&ops);
+
+            let users_table = "CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  timezone VARCHAR NULL,
+  inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);";
+
+            let identities_table = "
+CREATE TABLE identities (
+  id SERIAL PRIMARY KEY,
+  provider VARCHAR NOT NULL, -- eg. 'github'
+  pid VARCHAR NOT NULL, -- user's id in that provider
+  user_id INT NOT NULL REFERENCES users(id),
+  email VARCHAR NOT NULL,
+  username VARCHAR NOT NULL,
+  inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(provider, id)
+);";
+
+            diesel::sql_query(users_table)
+                .execute(&conn)
+                .expect("failed to create table users");
+            diesel::sql_query(identities_table)
+                .execute(&conn)
+                .expect("failed to create table identities");
+
+            // SCENARIO 1: Insert new user and identity
+            let user_info = ProviderUserInfo {
+                provider: "facebook",
+                pid: "1094".into(),
+                email: "lau@lau.nl".into(),
+                username: "Lautje".into(),
+            };
+            let user = fetch_or_insert_user_in_db(&conn, &user_info)
+                .expect("failed: fetch_or_insert_user_in_db: {}");
+            assert_eq!(true, user.first_login);
+            let identities =
+                db::identities_find_by_email_or_id(&conn, "facebook", "1094", "lau@lau.nl")
+                    .expect("failed: identities_find_by_email_or_id");
+            assert_eq!(1, identities.len());
+
+            // SCENARIO 2a: Insert new user and identity
+            let user_info = ProviderUserInfo {
+                provider: "facebook",
+                pid: "12345".into(),
+                email: "reto@reto.com".into(),
+                username: "Reto".into(),
+            };
+            let user = fetch_or_insert_user_in_db(&conn, &user_info)
+                .expect("failed: fetch_or_insert_user_in_db: {}");
+            assert_eq!(true, user.first_login);
+            let identities =
+                db::identities_find_by_email_or_id(&conn, "facebook", "12345", "reto@reto.com")
+                    .expect("failed: identities_find_by_email_or_id");
+            assert_eq!(1, identities.len());
+
+            // SCENARIO 2b: Login unchanged user
+            let user = fetch_or_insert_user_in_db(&conn, &user_info)
+                .expect("failed: fetch_or_insert_user_in_db: {}");
+            assert_eq!(false, user.first_login);
+            let identities =
+                db::identities_find_by_email_or_id(&conn, "facebook", "12345", "reto@reto.com")
+                    .expect("failed: identities_find_by_email_or_id");
+            assert_eq!(1, identities.len());
+
+            // SCENARIO 2c: Login with new provider but same e-mail
+            let user_info = ProviderUserInfo {
+                provider: "github",
+                pid: "6789".into(),
+                email: "reto@reto.com".into(),
+                username: "rethab".into(),
+            };
+            let user = fetch_or_insert_user_in_db(&conn, &user_info)
+                .expect("failed: fetch_or_insert_user_in_db: {}");
+            assert_eq!(false, user.first_login);
+            let identities =
+                db::identities_find_by_email_or_id(&conn, "facebook", "12345", "reto@reto.com")
+                    .expect("failed: identities_find_by_email_or_id");
+            assert_eq!(2, identities.len());
+            let identities =
+                db::identities_find_by_email_or_id(&conn, "github", "6789", "reto@reto.com")
+                    .expect("failed: identities_find_by_email_or_id");
+            assert_eq!(2, identities.len());
+
+            // SCENARIO 2d: User changed e-mail on github
+            let user_info = ProviderUserInfo {
+                provider: "github",
+                pid: "6789".into(),
+                email: "new@reto.com".into(),
+                username: "rethab".into(),
+            };
+            let user = fetch_or_insert_user_in_db(&conn, &user_info)
+                .expect("failed: fetch_or_insert_user_in_db: {}");
+            assert_eq!(false, user.first_login);
+            let identities =
+                db::identities_find_by_email_or_id(&conn, "github", "6789", "new@reto.com")
+                    .expect("failed: identities_find_by_email_or_id");
+            assert_eq!(1, identities.len());
+
+            let identities =
+                db::identities_find_by_email_or_id(&conn, "facebook", "12345", "reto@reto.com")
+                    .expect("failed: identities_find_by_email_or_id");
+            assert_eq!(1, identities.len());
+
+            let identities =
+                db::identities_find_by_email_or_id(&conn, "facebook", "12345", "new@reto.com")
+                    .expect("failed: identities_find_by_email_or_id");
+            assert_eq!(2, identities.len()); // fixme this fails
+
+            // SCENARIO 3a: Insert new user and identity
+            let user_info = ProviderUserInfo {
+                provider: "facebook",
+                pid: "2020".into(),
+                email: "marre@imagine.com".into(),
+                username: "Marre".into(),
+            };
+            let user = fetch_or_insert_user_in_db(&conn, &user_info)
+                .expect("failed: fetch_or_insert_user_in_db: {}");
+            assert_eq!(true, user.first_login);
+            let identities =
+                db::identities_find_by_email_or_id(&conn, "facebook", "2020", "marre@imagine.com")
+                    .expect("failed: identities_find_by_email_or_id");
+            assert_eq!(1, identities.len());
+            // SCENARIO 3b: User also logs in via github with same e-mail
+            let user_info = ProviderUserInfo {
+                provider: "github",
+                pid: "89421".into(),
+                email: "marre@imagine.com".into(),
+                username: "marrethecoder".into(),
+            };
+            let user = fetch_or_insert_user_in_db(&conn, &user_info)
+                .expect("failed: fetch_or_insert_user_in_db: {}");
+            assert_eq!(false, user.first_login);
+            let identities =
+                db::identities_find_by_email_or_id(&conn, "github", "89421", "marre@imagine.com")
+                    .expect("failed: identities_find_by_email_or_id");
+            assert_eq!(2, identities.len());
+        })
+    }
+}

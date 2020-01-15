@@ -34,3 +34,5 @@ branch = "master"
 default-features = false
 features = ["rust-native-tls"]
 
+[dev-dependencies]
+dockertest = "0.0.3"

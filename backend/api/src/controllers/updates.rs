@@ -90,7 +90,7 @@ fn list(session: Protected, db: DigesterDbConn, offset: u32, limit: u32) -> Json
     }
 }
 
-#[allow(unused_imports)]
+#[cfg(test)]
 mod tests {
     use super::*;
     use chrono::offset::TimeZone;

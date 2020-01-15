@@ -283,7 +283,7 @@ fn next_due_date_for_subscription(subscription: &Subscription, now: DateTime<Tz>
     }
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 mod tests {
     use super::*;
     use chrono::naive::NaiveTime;

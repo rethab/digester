@@ -3,6 +3,8 @@
 #[macro_use]
 extern crate rocket;
 
+extern crate dockertest;
+
 extern crate api;
 
 use api::iam;
