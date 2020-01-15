@@ -50,9 +50,8 @@ pub fn create_subject(env: &Env, subs: &[MailjetSubscription]) -> String {
     }
 
     if !added_one {
-        match subs.iter().next() {
-            Some(sub) => subject.push_str(&sub.title),
-            None => {}
+        if let Some(sub) = subs.iter().next() {
+            subject.push_str(&sub.title);
         }
     } else if there_would_be_more {
         subject.push_str(" and more");
@@ -104,7 +103,7 @@ impl MailjetMessage {
                 email: email.clone(),
                 name: email,
             }],
-            subject: subject,
+            subject,
             template_id: 1_153_883, // todo make flexible
             template_language: true,
             template_error_reporting: MailjetTemplateErrorReporting {
