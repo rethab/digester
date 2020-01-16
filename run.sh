@@ -69,6 +69,11 @@ function run_psql() {
   docker-compose exec postgres psql --user postgres
 }
 
+function run_psql_stg() {
+  source .env.integration.local
+  psql $DATABASE_URL?sslmode=require
+}
+
 function run_redis() {
   type redli >/dev/null || { echo "Missing redli. Install with $CMD install_redli"; exit 1; };
   redli
@@ -104,7 +109,7 @@ function run_sanity_check() {
   popd
 
   # update .bashrc
-  sed -i "s/^DIGESTER_RUN_WORDLIST=.*/DIGESTER_RUN_WORDLIST=\"worker worker-loop api fe db kill-db build-db psql redis install-redli logs-db sanity pull-stg-cfg api-stg test\"/g" ~/.bashrc
+  sed -i "s/^DIGESTER_RUN_WORDLIST=.*/DIGESTER_RUN_WORDLIST=\"worker worker-loop api fe db kill-db build-db psql psql-stg redis install-redli logs-db sanity pull-stg-cfg api-stg test\"/g" ~/.bashrc
   echo "You might have to reload your .bashrc"
 
   # check this script
@@ -122,6 +127,7 @@ case $CMD in
   kill-db)       kill_db ;;
   build-db)      build_db ;;
   psql)          run_psql ;;
+  psql-stg)      run_psql_stg ;;
   redis)         run_redis ;;
   install-redli) install_redli ;;
   logs-db)       run_db_logs ;;
