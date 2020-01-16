@@ -9,7 +9,7 @@
       ></v-select>
     </v-col>
     <v-col cols="3">
-      <v-select v-model="value.day" :disabled="!isWeekly" :items="days" append-icon></v-select>
+      <v-select v-model="value.day" v-if="isWeekly" :items="days" append-icon></v-select>
     </v-col>
     <v-col cols="4">
       <v-select v-model="value.time" :items="times" append-icon></v-select>
