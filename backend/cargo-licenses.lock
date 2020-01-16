@@ -1,6 +1,7 @@
 adler32	1.0.4	Remi Rampin <remirampin@gmail.com>	https://github.com/remram44/adler32-rs	Zlib		Minimal Adler32 implementation for Rust.
 aho-corasick	0.6.10	Andrew Gallant <jamslam@gmail.com>	https://github.com/BurntSushi/aho-corasick	MIT OR Unlicense		Fast multiple substring searching with finite state machines.
 aho-corasick	0.7.6	Andrew Gallant <jamslam@gmail.com>	https://github.com/BurntSushi/aho-corasick	MIT OR Unlicense		Fast multiple substring searching.
+antidote	1.0.0	Steven Fackler <sfackler@gmail.com>	https://github.com/sfackler/rust-antidote	Apache-2.0 OR MIT		Poison-free versions of the standard library Mutex and RwLock types
 api	0.1.0	Reto Habluetzel <rethab@protonmail.ch>				
 ascii	0.9.3	Thomas Bahn <thomas@thomas-bahn.net>|Torbjørn Birch Moltu <t.b.moltu@lyse.net>|Simon Sapin <simon.sapin@exyr.org>	https://github.com/tomprogrammer/rust-ascii	Apache-2.0 OR MIT		ASCII-only equivalents to `char`, `str` and `String`.
 atty	0.2.13	softprops <d.tangren@gmail.com>	https://github.com/softprops/atty	MIT		A simple interface for querying atty
@@ -42,6 +43,7 @@ devise_codegen	0.2.0	Sergio Benitez <sb@sergio.bz>	https://github.com/SergioBeni
 devise_core	0.2.0	Sergio Benitez <sb@sergio.bz>	https://github.com/SergioBenitez/Devise	Apache-2.0 OR MIT		A library for devising derives and other procedural macros.
 diesel	1.4.3	Sean Griffin <sean@seantheprogrammer.com>	https://github.com/diesel-rs/diesel	Apache-2.0 OR MIT		A safe, extensible ORM and Query Builder for PostgreSQL, SQLite, and MySQL
 diesel_derives	1.4.1	Sean Griffin <sean@seantheprogrammer.com>	https://github.com/diesel-rs/diesel/tree/master/diesel_derives	Apache-2.0 OR MIT		You should not use this crate directly, it is internal to Diesel.
+dockertest	0.0.3	Vegard Sandengen <vegard@orcalabs.no>|Jon Foss Mikalsen <jon@orcalabs.no>	https://gitlab.com/orcalabs/public/dockertest-rs	MIT		A library to control docker containers when running your integration tests.
 dtoa	0.4.4	David Tolnay <dtolnay@gmail.com>	https://github.com/dtolnay/dtoa	Apache-2.0 OR MIT		Fast functions for printing floating-point primitives to an io::Write
 either	1.5.3	bluss	https://github.com/bluss/either	Apache-2.0 OR MIT		The enum `Either` with variants `Left` and `Right` is a general purpose sum type with two cases.
 encoding_rs	0.8.20	Henri Sivonen <hsivonen@hsivonen.fi>	https://github.com/hsivonen/encoding_rs	Apache-2.0 OR MIT		A Gecko-oriented implementation of the Encoding Standard
@@ -66,11 +68,14 @@ h2	0.1.26	Carl Lerche <me@carllerche.com>	https://github.com/hyperium/h2	MIT		An
 half	1.4.0	Kathryn Long <squeeself@gmail.com>	https://github.com/starkat99/half-rs	Apache-2.0 OR MIT		Half-precision floating point f16 and bf16 types for Rust implementing the IEEE 754-2008 standard binary16 and bfloat16 types.
 heck	0.3.1	Without Boats <woboats@gmail.com>	https://github.com/withoutboats/heck	Apache-2.0 OR MIT		heck is a case conversion library.
 hermit-abi	0.1.5	Stefan Lankes	https://github.com/hermitcore/rusty-hermit	Apache-2.0 OR MIT		hermit-abi is small interface to call functions from the unikernel RustyHermit. It is used to build the target `x86_64-unknown-hermit`.
+hex	0.3.2	KokaKiwi <kokakiwi@kokakiwi.net>	https://github.com/KokaKiwi/rust-hex	Apache-2.0 OR MIT		Encoding and decoding data into/from hexadecimal representation.
 http	0.1.21	Alex Crichton <alex@alexcrichton.com>|Carl Lerche <me@carllerche.com>|Sean McArthur <sean@seanmonstar.com>	https://github.com/hyperium/http	Apache-2.0 OR MIT		A set of types for representing HTTP requests and responses.
 httparse	1.3.4	Sean McArthur <sean@seanmonstar.com>	https://github.com/seanmonstar/httparse	Apache-2.0 OR MIT		A tiny, safe, speedy, zero-copy HTTP/1.x parser.
 http-body	0.1.0	Carl Lerche <me@carllerche.com>	https://github.com/hyperium/http-body	MIT		Trait representing an asynchronous, streaming, HTTP request or response body.
 hyper	0.10.16	Sean McArthur <sean.monstar@gmail.com>|Jonathan Reem <jonathan.reem@gmail.com>	https://github.com/hyperium/hyper	MIT		A modern HTTP library.
 hyper	0.12.35	Sean McArthur <sean@seanmonstar.com>	https://github.com/hyperium/hyper	MIT		A fast and correct HTTP library.
+hyperlocal	0.6.0	softprops <d.tangren@gmail.com>	https://github.com/softprops/hyperlocal	MIT		Hyper bindings for unix domain sockets
+hyper-openssl	0.7.1	Steven Fackler <sfackler@gmail.com>	https://github.com/sfackler/hyper-openssl	Apache-2.0 OR MIT		Hyper TLS support via OpenSSL
 hyper-sync-rustls	0.3.0-rc.4	Sergio Benitez <sb@sergio.bz>	https://github.com/SergioBenitez/hyper-sync-rustls	Apache-2.0 OR MIT		Glue code for Rustls and synchronous Hyper.
 hyper-tls	0.3.2	Sean McArthur <sean@seanmonstar.com>	https://github.com/hyperium/hyper-tls	Apache-2.0 OR MIT		Default TLS implementation for use with hyper
 ident_case	1.0.1	Ted Driggs <ted.driggs@outlook.com>	https://github.com/TedDriggs/ident_case	Apache-2.0 OR MIT		Utility for applying case rules to Rust identifiers.
@@ -90,6 +95,8 @@ lib-channels	0.1.0	Reto Habluetzel <rethab@protonmail.ch>
 lib-db	0.1.0	Reto Habluetzel <rethab@protonmail.ch>				
 lib-digester	0.1.0	Reto Habluetzel <rethab@protonmail.ch>				
 lib-fetcher	0.1.0	Reto Habluetzel <rethab@protonmail.ch>				
+linked-hash-map	0.5.2	Stepan Koltsov <stepan.koltsov@gmail.com>|Andrew Paseltiner <apaseltiner@gmail.com>	https://github.com/contain-rs/linked-hash-map	Apache-2.0 OR MIT		A HashMap wrapper that holds key-value pairs in insertion order
+linked_hash_set	0.1.3	Alex Butler <alexheretic@gmail.com>	https://github.com/alexheretic/linked-hash-set	Apache-2.0		HashSet with insertion ordering
 lock_api	0.3.2	Amanieu d'Antras <amanieu@gmail.com>	https://github.com/Amanieu/parking_lot	Apache-2.0 OR MIT		Wrappers to create fully-featured Mutex and RwLock types. Compatible with no_std.
 log	0.3.9	The Rust Project Developers	https://github.com/rust-lang/log	Apache-2.0 OR MIT		A lightweight logging facade for Rust
 log	0.4.8	The Rust Project Developers	https://github.com/rust-lang/log	Apache-2.0 OR MIT		A lightweight logging facade for Rust
@@ -189,6 +196,7 @@ serde_derive	1.0.104	Erick Tryzelaar <erick.tryzelaar@gmail.com>|David Tolnay <d
 serde_json	1.0.44	Erick Tryzelaar <erick.tryzelaar@gmail.com>|David Tolnay <dtolnay@gmail.com>	https://github.com/serde-rs/json	Apache-2.0 OR MIT		A JSON serialization file format
 serde_urlencoded	0.5.5	Anthony Ramine <n.oxyde@gmail.com>	https://github.com/nox/serde_urlencoded	Apache-2.0 OR MIT		`x-www-form-urlencoded` meets Serde
 sha1	0.6.0	Armin Ronacher <armin.ronacher@active-4.com>	https://github.com/mitsuhiko/rust-sha1	BSD-3-Clause		Minimal implementation of SHA1 for Rust.
+shiplift	0.5.0	softprops <d.tangren@gmail.com>	https://github.com/softprops/shiplift	MIT		A Rust interface for maneuvering Docker containers
 slab	0.4.2	Carl Lerche <me@carllerche.com>	https://github.com/carllerche/slab	MIT		Pre-allocated storage for a uniform data type
 smallvec	0.6.13	Simon Sapin <simon.sapin@exyr.org>	https://github.com/servo/rust-smallvec	Apache-2.0 OR MIT		'Small vector' optimization: store up to a small number of items on the stack
 smallvec	1.0.0	Simon Sapin <simon.sapin@exyr.org>	https://github.com/servo/rust-smallvec	Apache-2.0 OR MIT		'Small vector' optimization: store up to a small number of items on the stack
@@ -200,6 +208,7 @@ structopt-derive	0.3.5	Guillaume Pinot <texitoi@texitoi.eu>	https://github.com/T
 syn	0.15.44	David Tolnay <dtolnay@gmail.com>	https://github.com/dtolnay/syn	Apache-2.0 OR MIT		Parser for Rust source code
 syn	1.0.11	David Tolnay <dtolnay@gmail.com>	https://github.com/dtolnay/syn	Apache-2.0 OR MIT		Parser for Rust source code
 synstructure	0.12.3	Nika Layzell <nika@thelayzells.com>	https://github.com/mystor/synstructure	MIT		Helper methods and macros for custom derives
+tar	0.4.26	Alex Crichton <alex@alexcrichton.com>	https://github.com/alexcrichton/tar-rs	Apache-2.0 OR MIT		A Rust implementation of a TAR file reader and writer. This library does not currently handle compression, but it is abstract over all I/O readers and writers. Additionally, great lengths are taken to ensure that the entire contents are never required to be entirely resident in memory all at once.
 tempfile	3.1.0	Steven Allen <steven@stebalien.com>|The Rust Project Developers|Ashley Mannix <ashleymannix@live.com.au>|Jason White <jasonaw0@gmail.com>	https://github.com/Stebalien/tempfile	Apache-2.0 OR MIT		A library for managing temporary files and directories.
 textwrap	0.11.0	Martin Geisler <martin@geisler.net>	https://github.com/mgeisler/textwrap	MIT		Textwrap is a small library for word wrapping, indenting, and dedenting strings.  You can use it to format strings (such as help and error messages) for display in commandline applications. It is designed to be efficient and handle Unicode characters correctly.
 thread_local	0.3.6	Amanieu d'Antras <amanieu@gmail.com>	https://github.com/Amanieu/thread_local-rs	Apache-2.0 OR MIT		Per-object thread-local storage
@@ -212,6 +221,7 @@ tokio-current-thread	0.1.6	Carl Lerche <me@carllerche.com>	https://github.com/to
 tokio-executor	0.1.9	Carl Lerche <me@carllerche.com>	https://github.com/tokio-rs/tokio	MIT		Future execution primitives
 tokio-fs	0.1.6	Carl Lerche <me@carllerche.com>	https://github.com/tokio-rs/tokio	MIT		Filesystem API for Tokio.
 tokio-io	0.1.12	Carl Lerche <me@carllerche.com>	https://github.com/tokio-rs/tokio	MIT		Core I/O primitives for asynchronous I/O in Rust.
+tokio-openssl	0.3.0	Alex Crichton <alex@alexcrichton.com>	https://github.com/alexcrichton/tokio-openssl	Apache-2.0 OR MIT		An implementation of SSL streams for Tokio backed by OpenSSL
 tokio-reactor	0.1.11	Carl Lerche <me@carllerche.com>	https://github.com/tokio-rs/tokio	MIT		Event loop that drives Tokio I/O resources.
 tokio-sync	0.1.7	Carl Lerche <me@carllerche.com>	https://github.com/tokio-rs/tokio	MIT		Synchronization utilities.
 tokio-tcp	0.1.3	Carl Lerche <me@carllerche.com>	https://github.com/tokio-rs/tokio	MIT		TCP bindings for tokio.
@@ -259,5 +269,6 @@ winapi-x86_64-pc-windows-gnu	0.4.0	Peter Atashian <retep998@gmail.com>	https://g
 winreg	0.6.2	Igor Shaula <gentoo90@gmail.com>	https://github.com/gentoo90/winreg-rs	MIT		Rust bindings to MS Windows Registry API
 worker	0.1.0	Reto Habluetzel <rethab@protonmail.ch>				
 ws2_32-sys	0.2.1	Peter Atashian <retep998@gmail.com>	https://github.com/retep998/winapi-rs	MIT		Contains function definitions for the Windows API library ws2_32. See winapi for types and constants.
+xattr	0.2.2	Steven Allen <steven@stebalien.com>	https://github.com/Stebalien/xattr	Apache-2.0 OR MIT		unix extended filesystem attributes
 yansi	0.4.0	Sergio Benitez <sb@sergio.bz>	https://github.com/SergioBenitez/yansi	Apache-2.0 OR MIT		A dead simple ANSI terminal color painting library.
 yansi	0.5.0	Sergio Benitez <sb@sergio.bz>	https://github.com/SergioBenitez/yansi	Apache-2.0 OR MIT		A dead simple ANSI terminal color painting library.
