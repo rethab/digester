@@ -90,7 +90,6 @@ import InitializeTimezone from "@/components/settings/InitializeTimezone.vue";
 export default {
   data() {
     return {
-      firstLogin: this.$route.query.firstLogin,
       mobile: this.$vuetify.breakpoint.smAndDown
     };
   },
@@ -103,6 +102,9 @@ export default {
   computed: {
     isAuthenticated() {
       return this.$store.getters.isAuthenticated;
+    },
+    firstLogin() {
+      return this.$route.query.firstLogin;
     }
   }
 };
