@@ -186,6 +186,24 @@ fn create_session(c: &mut RedisConnection, user: &User) -> Result<Session, Strin
     Ok(session)
 }
 
+pub fn create_delete_challenge(c: &mut RedisConnection, user_id: i32) -> Result<String, String> {
+    let challenge = Uuid::new_v4().to_string().split_at(6).0.to_owned();
+    let duration = Duration::minutes(3);
+    cache::delete_challenge_store(c, user_id, &challenge, duration).map(|_| challenge)
+}
+
+pub enum DeleteError {
+    Unknown(String),
+    InvalidChallengeResponse,
+}
+pub fn delete_account(
+    c: &mut RedisConnection,
+    user_id: i32,
+    challenge_response: &str,
+) -> Result<(), DeleteError> {
+    unimplemented!()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

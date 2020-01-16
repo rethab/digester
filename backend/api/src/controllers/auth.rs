@@ -16,7 +16,14 @@ use uuid::Uuid;
 pub fn mount(rocket: Rocket) -> Rocket {
     rocket.mount(
         "/auth",
-        routes![me, logout, facebook_oauth_exchange, github_oauth_exchange],
+        routes![
+            me,
+            logout,
+            delete_challenge,
+            delete_account,
+            facebook_oauth_exchange,
+            github_oauth_exchange
+        ],
     )
 }
 
@@ -143,4 +150,51 @@ fn logout(
     let cookie = create_session_cookie(None);
     cookies.remove(cookie);
     JsonResponse::Ok(json!({}))
+}
+
+#[get("/delete_challenge")]
+fn delete_challenge(session: Protected, mut redis: Redis, _r: RateLimited) -> JsonResponse {
+    match iam::create_delete_challenge(&mut redis, session.0.user_id) {
+        Ok(challenge) => JsonResponse::Ok(json!({ "challenge": challenge })),
+        Err(err) => {
+            eprintln!(
+                "Failed to create challenge for {}: {:?}",
+                session.0.user_id, err
+            );
+            JsonResponse::InternalServerError
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct DeleteChallengeResponse {
+    response: String,
+}
+
+#[delete("/me", data = "<challenge_response>")]
+fn delete_account(
+    challenge_response: Json<DeleteChallengeResponse>,
+    session: Protected,
+    mut redis: Redis,
+    mut cookies: Cookies,
+    _r: RateLimited,
+) -> JsonResponse {
+    use iam::DeleteError::*;
+    match iam::delete_account(
+        &mut redis,
+        session.0.user_id,
+        &challenge_response.0.response,
+    ) {
+        Ok(()) => JsonResponse::Ok(json!({})),
+        Err(InvalidChallengeResponse) => {
+            JsonResponse::BadRequest("Invalid challenge response".into())
+        }
+        Err(Unknown(err)) => {
+            eprintln!(
+                "Failed to create challenge for {}: {:?}",
+                session.0.user_id, err
+            );
+            JsonResponse::InternalServerError
+        }
+    }
 }

@@ -1,15 +1,18 @@
 <template>
   <div>
     <h1 class="display-1 d-flex justify-center">Settings</h1>
-    <TimezoneSettings />
+    <SetTimezone />
+    <DeleteAccount />
   </div>
 </template>
 
 <script>
-import TimezoneSettings from "@/components/settings/TimezoneSettings.vue";
+import SetTimezone from "@/components/settings/SetTimezone.vue";
+import DeleteAccount from "@/components/settings/DeleteAccount.vue";
 export default {
   components: {
-    TimezoneSettings
+    SetTimezone,
+    DeleteAccount
   }
 };
 </script>
