@@ -18,6 +18,7 @@
 "uri-js@4.2.2","BSD-2-Clause","https://github.com/garycourt/uri-js"
 "vue-authenticate@1.4.1","MIT","https://github.com/dgrubelic/vue-authenticate"
 "vue-axios@2.1.5","MIT","https://github.com/imcvampire/vue-axios"
+"vue-infinite-loading@2.4.4","MIT","https://github.com/PeachScript/vue-infinite-loading"
 "vue-router@3.1.3","MIT","https://github.com/vuejs/vue-router"
 "vue-typed-js@0.1.2","MIT","https://github.com/Orlandster1998/vue-typed-js"
 "vue@2.6.10","MIT","https://github.com/vuejs/vue"
