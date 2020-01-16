@@ -2,9 +2,13 @@
   <v-container>
     <v-card>
       <v-card-title>New Subscription</v-card-title>
-      <v-card-subtitle>
+      <v-card-subtitle v-if="isGithubRelease">
         Into golang? Try
         <span class="font-italic">golang/tools</span>
+      </v-card-subtitle>
+      <v-card-subtitle v-if="isRss">
+        Into tech news? Try
+        <span class="font-italic">theverge.com</span>
       </v-card-subtitle>
       <v-card-text>
         <v-row cols="12" align="center">
@@ -15,15 +19,11 @@
               :error-messages="typeErrors"
               label="Type"
               append-icon
-              :disabled="true"
+              :disabled="types.length === 1"
             ></v-select>
           </v-col>
           <v-col :cols="twoRows ? 8 : 5">
-            <v-text-field
-              v-model.trim="repository"
-              :error-messages="repositoryErrors"
-              :label="repositoryLabel"
-            ></v-text-field>
+            <v-text-field v-model.trim="name" :error-messages="nameErrors" :label="nameLabel"></v-text-field>
           </v-col>
           <v-col v-if="!twoRows" cols="4">
             <FrequencySelection v-model="frequency" />
@@ -49,6 +49,7 @@
 
 <script>
 import FrequencySelection from "@/components/subs/FrequencySelection.vue";
+import Features from "@/services/features.js";
 export default {
   components: {
     FrequencySelection
@@ -56,17 +57,15 @@ export default {
   data() {
     return {
       twoRows: this.$vuetify.breakpoint.smAndDown,
+      rssChannel: Features().rssChannel(),
 
       loading: false,
       snackbar: false,
 
-      types: [{ text: "Github", value: "GithubRelease" }],
-      type: "GithubRelease",
       typeErrors: [],
 
-      repository: "",
-      repositoryErrors: [],
-      repositoryLabel: "Repository",
+      name: "",
+      nameErrors: [],
 
       frequency: {
         frequency: "Weekly",
@@ -77,7 +76,36 @@ export default {
   },
   computed: {
     hasErrors() {
-      return this.typeErrors.length == 0 && this.repositoryErrors.length == 0;
+      return this.typeErrors.length == 0 && this.nameErrors.length == 0;
+    },
+    isGithubRelease() {
+      return this.type === "GithubRelease";
+    },
+    isRss() {
+      return this.type === "RSS";
+    },
+    nameLabel() {
+      if (this.isGithubRelease) {
+        return "Repository";
+      } else if (this.isRss) {
+        return "Url";
+      } else {
+        return "";
+      }
+    },
+    type() {
+      return this.rssChannel ? "RSS" : "GithubRelease";
+    },
+    types() {
+      let types = [];
+
+      if (this.rssChannel) {
+        types.push({ text: "Blog / RSS", value: "RSS" });
+      }
+
+      types.push({ text: "Github", value: "GithubRelease" });
+
+      return types;
     }
   },
   methods: {
@@ -87,7 +115,7 @@ export default {
         this.$store
           .dispatch("subscribe", {
             type: this.type,
-            name: this.repository,
+            name: this.name,
             frequency: this.frequency.frequency,
             day: this.frequency.day,
             time: this.frequency.time
@@ -95,16 +123,14 @@ export default {
           .then(() => {
             this.loading = false;
             this.snackbar = true;
-            this.repository = "";
+            this.name = "";
           })
           .catch(err => {
             this.loading = false;
             if (err.response.data.error) {
-              this.repositoryErrors.push(err.response.data.error);
+              this.nameErrors.push(err.response.data.error);
             } else {
-              this.repositoryErrors.push(
-                "Something went wrong. Please try again."
-              );
+              this.nameErrors.push("Something went wrong. Please try again.");
             }
           });
       } else {
@@ -113,14 +139,20 @@ export default {
     },
     validate() {
       this.clearErrors();
-      if (!/^[^/]+\/[^/]+$/.test(this.repository)) {
-        this.repositoryErrors.push("Format: author/repository");
+      if (this.isGithubRelease) {
+        if (!/^[^/]+\/[^/]+$/.test(this.name)) {
+          this.nameErrors.push("Format: author/repository");
+        }
+      } else if (this.isRss) {
+        if (!/^.*[^.]+\.[^.]+.*$/.test(this.name)) {
+          this.nameErrors.push("Format: theverge.com");
+        }
       }
       return this.hasErrors;
     },
     clearErrors() {
       this.typeErrors = [];
-      this.repositoryErrors = [];
+      this.nameErrors = [];
     }
   }
 };
