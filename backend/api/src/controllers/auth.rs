@@ -177,18 +177,26 @@ fn delete_account(
     session: Protected,
     mut redis: Redis,
     mut cookies: Cookies,
+    db: DigesterDbConn,
     _r: RateLimited,
 ) -> JsonResponse {
     use iam::DeleteError::*;
     match iam::delete_account(
         &mut redis,
+        &db,
         session.0.user_id,
         &challenge_response.0.response,
     ) {
-        Ok(()) => JsonResponse::Ok(json!({})),
+        Ok(()) => {
+            if let Err(err) = iam::logout(&mut redis, session.0) {
+                eprintln!("Failed to logout after deleting account: {}", err);
+            }
+            JsonResponse::Ok(json!({}))
+        }
         Err(InvalidChallengeResponse) => {
             JsonResponse::BadRequest("Invalid challenge response".into())
         }
+        Err(MissingChallenge) => JsonResponse::BadRequest("Expired challenge response".into()),
         Err(Unknown(err)) => {
             eprintln!(
                 "Failed to create challenge for {}: {:?}",

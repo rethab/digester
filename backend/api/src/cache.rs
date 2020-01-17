@@ -79,10 +79,16 @@ pub fn delete_challenge_store(
         .map_err(|err| format!("Failed to store delete challenge in redis: {:?}", err))
 }
 
-pub fn delete_challenge_get(conn: &mut Connection, user_id: i32) -> Result<(), String> {
+pub fn delete_challenge_get(conn: &mut Connection, user_id: i32) -> Result<Option<String>, String> {
     let key = create_delete_challenge_key(user_id);
     conn.get(key.clone())
         .map_err(|err| format!("Failed to get key {}: {:?}", key, err))
+}
+
+pub fn delete_challenge_delete(conn: &mut Connection, user_id: i32) -> Result<(), String> {
+    let key = create_delete_challenge_key(user_id);
+    conn.del(key.clone())
+        .map_err(|err| format!("Failed to delete key {}: {:?}", key, err))
 }
 
 fn create_delete_challenge_key(user_id: i32) -> String {

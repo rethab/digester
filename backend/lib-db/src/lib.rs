@@ -6,6 +6,7 @@ use chrono_tz::Tz;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::result;
+use diesel::result::Error;
 use std::env;
 
 pub struct Connection(PgConnection);
@@ -290,6 +291,23 @@ pub fn subscriptions_update(
         .map_err(|err| format!("Failed to update single subscription: {:?}", err))
 }
 
+pub fn subscriptions_delete_by_user_id(conn: &PgConnection, user_id: i32) -> Result<(), Error> {
+    // note that this can fail if we are creating digests at the same time
+    use schema::digests;
+    use schema::subscriptions;
+
+    let subs_ids_query = subscriptions::table
+        .filter(subscriptions::user_id.eq(user_id))
+        .select(subscriptions::id);
+
+    diesel::delete(digests::table.filter(digests::subscription_id.eq_any(subs_ids_query)))
+        .execute(conn)?;
+
+    diesel::delete(subscriptions::table.filter(subscriptions::user_id.eq(user_id)))
+        .execute(conn)
+        .map(|_| ())
+}
+
 pub fn digests_insert(conn: &Connection, digest: &InsertDigest) -> Result<(), InsertError> {
     use schema::digests;
     diesel::insert_into(digests::table)
@@ -457,6 +475,17 @@ pub fn users_insert(
     let identity = identities_insert(conn, new_identity)?;
 
     Ok((user, identity))
+}
+
+pub fn users_delete_by_id(conn: &PgConnection, user_id: i32) -> Result<(), Error> {
+    use schema::identities;
+    use schema::users;
+
+    diesel::delete(identities::table.filter(identities::user_id.eq(user_id))).execute(conn)?;
+
+    diesel::delete(users::table.filter(users::id.eq(user_id)))
+        .execute(conn)
+        .map(|_| ())
 }
 
 pub fn identities_find_by_user_id(

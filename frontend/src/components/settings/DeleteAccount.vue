@@ -11,6 +11,7 @@
         <p>
           Is there anything we can do to make you change your decision? Is something not working for you? Are you missing a feature? Please contact us at
           <a
+            class="black--text"
             href="mailto:info@digester.app"
           >info@digester.app</a>
         </p>
@@ -26,7 +27,11 @@
             Fair enough. There's only one thing we need you to do before you leave. Please type
             <strong>{{challenge}}</strong> into the below textfield
           </p>
-          <v-text-field v-model.trim="response" label="Enter the above text here"></v-text-field>
+          <v-text-field
+            v-model.trim="response"
+            :error-messages="deleteErrors"
+            label="Enter the above text here"
+          ></v-text-field>
         </div>
       </v-card-text>
       <v-card-actions>
@@ -34,6 +39,7 @@
         <v-btn
           @click.stop="deleteAccount"
           :disabled="!showDeleteButton"
+          :loading="deletionInProgress"
           class="red"
         >Delete Account Forever</v-btn>
       </v-card-actions>
@@ -48,6 +54,8 @@ export default {
   data() {
     return {
       knowWhatTheyreDoing: false,
+      deletionInProgress: false,
+      deleteErrors: [],
       challenge: null,
       response: null
     };
@@ -59,7 +67,7 @@ export default {
   },
   watch: {
     knowWhatTheyreDoing(newValue) {
-      console.log(newValue);
+      this.deleteErrors = [];
       if (newValue == true) {
         this.fetchChallenge();
       } else {
@@ -81,14 +89,28 @@ export default {
         });
     },
     deleteAccount() {
+      this.deletionInProgress = true;
       Api()
-        .delete("/auth/me", { response: this.response })
+        .delete("/auth/me", { data: { response: this.response } })
         .then(() => {
-          // todo show message
-          this.go("/");
+          this.deletionInProgress = false;
+
+          // redirecting to auth login, because there we can show messages
+          // easily. the UX is bad though ("Login Required" title), but there
+          // are more important things than UX for leaving customers after
+          // their account deletion was successful..
+          this.$store.dispatch("unauthenticated").then(() => {
+            this.$router.push({
+              name: "auth-login",
+              query: { accountDeleted: true }
+            });
+          });
         })
         .catch(() => {
-          // todo handle error
+          this.deleteErrors.push(
+            "Failed to delete account. Please try again or contact support if the problem persists."
+          );
+          this.deletionInProgress = false;
         });
     }
   }

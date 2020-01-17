@@ -144,7 +144,7 @@ pub fn cors_fairing(config: &Config) -> Result<Cors, String> {
     let allowed_origins = AllowedOrigins::some_exact(&[allowed_origin]);
     CorsOptions {
         allowed_origins,
-        allowed_methods: vec![Method::Get, Method::Post, Method::Put]
+        allowed_methods: vec![Method::Get, Method::Post, Method::Put, Method::Delete]
             .into_iter()
             .map(From::from)
             .collect(),

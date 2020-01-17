@@ -194,14 +194,46 @@ pub fn create_delete_challenge(c: &mut RedisConnection, user_id: i32) -> Result<
 
 pub enum DeleteError {
     Unknown(String),
+    MissingChallenge,
     InvalidChallengeResponse,
 }
 pub fn delete_account(
     c: &mut RedisConnection,
+    db: &PgConnection,
     user_id: i32,
     challenge_response: &str,
 ) -> Result<(), DeleteError> {
-    unimplemented!()
+    let challenge = match cache::delete_challenge_get(c, user_id) {
+        Err(err) => {
+            return Err(DeleteError::Unknown(format!(
+                "Failed to get delete challenge: {:?}",
+                err
+            )))
+        }
+        Ok(None) => return Err(DeleteError::MissingChallenge),
+        Ok(Some(challenge)) => challenge,
+    };
+
+    if challenge_response != challenge {
+        if let Err(err) = cache::delete_challenge_delete(c, user_id) {
+            eprintln!("Failed to delete challenge: {}", err);
+        }
+        return Err(DeleteError::InvalidChallengeResponse);
+    }
+
+    println!("Going to delete user with id {}", user_id);
+
+    db.build_transaction()
+        .run(|| {
+            db::subscriptions_delete_by_user_id(db, user_id)?;
+            db::users_delete_by_id(db, user_id)
+        })
+        .map_err(|err| {
+            DeleteError::Unknown(format!(
+                "Failed to delete subscriptions and user {}: {:?}",
+                user_id, err,
+            ))
+        })
 }
 
 #[cfg(test)]

@@ -24,6 +24,8 @@ export default {
         ? "This page requires authentication. Please log in."
         : this.$route.query.sessionExpired
         ? "Your session has expired. Please login again."
+        : this.$route.query.accountDeleted
+        ? "Your account was successfully deleted."
         : null
     };
   },
@@ -31,7 +33,7 @@ export default {
   mounted() {
     const isAuthenticated = this.$store.getters.isAuthenticated;
     if (isAuthenticated) {
-      this.$router.push({ name: "home" });
+      // this.$router.push({ name: "home" });
     }
   }
 };
