@@ -203,7 +203,7 @@ pub fn delete_account(
     user_id: i32,
     challenge_response: &str,
 ) -> Result<(), DeleteError> {
-    let challenge = match cache::delete_challenge_get(c, user_id) {
+    let challenge = match cache::delete_challenge_get_and_delete(c, user_id) {
         Err(err) => {
             return Err(DeleteError::Unknown(format!(
                 "Failed to get delete challenge: {:?}",
@@ -215,9 +215,6 @@ pub fn delete_account(
     };
 
     if challenge_response != challenge {
-        if let Err(err) = cache::delete_challenge_delete(c, user_id) {
-            eprintln!("Failed to delete challenge: {}", err);
-        }
         return Err(DeleteError::InvalidChallengeResponse);
     }
 

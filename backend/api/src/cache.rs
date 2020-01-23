@@ -79,16 +79,20 @@ pub fn delete_challenge_store(
         .map_err(|err| format!("Failed to store delete challenge in redis: {:?}", err))
 }
 
-pub fn delete_challenge_get(conn: &mut Connection, user_id: i32) -> Result<Option<String>, String> {
+pub fn delete_challenge_get_and_delete(
+    conn: &mut Connection,
+    user_id: i32,
+) -> Result<Option<String>, String> {
     let key = create_delete_challenge_key(user_id);
-    conn.get(key.clone())
-        .map_err(|err| format!("Failed to get key {}: {:?}", key, err))
-}
+    let result = conn
+        .get(key.clone())
+        .map_err(|err| format!("Failed to get key {}: {:?}", key, err));
 
-pub fn delete_challenge_delete(conn: &mut Connection, user_id: i32) -> Result<(), String> {
-    let key = create_delete_challenge_key(user_id);
+    // delete the key regardless of whether retrieving it worked. in any
+    // case if the user wants to try again, we need to generate a fresh challenge.
     conn.del(key.clone())
-        .map_err(|err| format!("Failed to delete key {}: {:?}", key, err))
+        .map_err(|err| format!("Failed to delete key {}: {:?}", key, err))?;
+    result
 }
 
 fn create_delete_challenge_key(user_id: i32) -> String {

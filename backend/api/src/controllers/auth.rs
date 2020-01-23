@@ -166,6 +166,20 @@ fn delete_challenge(session: Protected, mut redis: Redis, _r: RateLimited) -> Js
     }
 }
 
+/// When a user wants to delete their account, we
+/// send them a delete challenge, which is a random
+/// string they need to repeat back. This 'answer'
+/// is the challenge response. If this matches the
+/// original challenge we sent them (we keep it in
+/// our cache), the account may be deleted.
+///
+/// The idea of using this challenge is that the user
+/// needs an interaction, so deleting the account
+/// cannot (as) easily be automated as just sending
+/// a delete request. However if we were fully
+/// vulnerable to XSS in the sense that the attacker
+/// could execute two request, the attack might as well
+/// first fetch the challenge and then respond with it.
 #[derive(Deserialize)]
 struct DeleteChallengeResponse {
     response: String,
@@ -191,6 +205,8 @@ fn delete_account(
             if let Err(err) = iam::logout(&mut redis, session.0) {
                 eprintln!("Failed to logout after deleting account: {}", err);
             }
+            let cookie = create_session_cookie(None);
+            cookies.remove(cookie);
             JsonResponse::Ok(json!({}))
         }
         Err(InvalidChallengeResponse) => {

@@ -17,6 +17,7 @@
         </p>
       </v-card-subtitle>
       <v-card-text>
+        <p v-if="errorMessage" class="error">{{errorMessage}}</p>
         <v-checkbox v-model="knowWhatTheyreDoing">
           <template v-slot:label>
             <span class="body-2">I know what I'm doing and I want to leave.</span>
@@ -55,6 +56,7 @@ export default {
     return {
       knowWhatTheyreDoing: false,
       deletionInProgress: false,
+      errorMessage: null,
       deleteErrors: [],
       challenge: null,
       response: null
@@ -73,6 +75,7 @@ export default {
       } else {
         this.challenge = null;
         this.response = null;
+        this.errorMessage = null;
       }
     }
   },
@@ -84,7 +87,8 @@ export default {
           this.challenge = resp.data.challenge;
         })
         .catch(err => {
-          // todo handle error
+          this.errorMessage =
+            "Something went wrong. Please try again or contact support if this problem persists.";
           this.failed = err;
         });
     },
