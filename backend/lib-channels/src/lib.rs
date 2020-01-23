@@ -1,3 +1,5 @@
+#![feature(option_result_contains)]
+
 extern crate chrono;
 
 /// A channel is something where we can pull updates
