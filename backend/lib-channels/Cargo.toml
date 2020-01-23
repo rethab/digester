@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 chrono = "0.4"
 rss = { version = "1.8", features = ["from_url"] }
+atom_syndication = "0.7"
 url = "2.1"
 reqwest = { version = "0.10", features = ["blocking"] }
 kuchiki = "0.8"

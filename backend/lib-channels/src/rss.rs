@@ -1,5 +1,7 @@
 use super::channel::*;
 
+use atom_syndication::Error as AtomError;
+use atom_syndication::Feed;
 use chrono::{DateTime, Utc};
 use kuchiki::traits::*;
 use reqwest::header::{ToStrError, CONTENT_TYPE};
@@ -132,6 +134,12 @@ impl From<RssError> for FeedError {
     }
 }
 
+impl From<AtomError> for FeedError {
+    fn from(err: AtomError) -> FeedError {
+        FeedError::TechnicalError(format!("Failed to parse XML as atom feed: {:?}", err))
+    }
+}
+
 impl From<reqwest::Error> for FeedError {
     fn from(err: reqwest::Error) -> FeedError {
         FeedError::TechnicalError(format!(
@@ -176,7 +184,18 @@ fn fetch_feeds(full_url: &Url) -> Result<Vec<FeedInfo>, FeedError> {
             Ok(feeds)
         }
         Some(c_type) if c_type.to_str()?.contains("application/xml") => {
-            Err(TechnicalError("atom feeds are not supported yet".into()))
+            let buffer = BufReader::new(response);
+            let feed: Feed = Feed::read_from(buffer)?;
+            Ok(vec![FeedInfo {
+                title: feed.title().into(),
+                url: sane_url.clone(),
+                link: feed
+                    .links()
+                    .iter()
+                    .next()
+                    .map(|l| l.href().into())
+                    .unwrap_or(sane_url),
+            }])
         }
         Some(c_type) if c_type.to_str()?.contains("application/rss+xml") => {
             let buffer = BufReader::new(response);
@@ -244,25 +263,25 @@ mod tests {
         assert_eq!(2, feeds.len());
         let all_posts = feeds
             .iter()
-            .find(|f| f.title == "The Verge - All Posts")
+            .find(|f| f.title == "The Verge -  All Posts")
             .expect("Missing All Posts");
         assert_eq!(
             FeedInfo {
-                title: "The Verge - All Posts".into(),
+                title: "The Verge -  All Posts".into(),
                 url: "https://theverge.com/rss/index.xml".into(),
-                link: "https://theverge.com".into(),
+                link: "https://www.theverge.com/".into(),
             },
             *all_posts
         );
         let front_pages = feeds
             .iter()
-            .find(|f| f.title == "The Verge - Front Pages")
+            .find(|f| f.title == "The Verge -  Front Pages")
             .expect("Front Pages missing");
         assert_eq!(
             FeedInfo {
-                title: "The Verge - Front Page".into(),
-                url: "https://theverge.com/rss/front-page/index.xml".into(),
-                link: "https://theverge.com".into(),
+                title: "The Verge -  Front Pages".into(),
+                url: "https://www.theverge.com/rss/front-page/index.xml".into(),
+                link: "https://www.theverge.com/".into(),
             },
             *front_pages
         );
@@ -275,13 +294,13 @@ mod tests {
         assert_eq!(1, feeds.len());
         let all_posts = feeds
             .iter()
-            .find(|f| f.title == "The Verge - All Posts")
+            .find(|f| f.title == "The Verge -  All Posts")
             .expect("Missing All Posts");
         assert_eq!(
             FeedInfo {
-                title: "The Verge - All Posts".into(),
+                title: "The Verge -  All Posts".into(),
                 url: "https://theverge.com/rss/index.xml".into(),
-                link: "https://theverge.com".into(),
+                link: "https://www.theverge.com/".into(),
             },
             *all_posts
         );
