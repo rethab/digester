@@ -9,7 +9,7 @@ chrono = "0.4"
 rss = { version = "1.8", features = ["from_url"] }
 url = "2.1"
 reqwest = { version = "0.10", features = ["blocking"] }
-xml-rs = "0.8"
+kuchiki = "0.8"
 serde = "1.0"
 serde_json = "1.0"
 

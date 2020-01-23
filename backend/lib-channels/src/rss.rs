@@ -1,14 +1,13 @@
 use super::channel::*;
 
 use chrono::{DateTime, Utc};
+use kuchiki::traits::*;
 use reqwest::header::{ToStrError, CONTENT_TYPE};
 use reqwest::StatusCode;
 use rss::Channel as RssChannel;
 use rss::Error as RssError;
 use std::io::BufReader;
 use url::Url;
-use xml::attribute::OwnedAttribute;
-use xml::reader::{EventReader, XmlEvent};
 
 pub struct Rss {}
 
@@ -197,41 +196,40 @@ fn fetch_feeds(full_url: &Url) -> Result<Vec<FeedInfo>, FeedError> {
 }
 
 fn extract_feeds_from_html(url: &Url, html: &str) -> Result<Vec<Url>, FeedError> {
-    let attribute_value = |atts: &[OwnedAttribute], name: &str| -> Option<String> {
-        atts.iter()
-            .find(|att| att.name.local_name == name)
-            .map(|att| att.value.clone())
+    let attribute_value = |atts: &kuchiki::Attributes, name: &str| -> Option<String> {
+        atts.get(name).map(|v| v.to_owned())
     };
     let rss: String = "application/rss+xml".into();
     let mut links = Vec::new();
-    let parser = EventReader::from_str(html);
-    for e in parser {
-        match e {
-            Ok(XmlEvent::StartElement {
-                name, attributes, ..
-            }) if name.local_name == "link" => {
-                if attribute_value(&attributes, "type").contains(&rss) {
-                    if let Some(href) = attribute_value(&attributes, "href") {
-                        match url.join(&href) {
-                            Ok(link_url) => links.push(link_url),
-                            Err(err) => eprintln!(
-                                "Failed to attach {} to base url {:?}: {:?}",
-                                href, url, err
-                            ),
+    let document = kuchiki::parse_html().one(html);
+    let all_links = match document.select("link") {
+        Err(err) => {
+            return Err(FeedError::TechnicalError(format!(
+                "failed to extract links from document: {:?}",
+                err,
+            )))
+        }
+        Ok(all_links) => all_links,
+    };
+
+    for link in all_links {
+        let node: &kuchiki::NodeRef = link.as_node();
+        if let Some(kuchiki::ElementData { attributes, .. }) = node.as_element() {
+            if attribute_value(&attributes.borrow(), "type").contains(&rss) {
+                if let Some(href) = attribute_value(&attributes.borrow(), "href") {
+                    match url.join(&href) {
+                        Ok(link_url) => links.push(link_url),
+                        Err(err) => {
+                            eprintln!("Failed to attach {} to base url {:?}: {:?}", href, url, err)
                         }
-                    } else {
-                        eprintln!("link/rss tag without href. attributes: {:?}", attributes);
                     }
+                } else {
+                    eprintln!("link/rss tag without href. attributes: {:?}", attributes);
                 }
             }
-            Ok(XmlEvent::EndElement { name }) if name.local_name == "head" => break,
-            Err(e) => {
-                eprintln!("Parser failed on {}: {:?}", html, e);
-                break;
-            }
-            _ => {}
         }
     }
+
     Ok(links)
 }
 
@@ -310,30 +308,57 @@ mod tests {
     fn fetch_rss_acolyer_indirect() {
         let url = Url::parse("https://blog.acolyer.org").unwrap();
         let feeds = fetch_feeds(&url).expect("Failed to fetch feeds");
-        assert_eq!(1, feeds.len());
+        assert_eq!(2, feeds.len());
+        println!("all: {:?}", feeds);
         let feed = feeds
             .iter()
-            .find(|f| f.title == "the morning paper » Feed")
+            .find(|f| f.title == "the morning paper")
             .expect("Missing feed");
         assert_eq!(
             FeedInfo {
                 title: "the morning paper".into(),
-                url: "https://blob.acolyer.org/feed".into(),
+                url: "https://blog.acolyer.org/feed/".into(),
                 link: "https://blog.acolyer.org".into(),
             },
             *feed
         );
         let comments = feeds
             .iter()
-            .find(|f| f.title == "the morning paper » Comments Feed")
+            .find(|f| f.title == "Comments for the morning paper")
             .expect("Missing channel");
         assert_eq!(
             FeedInfo {
                 title: "Comments for the morning paper".into(),
-                url: "https://blob.acolyer.org/comments/feed".into(),
+                url: "https://blog.acolyer.org/comments/feed/".into(),
                 link: "https://blog.acolyer.org".into(),
             },
             *comments
+        );
+    }
+
+    #[test]
+    fn extract_links_in_html() {
+        let html = r"
+          <!DOCTYPE html>
+          <html lang='en'>
+          <head>
+          <link rel='alternate' type='application/rss+xml' title='Feed' href='https://blog.acolyer.org/feed/' />
+          <link rel='alternate' type='application/rss+xml' title='Comments' href='/comments/feed/' />
+          </head>
+          <body>
+          </body>
+          </html>
+        ";
+        let base_url = Url::parse("https://blog.acolyer.org").unwrap();
+        let feeds = extract_feeds_from_html(&base_url, html).expect("Failed to parse");
+        assert_eq!(2, feeds.len());
+        assert_eq!(
+            Url::parse("https://blog.acolyer.org/feed/").unwrap(),
+            feeds[0],
+        );
+        assert_eq!(
+            Url::parse("https://blog.acolyer.org/comments/feed/").unwrap(),
+            feeds[1],
         );
     }
 
