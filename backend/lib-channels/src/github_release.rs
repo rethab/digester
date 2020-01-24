@@ -138,6 +138,7 @@ impl Channel for GithubRelease {
         GithubRepository::parse(name).map(|r| r.into())
     }
 
+    /*
     fn validate(&self, name: SanitizedName) -> Result<SanitizedName, ValidationError> {
         let repo: GithubRepository = GithubRepository::from(name);
         let query = self
@@ -180,6 +181,7 @@ impl Channel for GithubRelease {
             }
         }
     }
+    */
     fn fetch_updates(
         &self,
         name: &SanitizedName,
