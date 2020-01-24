@@ -97,6 +97,18 @@ function run_heroku_stg() {
   docker run --env-file .env.integration.local $imgId
 }
 
+function run_prod_backup() {
+  local env="prod";
+
+  local dbstring;
+  dbstring=$(heroku config --app digester-api-$env | awk '/DATABASE_URL/{print $2}');
+
+  local filename;
+  filename="$env-$(date --iso-8601=seconds --utc)"
+  
+  pg_dump --format=c --file="/home/rethab/data/digester-backups/$filename" "$dbstring"
+}
+
 function run_sanity_check() {
 
   # check licenses
@@ -109,7 +121,7 @@ function run_sanity_check() {
   popd
 
   # update .bashrc
-  sed -i "s/^DIGESTER_RUN_WORDLIST=.*/DIGESTER_RUN_WORDLIST=\"worker worker-loop api fe db kill-db build-db psql psql-stg redis install-redli logs-db sanity pull-stg-cfg api-stg test\"/g" ~/.bashrc
+  sed -i "s/^DIGESTER_RUN_WORDLIST=.*/DIGESTER_RUN_WORDLIST=\"worker worker-loop api fe db kill-db build-db psql psql-stg redis install-redli logs-db sanity pull-stg-cfg api-stg prod-backup\"/g" ~/.bashrc
   echo "You might have to reload your .bashrc"
 
   # check this script
@@ -132,6 +144,7 @@ case $CMD in
   install-redli) install_redli ;;
   logs-db)       run_db_logs ;;
   pull-stg-cfg)  run_regenerate_integration_env ;;
+  prod-backup)   run_prod_backup ;;
   sanity)        run_sanity_check ;;
   *)
     echo "unknown command.."
