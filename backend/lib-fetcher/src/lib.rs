@@ -1,4 +1,5 @@
 use channels::github_release::GithubRelease;
+use channels::rss::Rss;
 use chrono::Duration;
 use lib_channels as channels;
 use lib_db as db;
@@ -6,6 +7,7 @@ use lib_db::{Channel, ChannelType, NewUpdate};
 
 pub struct App<'a> {
     channel_github_release: GithubRelease,
+    channel_rss_feed: Rss,
     db: &'a db::Connection,
 }
 
@@ -13,6 +15,7 @@ impl App<'_> {
     pub fn new(db_conn: &db::Connection, github: GithubRelease) -> App {
         App {
             channel_github_release: github,
+            channel_rss_feed: Rss {},
             db: db_conn,
         }
     }
@@ -42,8 +45,16 @@ impl App<'_> {
 
     fn fetch_articles(&self, channel: &Channel) -> Result<(), String> {
         let c = self.get_channel(channel);
-
-        let updates = c.fetch_updates(&channel.name, channel.last_fetched)?;
+        let sanitized_name = match c.sanitize(&channel.name) {
+            Ok(good) => good,
+            Err(err) => {
+                return Err(format!(
+                    "Channel name in db is not sane for channel {}: {}",
+                    channel.name, err
+                ))
+            }
+        };
+        let updates = c.fetch_updates(&sanitized_name, channel.last_fetched)?;
 
         println!(
             "Found {} updates in channel {}",
@@ -75,6 +86,7 @@ impl App<'_> {
     fn get_channel(&self, channel: &Channel) -> &dyn channels::Channel {
         match channel.channel_type {
             ChannelType::GithubRelease => &self.channel_github_release,
+            ChannelType::RssFeed => &self.channel_rss_feed,
         }
     }
 

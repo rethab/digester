@@ -28,13 +28,17 @@ pub struct Update {
 /// The failure cases when validating a channel
 #[derive(Debug)]
 pub enum ValidationError {
-    /// The channel is invalid. The String gives further details.
-    ChannelInvalid(String),
     /// The channel format is valid, but it doesn't exist (404)
     ChannelNotFound,
     /// Something went wrong. Please try again later
     TechnicalError,
 }
+
+/// a specific type for channel names that have passed sanitization
+/// TODO: make this a generic associated type (problem was to
+///       type the factory function in fetcher.rs)
+#[derive(Clone)]
+pub struct SanitizedName(pub String);
 
 /// A channel is a thing where we can pull updates from.
 ///
@@ -46,10 +50,13 @@ pub enum ValidationError {
 /// Anther channel could be GithubReleases (as the type)
 /// and the name would be the name of a specific repository.
 pub trait Channel {
-    /// Validates and sanitizes the name of a channel. The format
-    /// of the name depends on the type of channel. It could be a
-    /// URL, a repository or something else.
-    fn validate(&self, name: &str) -> Result<String, ValidationError>;
+    /// parses the generic name into a channel specific
+    /// type, which will be later passed as parameter
+    fn sanitize(&self, name: &str) -> Result<SanitizedName, String>;
+
+    /// Validates the name of a channel. The validation may
+    /// be online.
+    fn validate(&self, name: SanitizedName) -> Result<SanitizedName, ValidationError>;
 
     /// Fetches updates from the channel. The parameter last_fetched
     /// incates the last time we fetched from this channel. This method
@@ -57,7 +64,7 @@ pub trait Channel {
     /// last_fetched. If last_fetched is None, we never fetched from it.
     fn fetch_updates(
         &self,
-        name: &str,
+        name: &SanitizedName,
         last_fetched: Option<DateTime<Utc>>,
     ) -> Result<Vec<Update>, String>;
 }

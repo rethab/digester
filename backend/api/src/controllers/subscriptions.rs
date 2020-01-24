@@ -5,11 +5,13 @@ use lib_db as db;
 use super::common::*;
 use chrono::naive::NaiveTime;
 use db::{ChannelType, Day, Frequency};
+use rocket::http::RawStr;
+use rocket::request::FromFormValue;
 use rocket::{Rocket, State};
 use rocket_contrib::json::{Json, JsonValue};
 
 pub fn mount(rocket: Rocket) -> Rocket {
-    rocket.mount("/subscriptions", routes![list, add, update])
+    rocket.mount("/subscriptions", routes![list, search, add, update])
 }
 
 pub struct GithubApiToken(pub String);
@@ -92,6 +94,22 @@ impl Subscription {
     }
 }
 
+struct SearchChannelType(ChannelType);
+
+impl<'v> FromFormValue<'v> for SearchChannelType {
+    type Error = String;
+    fn from_form_value(form_value: &'v RawStr) -> Result<SearchChannelType, String> {
+        serde_json::de::from_str::<ChannelType>(&form_value)
+            .map(|ct| SearchChannelType(ct))
+            .map_err(|err| {
+                format!(
+                    "Failed to deserialize {} into SearchChannelType: {:?}",
+                    &form_value, err
+                )
+            })
+    }
+}
+
 #[get("/")]
 fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
     match db::subscriptions_find_by_user_id(&db, session.0.user_id) {
@@ -102,6 +120,16 @@ fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
             .collect::<Vec<Subscription>>()
             .into(),
     }
+}
+
+#[get("/search?<channel_type>&<query>")]
+fn search(
+    _session: Protected,
+    db: DigesterDbConn,
+    channel_type: SearchChannelType,
+    query: &RawStr,
+) -> JsonResponse {
+    unimplemented!()
 }
 
 #[post("/add", data = "<new_subscription>")]
@@ -174,14 +202,22 @@ fn validate(sub: NewSubscription, gh_token: &GithubApiToken) -> Result<NewSubscr
             let github: GithubRelease =
                 GithubRelease::new(&gh_token.0).map_err(|_| "Unknown problem".to_owned())?;
             github
-                .validate(&sub.channel_name)
-                .map(|repo_name| sub.with_name(repo_name))
-                .map_err(|err| match err {
-                    ValidationError::ChannelInvalid(msg) => msg,
-                    ValidationError::ChannelNotFound => "Repository does not exist".into(),
-                    ValidationError::TechnicalError => "Unknown error".into(),
+                .sanitize(&sub.channel_name)
+                .map_err(|err| {
+                    eprintln!("Invalid channel: {}", err);
+                    "Invalid channel name".into()
+                })
+                .and_then(|repo| {
+                    github
+                        .validate(repo)
+                        .map(|repo_name| sub.with_name(repo_name.0))
+                        .map_err(|err| match err {
+                            ValidationError::ChannelNotFound => "Repository does not exist".into(),
+                            ValidationError::TechnicalError => "Unknown error".into(),
+                        })
                 })
         }
+        ChannelType::RssFeed => unimplemented!(),
     }
 }
 

@@ -6,6 +6,7 @@ use github_rs::StatusCode;
 use serde::Deserialize;
 use serde_json::Value;
 use std::convert::TryInto;
+use std::fmt::Display;
 
 pub struct GithubRelease {
     client: Github,
@@ -16,16 +17,6 @@ impl GithubRelease {
         let github = Github::new(api_token)
             .map_err(|err| format!("Failed to initialize github client: {:?}", err))?;
         Ok(GithubRelease { client: github })
-    }
-
-    fn split_name(name: &str) -> Result<(&str, &str), String> {
-        let parts: Vec<&str> = name.split('/').collect();
-        if parts.len() != 2 {
-            return Err("Repository must have format owner/repository".into());
-        }
-        let owner = parts[0];
-        let repo = parts[1];
-        Ok((owner, repo))
     }
 
     fn parse_releases_response(
@@ -93,23 +84,88 @@ impl TryInto<Update> for ReleaseResponse {
     }
 }
 
-impl Channel for GithubRelease {
-    fn validate(&self, name: &str) -> Result<String, ValidationError> {
-        let (owner, repo) = Self::split_name(name).map_err(ValidationError::ChannelInvalid)?;
+#[derive(PartialEq, Debug)]
+pub struct GithubRepository {
+    owner: String,
+    repository: String,
+}
 
-        let query = self.client.get().repos().owner(owner).repo(repo);
+impl GithubRepository {
+    fn to_string(&self) -> String {
+        format!("{}/{}", self.owner, self.repository)
+    }
+}
+
+impl From<SanitizedName> for GithubRepository {
+    fn from(name: SanitizedName) -> Self {
+        GithubRepository::unsafe_parse(&name.0)
+    }
+}
+
+impl Into<SanitizedName> for GithubRepository {
+    fn into(self) -> SanitizedName {
+        SanitizedName(self.to_string())
+    }
+}
+
+impl GithubRepository {
+    fn unsafe_parse(name: &str) -> Self {
+        Self::parse(name).unwrap()
+    }
+
+    fn parse(name: &str) -> Result<Self, String> {
+        let parts: Vec<&str> = name.split('/').collect();
+        if parts.len() != 2 {
+            return Err("Repository must have format owner/repository".into());
+        }
+        let owner = parts[0];
+        let repository = parts[1];
+        Ok(GithubRepository {
+            owner: owner.into(),
+            repository: repository.into(),
+        })
+    }
+}
+
+impl Display for GithubRepository {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+impl Channel for GithubRelease {
+    fn sanitize(&self, name: &str) -> Result<SanitizedName, String> {
+        GithubRepository::parse(name).map(|r| r.into())
+    }
+
+    fn validate(&self, name: SanitizedName) -> Result<SanitizedName, ValidationError> {
+        let repo: GithubRepository = GithubRepository::from(name);
+        let query = self
+            .client
+            .get()
+            .repos()
+            .owner(&repo.owner)
+            .repo(&repo.repository);
 
         // todo handle rate limiting
         match query.execute::<Value>() {
             Ok((_, status, Some(json))) if status == StatusCode::OK => {
                 serde_json::from_value::<RepoResponse>(json.clone())
-                    .map(|repo| repo.full_name)
                     .map_err(|err| {
                         eprintln!(
                             "Failed to parse RepoResponse from json {:?}: {:?}",
                             json, err
                         );
                         ValidationError::TechnicalError
+                    })
+                    .and_then(|repo| {
+                        self.sanitize(&repo.full_name).map_err(|err| {
+                            eprintln!(
+                                "Failed to sanitize repository from github: {}",
+                                repo.full_name
+                            );
+                            ValidationError::TechnicalError
+                        })
                     })
             }
             Ok((_, status, _)) if status == StatusCode::NOT_FOUND => {
@@ -118,7 +174,7 @@ impl Channel for GithubRelease {
             other => {
                 eprintln!(
                     "Failed to query github whether repo {} is valid: {:?}",
-                    name, other
+                    repo, other
                 );
                 Err(ValidationError::TechnicalError)
             }
@@ -126,11 +182,17 @@ impl Channel for GithubRelease {
     }
     fn fetch_updates(
         &self,
-        name: &str,
+        name: &SanitizedName,
         last_fetched: Option<DateTime<Utc>>,
     ) -> Result<Vec<Update>, String> {
-        let (owner, repo) = Self::split_name(name)?;
-        let query = self.client.get().repos().owner(owner).repo(repo).releases();
+        let repo = GithubRepository::from(name.clone());
+        let query = self
+            .client
+            .get()
+            .repos()
+            .owner(&repo.owner)
+            .repo(&repo.repository)
+            .releases();
         match query.execute::<Value>() {
             Ok((_, status, Some(json))) if status == StatusCode::OK => {
                 GithubRelease::parse_releases_response(json, last_fetched)
@@ -175,5 +237,27 @@ mod test {
         let updates = GithubRelease::parse_releases_response(val, Some(Utc::now()))
             .expect("Failed to parse into updates");
         assert_eq!(0, updates.len())
+    }
+
+    #[test]
+    fn parse_repository() {
+        assert_eq!(
+            Ok(GithubRepository {
+                owner: "owner".into(),
+                repository: "repo".into()
+            }),
+            GithubRepository::parse("owner/repo")
+        );
+    }
+
+    #[test]
+    fn parse_invalid_repository() {
+        assert_eq!(true, GithubRepository::parse("invalid").is_err());
+    }
+
+    #[test]
+    fn sanitization_roundtrip() {
+        let repo: SanitizedName = GithubRepository::from(SanitizedName("owner/repo".into())).into();
+        assert_eq!("owner/repo", repo.0)
     }
 }

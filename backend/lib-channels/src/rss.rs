@@ -8,28 +8,109 @@ use reqwest::header::{ToStrError, CONTENT_TYPE};
 use reqwest::StatusCode;
 use rss::Channel as RssChannel;
 use rss::Error as RssError;
+use std::fmt::Display;
 use std::io::BufReader;
 use url::Url;
 
+/// While it is called RSS, this
+/// actually also works with Atom
+/// feeds
 pub struct Rss {}
 
+#[derive(PartialEq, Debug)]
+pub struct SanitizedUrl {
+    scheme: String,
+    host: String,
+    path: String,
+}
+
+impl SanitizedUrl {
+    fn to_string(&self) -> String {
+        format!("{}://{}{}", self.scheme, self.host, self.path,)
+    }
+
+    fn from_url(url: Url) -> Result<Self, String> {
+        let minimum_length = |s: &str| {
+            let pieces: Vec<&str> = s.split('.').collect();
+            pieces.len() >= 2 && pieces.last().unwrap().len() >= 2
+        };
+
+        let valid_scheme = |s: &str| s == "http" || s == "https";
+
+        if url.port().is_some() {
+            return Err("cannot have port".to_owned());
+        }
+
+        if !valid_scheme(url.scheme()) {
+            return Err(format!("invalid scheme: {}", url.scheme()));
+        }
+        match url.host() {
+            Some(url::Host::Domain(d)) if minimum_length(&d) => Ok(Self {
+                scheme: url.scheme().into(),
+                host: d.into(),
+                path: url.path().into(),
+            }),
+            Some(url::Host::Domain(_)) => Err("missing tld".to_owned()),
+            Some(_ip) => Err("cannot be ip".to_owned()),
+            None => Err("missing host".to_owned()),
+        }
+    }
+
+    fn parse(url: &str) -> Result<Self, String> {
+        let url_with_scheme = if !url.contains("://") {
+            format!("http://{}", url)
+        } else {
+            url.into()
+        };
+
+        Url::parse(&url_with_scheme)
+            .map_err(|err| format!("failed to parse url '{}': {}", url_with_scheme, err))
+            .and_then(|url| Self::from_url(url))
+    }
+
+    fn unsafe_parse(url: &str) -> Self {
+        Self::parse(url).unwrap()
+    }
+}
+
+impl Display for SanitizedUrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+impl From<SanitizedName> for SanitizedUrl {
+    fn from(name: SanitizedName) -> Self {
+        SanitizedUrl::unsafe_parse(&name.0)
+    }
+}
+
+impl Into<SanitizedName> for SanitizedUrl {
+    fn into(self) -> SanitizedName {
+        SanitizedName(self.to_string())
+    }
+}
+
 impl Channel for Rss {
-    fn validate(&self, url: &str) -> Result<String, ValidationError> {
-        sanitize_blog_url(url)
-            .map_err(|err| ValidationError::ChannelInvalid(format!("url is invalid: {}", err)))
+    fn sanitize(&self, url: &str) -> Result<SanitizedName, String> {
+        SanitizedUrl::parse(url).map(|u| u.into())
+    }
+
+    fn validate(&self, url: SanitizedName) -> Result<SanitizedName, ValidationError> {
+        unimplemented!()
     }
 
     fn fetch_updates(
         &self,
-        url: &str,
+        url: &SanitizedName,
         last_fetched: Option<DateTime<Utc>>,
     ) -> Result<Vec<Update>, String> {
-        let rss_channel = RssChannel::from_url(url)
-            .map_err(|err| format!("failed to fetch channel from url '{}': {:?}", url, err))?;
+        let rss_channel = RssChannel::from_url(&url.0)
+            .map_err(|err| format!("failed to fetch channel from url '{}': {:?}", url.0, err))?;
         println!(
             "Found {} articles for channel {}",
             rss_channel.items().len(),
-            url
+            url.0
         );
         let mut updates = Vec::with_capacity(rss_channel.items().len());
         for item in rss_channel.items() {
@@ -65,43 +146,6 @@ impl Channel for Rss {
             }
         }
         Ok(updates)
-    }
-}
-
-fn sanitize_blog_url(url: &str) -> Result<String, String> {
-    let url_with_scheme = if !url.contains("://") {
-        format!("http://{}", url)
-    } else {
-        url.into()
-    };
-
-    let minimum_length = |s: &str| {
-        let pieces: Vec<&str> = s.split('.').collect();
-        pieces.len() >= 2 && pieces.last().unwrap().len() >= 2
-    };
-
-    match Url::parse(&url_with_scheme) {
-        Err(err) => {
-            eprintln!("failed to parse url '{}': {}", url_with_scheme, err);
-            Err("not a url".to_owned())
-        }
-        Ok(valid) if valid.port().is_some() => Err("cannot have port".to_owned()),
-        Ok(valid) => {
-            let maybe_scheme = match valid.scheme() {
-                "http" | "https" => Ok(valid.scheme()),
-                scheme => Err(format!("invalid scheme: {}", scheme)),
-            };
-            let maybe_host = match valid.host() {
-                Some(url::Host::Domain(d)) if minimum_length(d) => Ok(d),
-                Some(url::Host::Domain(_)) => Err("missing tld".to_owned()),
-                Some(_ip) => Err("cannot be ip".to_owned()),
-                None => Err("missing host".to_owned()),
-            };
-
-            maybe_scheme
-                .and_then(|s| maybe_host.map(|h| (s, h)))
-                .map(|(scheme, host)| format!("{}://{}{}", scheme, host, valid.path()))
-        }
     }
 }
 
@@ -382,92 +426,103 @@ mod tests {
     }
 
     #[test]
-    fn blog_validation_https() {
+    fn parse_validation_https() {
         assert_eq!(
-            sanitize_blog_url("https://google.com/foo"),
+            SanitizedUrl::parse("https://google.com/foo").map(|u| u.to_string()),
             Ok("https://google.com/foo".to_owned())
         )
     }
 
     #[test]
-    fn blog_validation_http() {
+    fn parse_validation_http() {
         assert_eq!(
-            sanitize_blog_url("http://google.com/foo"),
+            SanitizedUrl::parse("http://google.com/foo").map(|u| u.to_string()),
             Ok("http://google.com/foo".to_owned())
         )
     }
 
     #[test]
-    fn blog_validation_no_scheme() {
+    fn parse_validation_no_scheme() {
         assert_eq!(
-            sanitize_blog_url("google.com"),
+            SanitizedUrl::parse("google.com").map(|u| u.to_string()),
             Ok("http://google.com/".to_owned())
         )
     }
 
     #[test]
-    fn blog_validation_invalid_port() {
+    fn parse_validation_invalid_port() {
         assert_eq!(
-            sanitize_blog_url("google.com:1234"),
+            SanitizedUrl::parse("google.com:1234"),
             Err("cannot have port".to_owned())
         )
     }
 
     #[test]
-    fn blog_validation_remove_query_string() {
+    fn parse_validation_remove_query_string() {
         assert_eq!(
-            sanitize_blog_url("http://google.com/foo?hello=world"),
+            SanitizedUrl::parse("http://google.com/foo?hello=world").map(|u| u.to_string()),
             Ok("http://google.com/foo".to_owned())
         )
     }
 
     #[test]
-    fn blog_validation_remove_hash_with_path() {
+    fn parse_validation_remove_hash_with_path() {
         assert_eq!(
-            sanitize_blog_url("http://google.com/foo#foo"),
+            SanitizedUrl::parse("http://google.com/foo#foo").map(|u| u.to_string()),
             Ok("http://google.com/foo".to_owned())
         )
     }
 
     #[test]
-    fn blog_validation_remove_hash_without_path() {
+    fn parse_validation_remove_hash_without_path() {
         assert_eq!(
-            sanitize_blog_url("http://google.com#foo"),
+            SanitizedUrl::parse("http://google.com#foo").map(|u| u.to_string()),
             Ok("http://google.com/".to_owned())
         )
     }
 
     #[test]
-    fn blog_validation_reject_ip() {
+    fn parse_validation_reject_ip() {
         assert_eq!(
-            sanitize_blog_url("http://127.0.0.1"),
+            SanitizedUrl::parse("http://127.0.0.1"),
             Err("cannot be ip".to_owned())
         )
     }
 
     #[test]
-    fn blog_validation_reject_ftp() {
+    fn parse_validation_reject_ftp() {
         assert_eq!(
-            sanitize_blog_url("ftp://fms@example.com"),
+            SanitizedUrl::parse("ftp://fms@example.com"),
             Err("invalid scheme: ftp".to_owned())
         )
     }
 
     #[test]
-    fn blog_validation_reject_garbage() {
+    fn parse_validation_reject_garbage() {
         assert_eq!(
-            sanitize_blog_url("data:text/plain,Hello?World#"),
-            Err("not a url".to_owned())
+            true,
+            SanitizedUrl::parse("data:text/plain,Hello?World#").is_err()
         )
     }
 
     #[test]
-    fn blog_validation_reject_garbage_asdf() {
-        assert_eq!(sanitize_blog_url("asdf"), Err("missing tld".to_owned()))
+    fn parse_validation_reject_garbage_asdf() {
+        assert_eq!(SanitizedUrl::parse("asdf"), Err("missing tld".to_owned()))
     }
 
     #[test]
-    fn blog_validation_reject_garbage_x_dot_x() {
-        assert_eq!(sanitize_blog_url("x.x"), Err("missing tld".to_owned()))
+    fn parse_validation_reject_garbage_x_dot_x() {
+        assert_eq!(SanitizedUrl::parse("x.x"), Err("missing tld".to_owned()))
+    }
+
+    #[test]
+    fn sanitze_url_back_and_forth() {
+        let original_string = "https://google.com/path/to/that";
+        assert_eq!(
+            original_string,
+            SanitizedUrl::parse(original_string)
+                .expect("failed to parse original")
+                .to_string()
+        )
     }
 }

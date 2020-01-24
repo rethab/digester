@@ -74,6 +74,7 @@ pub struct Update {
 #[sql_type = "Text"]
 pub enum ChannelType {
     GithubRelease,
+    RssFeed,
 }
 
 #[derive(Debug, Clone, PartialEq, FromSqlRow, AsExpression, Serialize, Deserialize)]
@@ -195,6 +196,7 @@ impl ToSql<Text, Pg> for ChannelType {
     fn to_sql<W: Write>(&self, out: &mut Output<W, Pg>) -> serialize::Result {
         match *self {
             ChannelType::GithubRelease => out.write_all(b"github_release")?,
+            ChannelType::RssFeed => out.write_all(b"rss_feed")?,
         }
         Ok(IsNull::No)
     }
@@ -204,6 +206,7 @@ impl FromSql<Text, Pg> for ChannelType {
     fn from_sql(bytes: Option<&[u8]>) -> deserialize::Result<Self> {
         match not_none!(bytes) {
             b"github_release" => Ok(ChannelType::GithubRelease),
+            b"rss_feed" => Ok(ChannelType::RssFeed),
             unrecognized => {
                 Err(format!("Unrecognized channel type enum variant: {:?}", unrecognized).into())
             }
