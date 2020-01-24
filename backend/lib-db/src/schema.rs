@@ -21,6 +21,7 @@ table! {
         id -> Integer,
         channel_type -> Text,
         name -> Text,
+        link -> Nullable<Text>,
         last_fetched -> Nullable<Timestamptz>,
         inserted -> Timestamptz,
     }

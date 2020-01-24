@@ -54,10 +54,6 @@ pub trait Channel {
     /// type, which will be later passed as parameter
     fn sanitize(&self, name: &str) -> Result<SanitizedName, String>;
 
-    /// Validates the name of a channel. The validation may
-    /// be online.
-    fn validate(&self, name: SanitizedName) -> Result<SanitizedName, ValidationError>;
-
     /// Fetches updates from the channel. The parameter last_fetched
     /// incates the last time we fetched from this channel. This method
     /// must not return any updates that were published before the

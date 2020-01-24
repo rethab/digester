@@ -98,7 +98,7 @@ impl App<'_> {
             let updates = db::updates_find_new(&self.db_conn, &subscription, updates_since)?;
 
             if !updates.is_empty() {
-                let channel = db::channels_find_by_id(&self.db_conn, subscription.channel_id)?;
+                let channel = db::channels_find_by_id(&self.db_conn.0, subscription.channel_id)?;
                 let mailjet_updates = updates
                     .into_iter()
                     .map(|u| MailjetUpdate {

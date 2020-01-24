@@ -1,5 +1,4 @@
-use lib_channels::github_release::GithubRelease;
-use lib_channels::{Channel, ValidationError};
+use lib_channels::rss;
 use lib_db as db;
 
 use super::common::*;
@@ -7,7 +6,7 @@ use chrono::naive::NaiveTime;
 use db::{ChannelType, Day, Frequency};
 use rocket::http::RawStr;
 use rocket::request::FromFormValue;
-use rocket::{Rocket, State};
+use rocket::Rocket;
 use rocket_contrib::json::{Json, JsonValue};
 
 pub fn mount(rocket: Rocket) -> Rocket {
@@ -18,10 +17,8 @@ pub struct GithubApiToken(pub String);
 
 #[derive(Deserialize, Debug, PartialEq)]
 struct NewSubscription {
-    #[serde(rename = "channelName")]
-    channel_name: String,
-    #[serde(rename = "channelType")]
-    channel_type: ChannelType,
+    #[serde(rename = "channelId")]
+    channel_id: i32,
     frequency: Frequency,
     day: Option<Day>,
     time: NaiveTime,
@@ -37,18 +34,6 @@ struct Subscription {
     frequency: Frequency,
     day: Option<Day>,
     time: NaiveTime,
-}
-
-impl NewSubscription {
-    fn with_name(self, name: String) -> Self {
-        Self {
-            channel_name: name,
-            channel_type: self.channel_type,
-            frequency: self.frequency,
-            day: self.day,
-            time: self.time,
-        }
-    }
 }
 
 impl Into<JsonResponse> for Subscription {
@@ -94,19 +79,36 @@ impl Subscription {
     }
 }
 
+#[derive(Serialize)]
+struct Channel {
+    id: i32,
+    channel_type: ChannelType,
+    name: String, // human readable name of thing
+    // todo make non optional
+    link: Option<String>, // link to the website
+}
+
+impl Channel {
+    fn from_db(c: db::Channel) -> Self {
+        Self {
+            id: c.id,
+            channel_type: c.channel_type,
+            name: c.name,
+            link: c.link,
+        }
+    }
+}
+
 struct SearchChannelType(ChannelType);
 
 impl<'v> FromFormValue<'v> for SearchChannelType {
     type Error = String;
     fn from_form_value(form_value: &'v RawStr) -> Result<SearchChannelType, String> {
-        serde_json::de::from_str::<ChannelType>(&form_value)
-            .map(|ct| SearchChannelType(ct))
-            .map_err(|err| {
-                format!(
-                    "Failed to deserialize {} into SearchChannelType: {:?}",
-                    &form_value, err
-                )
-            })
+        match form_value.as_str() {
+            "GithubRelease" => Ok(SearchChannelType(ChannelType::GithubRelease)),
+            "RssFeed" => Ok(SearchChannelType(ChannelType::RssFeed)),
+            other => Err(format!("Invalid channel type: {}", other)),
+        }
     }
 }
 
@@ -124,19 +126,98 @@ fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
 
 #[get("/search?<channel_type>&<query>")]
 fn search(
-    _session: Protected,
+    // fixme _session: Protected,
     db: DigesterDbConn,
     channel_type: SearchChannelType,
     query: &RawStr,
 ) -> JsonResponse {
-    unimplemented!()
+    let query = match query.url_decode() {
+        Ok(query) => query,
+        Err(err) => {
+            eprintln!("Failed to decode raw string: '{}': {:?}", query, err);
+            return JsonResponse::InternalServerError;
+        }
+    };
+
+    let sanititzed_url = match rss::SanitizedUrl::parse(&query) {
+        Ok(url) => url,
+        Err(err) => {
+            eprintln!("Query is not a URL: {:?}", err);
+            return JsonResponse::BadRequest("not a url".into());
+        }
+    };
+
+    // we need to search for the sanitized URL as long as we search for exact matches,
+    // because otherwise we might store https://bla.bla but the user searches for bla.bla
+
+    // searching w/o scheme means the user can search for http and we find https
+    let query = sanititzed_url.to_string_without_scheme();
+
+    let channels = match db::channels_search(&db, channel_type.0, &query) {
+        Ok(channels) => channels,
+        Err(err) => {
+            eprintln!(
+                "Failed to search for channel by query '{}': {:?}",
+                query, err
+            );
+            return JsonResponse::InternalServerError;
+        }
+    };
+
+    println!("Found {} channels in search '{}'", channels.len(), query);
+
+    if !channels.is_empty() {
+        return JsonResponse::Ok(json!({
+            "channels": channels.into_iter().map(|c| Channel::from_db(c)).collect::<Vec<Channel>>()
+        }));
+    }
+
+    if channel_type.0 != ChannelType::RssFeed {
+        eprintln!(
+            "Search is only implemented for RSS feeds: {:?}",
+            channel_type.0
+        );
+        return JsonResponse::InternalServerError;
+    }
+
+    let url = sanititzed_url.to_url();
+    let feeds = match rss::fetch_feeds(&url) {
+        Err(err) => {
+            eprintln!("Failed to fetch feeds for url '{}': {:?}", url, err);
+            return JsonResponse::InternalServerError;
+        }
+        Ok(feeds) => feeds,
+    };
+
+    if feeds.is_empty() {
+        let no_channels: Vec<Channel> = vec![];
+        return JsonResponse::Ok(json!({ "channels": no_channels }));
+    }
+
+    let channels = feeds
+        .iter()
+        .map(|f| db::NewChannel {
+            channel_type: channel_type.0,
+            name: f.url.clone(),
+            link: f.link.clone(),
+        })
+        .collect();
+
+    match db::channels_insert_many(&db, channels) {
+        Err(err) => {
+            eprintln!("Failed to insert new channels: {:?}", err);
+            JsonResponse::InternalServerError
+        }
+        Ok(channels) => JsonResponse::Ok(json!({
+            "channels": channels.into_iter().map(|c| Channel::from_db(c)).collect::<Vec<Channel>>()
+        })),
+    }
 }
 
 #[post("/add", data = "<new_subscription>")]
 fn add(
     session: Protected,
     db: DigesterDbConn,
-    github_api_token: State<GithubApiToken>,
     new_subscription: Json<NewSubscription>,
 ) -> JsonResponse {
     let identity = match db::identities_find_by_user_id(&db, session.0.user_id) {
@@ -144,23 +225,17 @@ fn add(
         Err(_) => return JsonResponse::InternalServerError,
     };
 
-    let valid_subscription = match validate(new_subscription.0, &github_api_token) {
-        Ok(valid) => valid,
-        Err(msg) => return JsonResponse::BadRequest(msg),
-    };
+    let chan_id = new_subscription.channel_id;
 
-    let channel = match insert_channel_if_not_exists(&db, &valid_subscription) {
-        Ok(c) => c,
+    let channel = match db::channels_find_by_id(&db, chan_id) {
         Err(err) => {
-            eprintln!(
-                "Failed to insert new channel for subscription {:?}: {:?}",
-                valid_subscription, err
-            );
-            return JsonResponse::InternalServerError;
+            eprintln!("Failed to fetch channel by id '{}': {:?}", chan_id, err);
+            return JsonResponse::BadRequest("channel does not exist".into());
         }
+        Ok(channel) => channel,
     };
 
-    match insert_subscription(&db, valid_subscription, &channel, &identity) {
+    match insert_subscription(&db, &new_subscription, &channel, &identity) {
         Ok(sub) => Subscription::from_db(sub, channel).into(),
         Err(db::InsertError::Duplicate) => {
             JsonResponse::BadRequest("Already subscribed to repository".to_owned())
@@ -195,46 +270,9 @@ fn update(
     }
 }
 
-fn validate(sub: NewSubscription, gh_token: &GithubApiToken) -> Result<NewSubscription, String> {
-    match sub.channel_type {
-        ChannelType::GithubRelease => {
-            // todo: if we already know this repo, no need to call github
-            let github: GithubRelease =
-                GithubRelease::new(&gh_token.0).map_err(|_| "Unknown problem".to_owned())?;
-            github
-                .sanitize(&sub.channel_name)
-                .map_err(|err| {
-                    eprintln!("Invalid channel: {}", err);
-                    "Invalid channel name".into()
-                })
-                .and_then(|repo| {
-                    github
-                        .validate(repo)
-                        .map(|repo_name| sub.with_name(repo_name.0))
-                        .map_err(|err| match err {
-                            ValidationError::ChannelNotFound => "Repository does not exist".into(),
-                            ValidationError::TechnicalError => "Unknown error".into(),
-                        })
-                })
-        }
-        ChannelType::RssFeed => unimplemented!(),
-    }
-}
-
-fn insert_channel_if_not_exists(
-    conn: &DigesterDbConn,
-    sub: &NewSubscription,
-) -> Result<db::Channel, String> {
-    let new_channel = db::NewChannel {
-        name: sub.channel_name.clone(),
-        channel_type: sub.channel_type,
-    };
-    db::channels_insert_if_not_exists(&conn.0, new_channel)
-}
-
 fn insert_subscription(
     conn: &DigesterDbConn,
-    sub: NewSubscription,
+    sub: &NewSubscription,
     chan: &db::Channel,
     identity: &db::Identity,
 ) -> Result<db::Subscription, db::InsertError> {
@@ -242,8 +280,8 @@ fn insert_subscription(
         email: identity.email.clone(),
         channel_id: chan.id,
         user_id: identity.user_id,
-        frequency: sub.frequency,
-        day: sub.day,
+        frequency: sub.frequency.clone(),
+        day: sub.day.clone(),
         time: sub.time,
     };
     db::subscriptions_insert(&conn.0, new_subscription)
@@ -283,8 +321,7 @@ mod tests {
     fn parse_subscription() {
         let sub: NewSubscription = serde_json::from_str(
             r#"{
-            "channelName":"rethab/dotfiles",
-            "channelType":"GithubRelease",
+            "channelId":"1",
             "frequency":"Weekly",
             "day":"Sat",
             "time":"09:00:00.00"
@@ -292,8 +329,7 @@ mod tests {
         )
         .expect("Failed to parse");
         let exp = NewSubscription {
-            channel_name: "rethab/dotfiles".into(),
-            channel_type: ChannelType::GithubRelease,
+            channel_id: 1,
             frequency: Frequency::Weekly,
             day: Some(Day::Sat),
             time: NaiveTime::from_hms_milli(9, 0, 0, 0),

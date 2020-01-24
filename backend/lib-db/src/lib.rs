@@ -9,7 +9,7 @@ use diesel::result;
 use diesel::result::Error;
 use std::env;
 
-pub struct Connection(PgConnection);
+pub struct Connection(pub PgConnection);
 
 pub mod model;
 mod schema;
@@ -28,11 +28,30 @@ pub fn connection_from_str(uri: &str) -> Result<Connection, String> {
         .map(Connection)
 }
 
-pub fn channels_find_by_id(conn: &Connection, channel_id: i32) -> Result<Channel, String> {
+pub fn channels_search(
+    conn: &PgConnection,
+    c_type: ChannelType,
+    query: &str,
+) -> Result<Vec<Channel>, String> {
+    use schema::channels::dsl::*;
+
+    // fixme check what sql this generates / whether we need to sanitize the input
+    let search_query = format!("%{}%", query);
+    channels
+        .filter(
+            channel_type
+                .eq(c_type)
+                .and(link.ilike(&search_query).or(name.ilike(&search_query))),
+        )
+        .get_results(conn)
+        .map_err(|err| format!("Failed to fetch channels by query: {:?}", err))
+}
+
+pub fn channels_find_by_id(conn: &PgConnection, channel_id: i32) -> Result<Channel, String> {
     use schema::channels::dsl::*;
     channels
         .find(channel_id)
-        .get_result(&conn.0)
+        .get_result(conn)
         .map_err(|err| format!("Failed to fetch channel with id {}: {:?}", channel_id, err))
 }
 
@@ -84,6 +103,19 @@ impl InsertError {
     }
 }
 
+pub fn channels_insert_many(
+    conn: &PgConnection,
+    channels: Vec<NewChannel>,
+) -> Result<Vec<Channel>, String> {
+    // todo ideally this would be an insert_many sql statement
+    let mut db_channels = Vec::with_capacity(channels.len());
+    for channel in channels {
+        let new_channels = channels_insert_if_not_exists(conn, channel)?;
+        db_channels.push(new_channels);
+    }
+    Ok(db_channels)
+}
+
 pub fn channels_insert_if_not_exists(
     conn: &PgConnection,
     new_channel: NewChannel,
@@ -93,6 +125,7 @@ pub fn channels_insert_if_not_exists(
     let find = || -> Result<Option<Channel>, String> {
         channels
             .filter(
+                // fixme this requires for the name to be unique. so the name must be the rss feed url
                 name.eq(&new_channel.name)
                     .and(channel_type.eq(&new_channel.channel_type)),
             )

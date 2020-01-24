@@ -1,5 +1,4 @@
 #![feature(option_result_contains)]
-#![feature(generic_associated_types)]
 
 extern crate chrono;
 

@@ -29,6 +29,15 @@ impl SanitizedUrl {
         format!("{}://{}{}", self.scheme, self.host, self.path,)
     }
 
+    pub fn to_string_without_scheme(&self) -> String {
+        format!("{}{}", self.host, self.path,)
+    }
+
+    pub fn to_url(&self) -> Url {
+        // unwrap is safe, because we only construct sanitized urls from valid urls
+        Url::parse(&self.to_string()).unwrap()
+    }
+
     fn from_url(url: Url) -> Result<Self, String> {
         let minimum_length = |s: &str| {
             let pieces: Vec<&str> = s.split('.').collect();
@@ -56,7 +65,12 @@ impl SanitizedUrl {
         }
     }
 
-    fn parse(url: &str) -> Result<Self, String> {
+    pub fn parse(url: &str) -> Result<Self, String> {
+        // the url lib allows some weird stuff, so we fitler manually
+        if url.contains("'") {
+            return Err("Invalid character '".into());
+        }
+
         let url_with_scheme = if !url.contains("://") {
             format!("http://{}", url)
         } else {
@@ -96,10 +110,6 @@ impl Channel for Rss {
         SanitizedUrl::parse(url).map(|u| u.into())
     }
 
-    fn validate(&self, url: SanitizedName) -> Result<SanitizedName, ValidationError> {
-        unimplemented!()
-    }
-
     fn fetch_updates(
         &self,
         url: &SanitizedName,
@@ -107,11 +117,6 @@ impl Channel for Rss {
     ) -> Result<Vec<Update>, String> {
         let rss_channel = RssChannel::from_url(&url.0)
             .map_err(|err| format!("failed to fetch channel from url '{}': {:?}", url.0, err))?;
-        println!(
-            "Found {} articles for channel {}",
-            rss_channel.items().len(),
-            url.0
-        );
         let mut updates = Vec::with_capacity(rss_channel.items().len());
         for item in rss_channel.items() {
             let update = Update {
@@ -150,17 +155,17 @@ impl Channel for Rss {
 }
 
 #[derive(Debug)]
-enum FeedError {
+pub enum FeedError {
     NotFound(String),
     TechnicalError(String),
     UnknownError(String),
 }
 
 #[derive(PartialEq, Debug)]
-struct FeedInfo {
-    title: String, // title of the feed
-    url: String,   // url of this feed (eg. theverge.com/feed.xml)
-    link: String,  // website of this feed (eg. theverge.com)
+pub struct FeedInfo {
+    pub title: String, // title of the feed
+    pub url: String,   // url of this feed (eg. theverge.com/feed.xml)
+    pub link: String,  // website of this feed (eg. theverge.com)
 }
 
 impl From<ToStrError> for FeedError {
@@ -193,7 +198,7 @@ impl From<reqwest::Error> for FeedError {
     }
 }
 
-fn fetch_feeds(full_url: &Url) -> Result<Vec<FeedInfo>, FeedError> {
+pub fn fetch_feeds(full_url: &Url) -> Result<Vec<FeedInfo>, FeedError> {
     use FeedError::*;
 
     let host = match full_url.host_str() {
@@ -479,6 +484,11 @@ mod tests {
             SanitizedUrl::parse("http://google.com#foo").map(|u| u.to_string()),
             Ok("http://google.com/".to_owned())
         )
+    }
+
+    #[test]
+    fn parse_validation_invalid_char() {
+        assert_eq!(true, SanitizedUrl::parse("goo'gle.com").is_err())
     }
 
     #[test]
