@@ -106,7 +106,7 @@ function run_prod_backup() {
   local filename;
   filename="$env-$(date --iso-8601=seconds --utc)"
   
-  pg_dump --format=c --file="/home/rethab/data/digester-backups/$filename" "$dbstring"
+  pg_dump --format=c --file="/home/rethab/data/digester-backups/$filename" "$dbstring?sslmode=require"
 }
 
 function run_sanity_check() {
