@@ -53,8 +53,9 @@ impl App<'_> {
         let updates = c.fetch_updates(&channel.name, &url, channel.last_fetched)?;
 
         println!(
-            "Found {} updates in channel {}",
+            "Found {} updates in {:?} channel {}",
             updates.len(),
+            channel.channel_type,
             channel.name
         );
 

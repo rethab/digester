@@ -295,8 +295,17 @@ fn extract_feeds_from_html(url: &Url, html: &str) -> Result<Vec<Url>, FeedError>
     let attribute_value = |atts: &kuchiki::Attributes, name: &str| -> Option<String> {
         atts.get(name).map(|v| v.to_owned())
     };
-    // atom feeds are also linked to by rss :)
-    let rss: String = "application/rss+xml".into();
+
+    let is_feed_link = |maybe_type: Option<String>| -> bool {
+        maybe_type
+            .map(|t| match t.as_str() {
+                "application/rss+xml" => true,
+                "application/atom+xml" => true,
+                _ => false,
+            })
+            .unwrap_or(false)
+    };
+
     let mut links = Vec::new();
     let document = kuchiki::parse_html().one(html);
     let all_links = match document.select("link") {
@@ -312,7 +321,8 @@ fn extract_feeds_from_html(url: &Url, html: &str) -> Result<Vec<Url>, FeedError>
     for link in all_links {
         let node: &kuchiki::NodeRef = link.as_node();
         if let Some(kuchiki::ElementData { attributes, .. }) = node.as_element() {
-            if attribute_value(&attributes.borrow(), "type").contains(&rss) {
+            let link_type = attribute_value(&attributes.borrow(), "type");
+            if is_feed_link(link_type) {
                 if let Some(href) = attribute_value(&attributes.borrow(), "href") {
                     match url.join(&href) {
                         Ok(link_url) => links.push(link_url),
@@ -577,6 +587,7 @@ mod tests {
           <head>
           <link rel='alternate' type='application/rss+xml' title='Feed' href='https://blog.acolyer.org/feed/' />
           <link rel='alternate' type='application/rss+xml' title='Comments' href='/comments/feed/' />
+          <link rel='alternate' type='application/atom+xml' title='AppSignal Blog atom feed' href='https://blog.appsignal.com/feed.xml' >
           </head>
           <body>
           </body>
@@ -584,7 +595,7 @@ mod tests {
         ";
         let base_url = Url::parse("https://blog.acolyer.org").unwrap();
         let feeds = extract_feeds_from_html(&base_url, html).expect("Failed to parse");
-        assert_eq!(2, feeds.len());
+        assert_eq!(3, feeds.len());
         assert_eq!(
             Url::parse("https://blog.acolyer.org/feed/").unwrap(),
             feeds[0],
@@ -592,6 +603,10 @@ mod tests {
         assert_eq!(
             Url::parse("https://blog.acolyer.org/comments/feed/").unwrap(),
             feeds[1],
+        );
+        assert_eq!(
+            Url::parse("https://blog.appsignal.com/feed.xml").unwrap(),
+            feeds[2],
         );
     }
 
