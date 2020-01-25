@@ -44,7 +44,16 @@ const routes = [
 const router = new VueRouter({
   mode: 'history',
   base: process.env.BASE_URL,
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      // retain position on browser back
+      return savedPosition;
+    } else {
+      // scroll to top when navigating
+      return { x: 0, y: 0 }
+    }
+  }
 })
 
 router.beforeEach((to, from, next) => {

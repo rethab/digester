@@ -33,6 +33,10 @@ struct Subscription {
     channel_name: String,
     #[serde(rename = "channelType")]
     channel_type: ChannelType,
+    #[serde(rename = "channelId")]
+    channel_id: i32,
+    #[serde(rename = "channelLink")]
+    channel_link: String,
     frequency: Frequency,
     day: Option<Day>,
     time: NaiveTime,
@@ -72,8 +76,12 @@ impl Subscription {
     fn from_db(sub: db::Subscription, chan: db::Channel) -> Subscription {
         Subscription {
             id: sub.id,
-            channel_name: chan.name,
+            channel_name: chan.name.clone(),
             channel_type: chan.channel_type,
+            channel_id: chan.id,
+            channel_link: chan
+                .link
+                .unwrap_or(format!("https://github.com/{}", chan.name)),
             frequency: sub.frequency,
             day: sub.day,
             time: sub.time,

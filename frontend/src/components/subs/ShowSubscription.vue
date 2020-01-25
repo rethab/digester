@@ -3,7 +3,7 @@
     <div>
       <v-card-title>
         <a
-          :href="channelLink"
+          :href="value.channelLink"
           target="_blank"
           class="black--text"
           style="text-decoration:none"
@@ -60,14 +60,7 @@ export default {
       return this.value.channelType === "GithubRelease";
     },
     isRss() {
-      return this.value.channelType === "RSS";
-    },
-    channelLink() {
-      if (this.isGithubRelease) {
-        return `https://github.com/${this.value.channelName}/releases`;
-      } else {
-        return this.channelName;
-      }
+      return this.value.channelType === "RssFeed";
     },
     channelIcon() {
       if (this.isGithubRelease) {

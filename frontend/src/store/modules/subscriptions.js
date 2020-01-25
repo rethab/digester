@@ -27,8 +27,7 @@ const actions = {
     subscribe({ commit }, subscription) {
         return new Promise((resolve, reject) => {
             Api().post("subscriptions/add", {
-                channelName: subscription.name,
-                channelType: subscription.type,
+                channelId: subscription.id,
                 frequency: subscription.frequency,
                 day: subscription.day,
                 time: subscription.time,
