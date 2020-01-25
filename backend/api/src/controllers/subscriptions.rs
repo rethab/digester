@@ -129,7 +129,8 @@ fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
 
 #[get("/search?<channel_type>&<query>")]
 fn search(
-    // fixme _session: Protected,
+    _session: Protected,
+    _r: RateLimited,
     db: DigesterDbConn,
     channel_type: SearchChannelType,
     gh_token: State<GithubApiToken>,

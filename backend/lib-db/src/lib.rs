@@ -35,7 +35,6 @@ pub fn channels_search(
 ) -> Result<Vec<Channel>, String> {
     use schema::channels::dsl::*;
 
-    // fixme check what sql this generates / whether we need to sanitize the input
     let search_query = format!("%{}%", query);
     channels
         .filter(
@@ -125,8 +124,7 @@ pub fn channels_insert_if_not_exists(
     let find = || -> Result<Option<Channel>, String> {
         channels
             .filter(
-                // fixme this requires for the name to be unique. so the name must be the rss feed url
-                name.eq(&new_channel.name)
+                name.eq(&new_channel.url)
                     .and(channel_type.eq(&new_channel.channel_type)),
             )
             .load(conn)

@@ -380,7 +380,7 @@ CREATE TABLE identities (
             let identities =
                 db::identities_find_by_email_or_id(&conn, "facebook", "12345", "new@reto.com")
                     .expect("failed: identities_find_by_email_or_id");
-            assert_eq!(2, identities.len()); // fixme this fails
+            assert_eq!(2, identities.len());
 
             // SCENARIO 3a: Insert new user and identity
             let user_info = ProviderUserInfo {

@@ -117,7 +117,7 @@ impl Channel for Rss {
 
     fn search(&self, query: SanitizedName) -> Result<Vec<ChannelInfo>, SearchError> {
         let url = SanitizedUrl::from(query).to_url();
-        fetch_channel_info(&url).map_err(|e| e.into())
+        fetch_channel_info(&url, false).map_err(|e| e.into())
     }
 
     fn fetch_updates(
@@ -130,8 +130,8 @@ impl Channel for Rss {
             .map_err(|err| format!("Failed to fetch url '{}': {:?}", url, err))?;
 
         let updates = match parse_feed(resp) {
-            Ok(ParsedFeed::Rss(rss)) => rss_to_updates(rss)?,
-            Ok(ParsedFeed::Atom(atom)) => atom_to_updates(atom)?,
+            Ok(ParsedFeed::Rss(rss)) => rss_to_updates(&rss)?,
+            Ok(ParsedFeed::Atom(atom)) => atom_to_updates(&atom)?,
             Err(err) => return Err(format!("Failed to parse '{}': {:?}", url, err)),
         };
 
@@ -142,7 +142,7 @@ impl Channel for Rss {
     }
 }
 
-fn rss_to_updates(channel: RssChannel) -> Result<Vec<Update>, String> {
+fn rss_to_updates(channel: &RssChannel) -> Result<Vec<Update>, String> {
     let mut updates = Vec::with_capacity(channel.items().len());
     for item in channel.items() {
         let update = Update {
@@ -172,7 +172,7 @@ fn rss_to_updates(channel: RssChannel) -> Result<Vec<Update>, String> {
     Ok(updates)
 }
 
-fn atom_to_updates(feed: Feed) -> Result<Vec<Update>, String> {
+fn atom_to_updates(feed: &Feed) -> Result<Vec<Update>, String> {
     let mut updates = Vec::with_capacity(feed.entries().len());
     for entry in feed.entries() {
         let update = Update {
@@ -237,20 +237,25 @@ impl From<reqwest::Error> for FeedError {
     }
 }
 
-pub fn fetch_channel_info(full_url: &Url) -> Result<Vec<ChannelInfo>, FeedError> {
-    use FeedError::*;
-
+fn fetch_channel_info(full_url: &Url, recursed: bool) -> Result<Vec<ChannelInfo>, FeedError> {
     let sane_url = full_url.to_string();
     let response = fetch_resource(&sane_url)?;
 
     if is_html(&response) {
+        // if we didn't prevent this, we might recurse forever if a page
+        // points to itself (maliciously or not..)
+        if recursed {
+            return Err(FeedError::TechnicalError(format!(
+                "Url {} points to html, but we already recursed",
+                sane_url,
+            )));
+        }
         let mut feeds = Vec::new();
         let body = response.text()?;
         let links = extract_feeds_from_html(&full_url, &body)?;
         println!("Links in HTML: {:?} --> recurse", links);
         for link in links {
-            // fixme this could recurse forever. prevent that..
-            let mut new_feeds = fetch_channel_info(&link)?;
+            let mut new_feeds = fetch_channel_info(&link, true)?;
             feeds.append(&mut new_feeds);
         }
         Ok(feeds)
@@ -266,7 +271,10 @@ pub fn fetch_channel_info(full_url: &Url) -> Result<Vec<ChannelInfo>, FeedError>
                 url: sane_url.clone(),
                 link: atom_link(feed.links()).unwrap_or(sane_url),
             }]),
-            Err(err) => Err(UnknownError(format!("Neither atom nor rss: {:?}", err))),
+            Err(err) => Err(FeedError::UnknownError(format!(
+                "Neither atom nor rss: {:?}",
+                err
+            ))),
         }
     }
 }
@@ -327,20 +335,20 @@ fn is_html(resp: &Response) -> bool {
 }
 
 enum ParsedFeed {
-    Atom(Feed),
-    Rss(RssChannel),
+    Atom(Box<Feed>),
+    Rss(Box<RssChannel>),
 }
 
 impl ParsedFeed {
     fn parse_rss<R: BufRead>(buffer: R) -> Result<ParsedFeed, String> {
         RssChannel::read_from(buffer)
-            .map(|rss| ParsedFeed::Rss(rss))
+            .map(|rss| ParsedFeed::Rss(Box::new(rss)))
             .map_err(|err| format!("Failed to parse as rss: {:?}", err))
     }
 
     fn parse_atom<R: BufRead>(buffer: R) -> Result<ParsedFeed, String> {
         Feed::read_from(buffer)
-            .map(|rss| ParsedFeed::Atom(rss))
+            .map(|feed| ParsedFeed::Atom(Box::new(feed)))
             .map_err(|err| format!("Failed to parse as atom: {:?}", err))
     }
 }
@@ -409,9 +417,7 @@ fn atom_link(links: &[atom_syndication::Link]) -> Option<String> {
     for link in links {
         // for youtube, this contains the link to the channel while anoter link
         // with rel=self points to the feed
-        if link.rel() == "alternate" {
-            found_link = Some(link.href().into());
-        } else if found_link.is_none() {
+        if link.rel() == "alternate" || found_link.is_none() {
             found_link = Some(link.href().into());
         }
     }
@@ -425,7 +431,7 @@ mod tests {
     #[test]
     fn fetch_atom_theverge_indirect() {
         let url = Url::parse("https://theverge.com").unwrap();
-        let feeds = fetch_channel_info(&url).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url, false).expect("Failed to fetch feeds");
         assert_eq!(2, feeds.len());
         let all_posts = feeds
             .iter()
@@ -454,9 +460,15 @@ mod tests {
     }
 
     #[test]
+    fn fetch_refuse_to_recurse() {
+        let url = Url::parse("https://theverge.com").unwrap();
+        assert_eq!(true, fetch_channel_info(&url, true).is_err())
+    }
+
+    #[test]
     fn fetch_atom_theverge_direct() {
         let url = Url::parse("https://theverge.com/rss/index.xml").unwrap();
-        let feeds = fetch_channel_info(&url).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url, false).expect("Failed to fetch feeds");
         assert_eq!(1, feeds.len());
         let all_posts = feeds
             .iter()
@@ -476,7 +488,7 @@ mod tests {
     fn fetch_rss_sedaily_direct() {
         let url =
             Url::parse("https://softwareengineeringdaily.com/category/podcast/feed/").unwrap();
-        let feeds = fetch_channel_info(&url).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url, false).expect("Failed to fetch feeds");
         assert_eq!(1, feeds.len());
         let all_posts = feeds.iter().next().expect("Missing channel");
         assert_eq!(
@@ -492,7 +504,7 @@ mod tests {
     #[test]
     fn fetch_rss_acolyer_indirect() {
         let url = Url::parse("https://blog.acolyer.org").unwrap();
-        let feeds = fetch_channel_info(&url).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url, false).expect("Failed to fetch feeds");
         assert_eq!(2, feeds.len());
         println!("all: {:?}", feeds);
         let feed = feeds
@@ -524,7 +536,7 @@ mod tests {
     #[test]
     fn fetch_rss_nytimes_indirect() {
         let url = Url::parse("https://nytimes.com").unwrap();
-        let feeds = fetch_channel_info(&url).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url, false).expect("Failed to fetch feeds");
         assert_eq!(1, feeds.len());
         let feed = feeds[0].clone();
         assert_eq!(
@@ -543,7 +555,7 @@ mod tests {
             "https://www.youtube.com/feeds/videos.xml?channel_id=UCxec_VgCE-5DUZ8MocKbEdg",
         )
         .unwrap();
-        let feeds = fetch_channel_info(&url).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url, false).expect("Failed to fetch feeds");
         assert_eq!(1, feeds.len());
         let feed = feeds[0].clone();
         assert_eq!(
