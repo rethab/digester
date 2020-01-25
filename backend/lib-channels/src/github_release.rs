@@ -175,7 +175,7 @@ impl Channel for GithubRelease {
                     })
             }
             Ok((_, status, _)) if status == StatusCode::NOT_FOUND => {
-                Err(SearchError::ChannelNotFound)
+                Err(SearchError::ChannelNotFound("github returned 404".into()))
             }
             other => Err(SearchError::TechnicalError(format!(
                 "Failed to query github whether repo {} is valid: {:?}",

@@ -4,7 +4,7 @@ use atom_syndication::Error as AtomError;
 use atom_syndication::Feed;
 use chrono::{DateTime, Utc};
 use kuchiki::traits::*;
-use reqwest::blocking::Response;
+use reqwest::blocking::{Client, Response};
 use reqwest::header::{ToStrError, CONTENT_TYPE};
 use reqwest::StatusCode;
 use rss::Channel as RssChannel;
@@ -177,9 +177,7 @@ fn atom_to_updates(feed: Feed) -> Result<Vec<Update>, String> {
     for entry in feed.entries() {
         let update = Update {
             title: entry.title().into(),
-            url: atom_link(entry.links())
-                .map(|l| l.to_owned())
-                .unwrap_or_else(|| format!("No links for {:?}", entry)),
+            url: atom_link(entry.links()).unwrap_or_else(|| format!("No links for {:?}", entry)),
             published: entry
                 .published()
                 .cloned()
@@ -202,7 +200,7 @@ impl Into<SearchError> for FeedError {
     fn into(self) -> SearchError {
         use FeedError::*;
         match self {
-            NotFound(_) => SearchError::ChannelNotFound,
+            NotFound(msg) => SearchError::ChannelNotFound(msg),
             TechnicalError(msg) => SearchError::TechnicalError(msg),
             UnknownError(msg) => SearchError::TechnicalError(msg),
         }
@@ -242,17 +240,7 @@ impl From<reqwest::Error> for FeedError {
 pub fn fetch_channel_info(full_url: &Url) -> Result<Vec<ChannelInfo>, FeedError> {
     use FeedError::*;
 
-    let host = match full_url.host_str() {
-        Some(host_str) => host_str,
-        None => {
-            return Err(TechnicalError(format!(
-                "Missing host_str in url: {:?}",
-                full_url
-            )))
-        }
-    };
-
-    let sane_url = format!("{}://{}{}", full_url.scheme(), host, full_url.path());
+    let sane_url = full_url.to_string();
     let response = fetch_resource(&sane_url)?;
 
     if is_html(&response) {
@@ -276,7 +264,7 @@ pub fn fetch_channel_info(full_url: &Url) -> Result<Vec<ChannelInfo>, FeedError>
             Ok(ParsedFeed::Atom(feed)) => Ok(vec![ChannelInfo {
                 name: feed.title().into(),
                 url: sane_url.clone(),
-                link: atom_link(feed.links()).unwrap_or(&sane_url).into(),
+                link: atom_link(feed.links()).unwrap_or(sane_url),
             }]),
             Err(err) => Err(UnknownError(format!("Neither atom nor rss: {:?}", err))),
         }
@@ -286,7 +274,9 @@ pub fn fetch_channel_info(full_url: &Url) -> Result<Vec<ChannelInfo>, FeedError>
 fn fetch_resource(url: &str) -> Result<Response, FeedError> {
     use FeedError::*;
 
-    match reqwest::blocking::get(url) {
+    let builder = Client::builder().build()?.get(url);
+
+    match builder.send() {
         Ok(resp) if resp.status() == StatusCode::OK => Ok(resp),
         Ok(resp) => Err(NotFound(format!("Server returned code {}", resp.status()))),
         Err(err) => Err(UnknownError(format!("Failed to fetch: {:?}", err))),
@@ -414,8 +404,18 @@ fn c_type(resp: &Response) -> String {
         .to_owned()
 }
 
-fn atom_link(links: &[atom_syndication::Link]) -> Option<&str> {
-    links.iter().next().map(|l| l.href())
+fn atom_link(links: &[atom_syndication::Link]) -> Option<String> {
+    let mut found_link: Option<String> = None;
+    for link in links {
+        // for youtube, this contains the link to the channel while anoter link
+        // with rel=self points to the feed
+        if link.rel() == "alternate" {
+            found_link = Some(link.href().into());
+        } else if found_link.is_none() {
+            found_link = Some(link.href().into());
+        }
+    }
+    found_link
 }
 
 #[cfg(test)]
@@ -532,6 +532,26 @@ mod tests {
                 name: "NYT > Top Stories".into(),
                 url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml".into(),
                 link: "https://www.nytimes.com?emc=rss&partner=rss".into(),
+            },
+            feed
+        );
+    }
+
+    #[test]
+    fn fetch_atom_youtube_direct() {
+        let url = Url::parse(
+            "https://www.youtube.com/feeds/videos.xml?channel_id=UCxec_VgCE-5DUZ8MocKbEdg",
+        )
+        .unwrap();
+        let feeds = fetch_channel_info(&url).expect("Failed to fetch feeds");
+        assert_eq!(1, feeds.len());
+        let feed = feeds[0].clone();
+        assert_eq!(
+            ChannelInfo {
+                name: "marktcheck".into(),
+                url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCxec_VgCE-5DUZ8MocKbEdg"
+                    .into(),
+                link: "https://www.youtube.com/channel/UCxec_VgCE-5DUZ8MocKbEdg".into(),
             },
             feed
         );

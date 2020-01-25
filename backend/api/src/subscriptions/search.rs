@@ -10,18 +10,6 @@ pub enum SearchError {
     Unknown,
 }
 
-impl From<ChannelSearchError> for SearchError {
-    fn from(other: ChannelSearchError) -> Self {
-        match other {
-            ChannelSearchError::ChannelNotFound => SearchError::NotFound,
-            ChannelSearchError::TechnicalError(msg) => {
-                eprintln!("Technical error during search: {}", msg);
-                SearchError::Unknown
-            }
-        }
-    }
-}
-
 pub fn search(
     db: &PgConnection,
     channel_type: ChannelType,
@@ -62,7 +50,16 @@ pub fn search(
         SearchError::InvalidInput
     })?;
 
-    let channels = channel.search(online_query)?;
+    let channels = channel.search(online_query).map_err(|err| match err {
+        ChannelSearchError::ChannelNotFound(msg) => {
+            eprintln!("Channel not found: {}", msg);
+            SearchError::NotFound
+        }
+        ChannelSearchError::TechnicalError(msg) => {
+            eprintln!("Technical error during search: {}", msg);
+            SearchError::Unknown
+        }
+    })?;
 
     if channels.is_empty() {
         return Ok(Vec::new());

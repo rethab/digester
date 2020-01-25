@@ -282,7 +282,7 @@ mod tests {
     fn parse_subscription() {
         let sub: NewSubscription = serde_json::from_str(
             r#"{
-            "channelId":"1",
+            "channelId":1,
             "frequency":"Weekly",
             "day":"Sat",
             "time":"09:00:00.00"

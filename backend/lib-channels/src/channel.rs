@@ -41,7 +41,7 @@ impl Update {
 #[derive(Debug)]
 pub enum SearchError {
     /// The channel format is valid, but it doesn't exist (404)
-    ChannelNotFound,
+    ChannelNotFound(String),
     /// Something went wrong. Please try again later
     TechnicalError(String),
 }
