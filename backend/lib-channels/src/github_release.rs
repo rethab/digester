@@ -26,11 +26,11 @@ impl GithubRelease {
         let cloned_json = json.clone();
         let releases = serde_json::from_value::<Vec<ReleaseResponse>>(json)
             .map_err(|err| format!("Failed to parse releases: {:?}, json: {}", err, cloned_json))?;
-        let keep = |update: &Update| last_fetched.map(|lf| lf < update.published).unwrap_or(true);
         let mut updates = Vec::with_capacity(releases.len());
         for release in releases {
-            match release.try_into() {
-                Ok(update) if keep(&update) => updates.push(update),
+            let update_or: Result<Update, String> = release.try_into();
+            match update_or {
+                Ok(update) if !update.is_old(last_fetched) => updates.push(update),
                 Ok(_) => {}
                 Err(err) => return Err(format!("Failed to parse reponse: {}", err)),
             }
@@ -91,10 +91,6 @@ pub struct GithubRepository {
 }
 
 impl GithubRepository {
-    fn to_string(&self) -> String {
-        format!("{}/{}", self.owner, self.repository)
-    }
-
     fn to_url(&self) -> String {
         format!("https://github.com/{}", self.to_string())
     }
@@ -133,7 +129,7 @@ impl GithubRepository {
 
 impl Display for GithubRepository {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}/{}", self.owner, self.repository)
     }
 }
 

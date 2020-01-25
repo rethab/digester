@@ -28,6 +28,15 @@ pub struct Update {
     pub published: DateTime<Utc>,
 }
 
+impl Update {
+    /// Returns true if this update was published before we last fetched
+    /// this channel. Passing `None` for last_fetched means we never fetched
+    /// the channel before and therefore the result would be false.
+    pub fn is_old(&self, last_fetched: Option<DateTime<Utc>>) -> bool {
+        last_fetched.map(|lf| lf > self.published).unwrap_or(false)
+    }
+}
+
 /// The failure cases when validating a channel
 #[derive(Debug)]
 pub enum SearchError {
@@ -44,7 +53,7 @@ pub enum SearchError {
 pub struct SanitizedName(pub String);
 
 /// Identifies a specific channel where we can pull updates from
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ChannelInfo {
     /// human readable description of the channel (eg. "the morning paper")
     pub name: String,
@@ -104,5 +113,44 @@ pub fn factory(channel_type: ChannelType, github_release: &GithubRelease) -> &dy
     match channel_type {
         ChannelType::GithubRelease => github_release,
         ChannelType::RssFeed => &Rss {},
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    #[test]
+    fn is_old_with_none() {
+        let u = Update {
+            title: "T".into(),
+            url: "U".into(),
+            published: Utc::now(),
+        };
+        assert_eq!(false, u.is_old(None))
+    }
+
+    #[test]
+    fn is_old_with_long_past() {
+        let u = Update {
+            title: "T".into(),
+            url: "U".into(),
+            published: Utc::now(),
+        };
+        assert_eq!(
+            false,
+            u.is_old(Some(Utc.ymd(1990, 10, 10).and_hms(1, 1, 1)))
+        )
+    }
+
+    #[test]
+    fn is_old_with_recent() {
+        let u = Update {
+            title: "T".into(),
+            url: "U".into(),
+            published: Utc.ymd(1990, 10, 10).and_hms(1, 1, 1),
+        };
+        assert_eq!(true, u.is_old(Some(Utc::now())))
     }
 }

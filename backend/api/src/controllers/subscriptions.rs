@@ -92,10 +92,7 @@ struct Channel {
 impl Channel {
     fn from_db(c: db::Channel) -> Self {
         // todo migrate database
-        let link = c
-            .link
-            .map(|l| l.to_owned())
-            .unwrap_or(format!("https://github.com/{}", c.name));
+        let link = c.link.unwrap_or(format!("https://github.com/{}", c.name));
         Self {
             id: c.id,
             channel_type: c.channel_type,
@@ -171,7 +168,7 @@ fn search(
         Ok(channels) => {
             let channels = channels
                 .into_iter()
-                .map(|c| Channel::from_db(c))
+                .map(Channel::from_db)
                 .collect::<Vec<Channel>>();
             JsonResponse::Ok(json!({ "channels": channels }))
         }

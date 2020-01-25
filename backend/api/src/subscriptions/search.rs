@@ -71,7 +71,7 @@ pub fn search(
     let channels = channels
         .iter()
         .map(|f| db::NewChannel {
-            channel_type: channel_type,
+            channel_type,
             name: f.name.clone(),
             url: f.url.clone(),
             link: f.link.clone(),

@@ -4,12 +4,13 @@ use atom_syndication::Error as AtomError;
 use atom_syndication::Feed;
 use chrono::{DateTime, Utc};
 use kuchiki::traits::*;
+use reqwest::blocking::Response;
 use reqwest::header::{ToStrError, CONTENT_TYPE};
 use reqwest::StatusCode;
 use rss::Channel as RssChannel;
 use rss::Error as RssError;
 use std::fmt::Display;
-use std::io::BufReader;
+use std::io::{BufRead, BufReader};
 use url::Url;
 
 /// While it is called RSS, this
@@ -25,7 +26,7 @@ pub struct SanitizedUrl {
 }
 
 impl SanitizedUrl {
-    fn to_string(&self) -> String {
+    fn format_url(&self) -> String {
         format!("{}://{}{}", self.scheme, self.host, self.path,)
     }
 
@@ -67,7 +68,7 @@ impl SanitizedUrl {
 
     pub fn parse(url: &str) -> Result<Self, String> {
         // the url lib allows some weird stuff, so we fitler manually
-        if url.contains("'") {
+        if url.contains('\'') {
             return Err("Invalid character '".into());
         }
 
@@ -79,7 +80,7 @@ impl SanitizedUrl {
 
         Url::parse(&url_with_scheme)
             .map_err(|err| format!("failed to parse url '{}': {}", url_with_scheme, err))
-            .and_then(|url| Self::from_url(url))
+            .and_then(Self::from_url)
     }
 
     fn unsafe_parse(url: &str) -> Self {
@@ -89,7 +90,7 @@ impl SanitizedUrl {
 
 impl Display for SanitizedUrl {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", self.format_url())
     }
 }
 
@@ -116,7 +117,7 @@ impl Channel for Rss {
 
     fn search(&self, query: SanitizedName) -> Result<Vec<ChannelInfo>, SearchError> {
         let url = SanitizedUrl::from(query).to_url();
-        fetch_feeds(&url).map_err(|e| e.into())
+        fetch_channel_info(&url).map_err(|e| e.into())
     }
 
     fn fetch_updates(
@@ -125,43 +126,69 @@ impl Channel for Rss {
         url: &str,
         last_fetched: Option<DateTime<Utc>>,
     ) -> Result<Vec<Update>, String> {
-        let rss_channel = RssChannel::from_url(url)
-            .map_err(|err| format!("failed to fetch channel from url '{}': {:?}", url, err))?;
-        let mut updates = Vec::with_capacity(rss_channel.items().len());
-        for item in rss_channel.items() {
-            let update = Update {
-                title: item
-                    .title()
-                    .ok_or_else(|| format!("No title for {:?}", item))?
-                    .to_owned(),
-                url: item
-                    .link()
-                    .ok_or_else(|| format!("No url for {:?}", item))?
-                    .to_owned(),
-                // todo don't ignore parse error
-                published: item
-                    .pub_date()
-                    .map(|date| {
-                        DateTime::parse_from_rfc2822(date)
-                            .map(|dt| dt.with_timezone(&Utc))
-                            .map_err(|parse_err| {
-                                format!("Failed to parse date '{}': {:?}", date, parse_err)
-                            })
-                    })
-                    .ok_or_else(|| format!("No pub_date for {:?}", item))??,
-            };
-            // todo this is a technical error, which should be handled differently from the above business error
-            let already_seen = last_fetched
-                .map(|lf| lf > update.published)
-                .unwrap_or(false);
-            if already_seen {
-                println!("Ignoring known update: {}", update.title);
-            } else {
-                updates.push(update)
-            }
-        }
-        Ok(updates)
+        let resp = fetch_resource(url)
+            .map_err(|err| format!("Failed to fetch url '{}': {:?}", url, err))?;
+
+        let updates = match parse_feed(resp) {
+            Ok(ParsedFeed::Rss(rss)) => rss_to_updates(rss)?,
+            Ok(ParsedFeed::Atom(atom)) => atom_to_updates(atom)?,
+            Err(err) => return Err(format!("Failed to parse '{}': {:?}", url, err)),
+        };
+
+        Ok(updates
+            .into_iter()
+            .filter(|u| !u.is_old(last_fetched))
+            .collect())
     }
+}
+
+fn rss_to_updates(channel: RssChannel) -> Result<Vec<Update>, String> {
+    let mut updates = Vec::with_capacity(channel.items().len());
+    for item in channel.items() {
+        let update = Update {
+            title: item
+                .title()
+                .ok_or_else(|| format!("No title for {:?}", item))?
+                .to_owned(),
+            url: item
+                .link()
+                .ok_or_else(|| format!("No url for {:?}", item))?
+                .to_owned(),
+            // todo don't ignore parse error
+            published: item
+                .pub_date()
+                .map(|date| {
+                    DateTime::parse_from_rfc2822(date)
+                        .map(|dt| dt.with_timezone(&Utc))
+                        .map_err(|parse_err| {
+                            format!("Failed to parse date '{}': {:?}", date, parse_err)
+                        })
+                })
+                .ok_or_else(|| format!("No pub_date for {:?}", item))??,
+        };
+
+        updates.push(update);
+    }
+    Ok(updates)
+}
+
+fn atom_to_updates(feed: Feed) -> Result<Vec<Update>, String> {
+    let mut updates = Vec::with_capacity(feed.entries().len());
+    for entry in feed.entries() {
+        let update = Update {
+            title: entry.title().into(),
+            url: atom_link(entry.links())
+                .map(|l| l.to_owned())
+                .unwrap_or_else(|| format!("No links for {:?}", entry)),
+            published: entry
+                .published()
+                .cloned()
+                .ok_or_else(|| format!("No pub_date for {:?}", entry))?
+                .with_timezone(&Utc),
+        };
+        updates.push(update);
+    }
+    Ok(updates)
 }
 
 #[derive(Debug)]
@@ -212,7 +239,7 @@ impl From<reqwest::Error> for FeedError {
     }
 }
 
-pub fn fetch_feeds(full_url: &Url) -> Result<Vec<ChannelInfo>, FeedError> {
+pub fn fetch_channel_info(full_url: &Url) -> Result<Vec<ChannelInfo>, FeedError> {
     use FeedError::*;
 
     let host = match full_url.host_str() {
@@ -226,54 +253,43 @@ pub fn fetch_feeds(full_url: &Url) -> Result<Vec<ChannelInfo>, FeedError> {
     };
 
     let sane_url = format!("{}://{}{}", full_url.scheme(), host, full_url.path());
+    let response = fetch_resource(&sane_url)?;
 
-    let response = match reqwest::blocking::get(&sane_url) {
-        Ok(resp) if resp.status() == StatusCode::OK => resp,
-        Ok(resp) => return Err(NotFound(format!("Server returned code {}", resp.status()))),
-        Err(err) => return Err(UnknownError(format!("Failed to fetch: {:?}", err))),
-    };
-
-    match response.headers().get(CONTENT_TYPE) {
-        Some(c_type) if c_type.to_str()?.contains("text/html") => {
-            let mut feeds = Vec::new();
-            let body = response.text()?;
-            let links = extract_feeds_from_html(&full_url, &body)?;
-            println!("Links in HTML: {:?} --> recurse", links);
-            for link in links {
-                // fixme this could recurse forever. prevent that..
-                let mut new_feeds = fetch_feeds(&link)?;
-                feeds.append(&mut new_feeds);
-            }
-            Ok(feeds)
+    if is_html(&response) {
+        let mut feeds = Vec::new();
+        let body = response.text()?;
+        let links = extract_feeds_from_html(&full_url, &body)?;
+        println!("Links in HTML: {:?} --> recurse", links);
+        for link in links {
+            // fixme this could recurse forever. prevent that..
+            let mut new_feeds = fetch_channel_info(&link)?;
+            feeds.append(&mut new_feeds);
         }
-        Some(c_type) if c_type.to_str()?.contains("application/xml") => {
-            let buffer = BufReader::new(response);
-            let feed: Feed = Feed::read_from(buffer)?;
-            Ok(vec![ChannelInfo {
-                name: feed.title().into(),
-                url: sane_url.clone(),
-                link: feed
-                    .links()
-                    .iter()
-                    .next()
-                    .map(|l| l.href().into())
-                    .unwrap_or(sane_url),
-            }])
-        }
-        Some(c_type) if c_type.to_str()?.contains("application/rss+xml") => {
-            let buffer = BufReader::new(response);
-            let channel: RssChannel = RssChannel::read_from(buffer)?;
-            Ok(vec![ChannelInfo {
+        Ok(feeds)
+    } else {
+        match parse_feed(response) {
+            Ok(ParsedFeed::Rss(channel)) => Ok(vec![ChannelInfo {
                 name: channel.title().into(),
                 url: sane_url,
                 link: channel.link().into(),
-            }])
+            }]),
+            Ok(ParsedFeed::Atom(feed)) => Ok(vec![ChannelInfo {
+                name: feed.title().into(),
+                url: sane_url.clone(),
+                link: atom_link(feed.links()).unwrap_or(&sane_url).into(),
+            }]),
+            Err(err) => Err(UnknownError(format!("Neither atom nor rss: {:?}", err))),
         }
-        Some(c_type) => Err(UnknownError(format!(
-            "Unknown content type: {}",
-            c_type.to_str()?
-        ))),
-        None => Err(UnknownError("No content type".into())),
+    }
+}
+
+fn fetch_resource(url: &str) -> Result<Response, FeedError> {
+    use FeedError::*;
+
+    match reqwest::blocking::get(url) {
+        Ok(resp) if resp.status() == StatusCode::OK => Ok(resp),
+        Ok(resp) => Err(NotFound(format!("Server returned code {}", resp.status()))),
+        Err(err) => Err(UnknownError(format!("Failed to fetch: {:?}", err))),
     }
 }
 
@@ -281,6 +297,7 @@ fn extract_feeds_from_html(url: &Url, html: &str) -> Result<Vec<Url>, FeedError>
     let attribute_value = |atts: &kuchiki::Attributes, name: &str| -> Option<String> {
         atts.get(name).map(|v| v.to_owned())
     };
+    // atom feeds are also linked to by rss :)
     let rss: String = "application/rss+xml".into();
     let mut links = Vec::new();
     let document = kuchiki::parse_html().one(html);
@@ -315,6 +332,92 @@ fn extract_feeds_from_html(url: &Url, html: &str) -> Result<Vec<Url>, FeedError>
     Ok(links)
 }
 
+fn is_html(resp: &Response) -> bool {
+    c_type(resp).contains("text/html")
+}
+
+enum ParsedFeed {
+    Atom(Feed),
+    Rss(RssChannel),
+}
+
+impl ParsedFeed {
+    fn parse_rss<R: BufRead>(buffer: R) -> Result<ParsedFeed, String> {
+        RssChannel::read_from(buffer)
+            .map(|rss| ParsedFeed::Rss(rss))
+            .map_err(|err| format!("Failed to parse as rss: {:?}", err))
+    }
+
+    fn parse_atom<R: BufRead>(buffer: R) -> Result<ParsedFeed, String> {
+        Feed::read_from(buffer)
+            .map(|rss| ParsedFeed::Atom(rss))
+            .map_err(|err| format!("Failed to parse as atom: {:?}", err))
+    }
+}
+
+fn parse_feed(mut resp: Response) -> Result<ParsedFeed, String> {
+    if is_rss(&resp) {
+        let buffer = BufReader::new(resp);
+        ParsedFeed::parse_rss(buffer)
+    } else if is_atom(&resp) {
+        let buffer = BufReader::new(resp);
+        ParsedFeed::parse_atom(buffer)
+    } else if is_xml(&resp) {
+        // if we don't know the content type, we take a look at the beginning
+        // of the body and look for xml tags for rss or atom.
+        // this is a bit cumbersome/inefficient, because `reqwest.Response`
+        // doesn't allow us to seek back to the beginning after having looked
+        // at the first few bytes in the response. therefore, we copy the entire
+        // response into a byte vector, which then allows us to peek at the
+        // first few bytes.
+        let mut bytes = Vec::with_capacity(resp.content_length().unwrap_or(512) as usize);
+        resp.copy_to(&mut bytes)
+            .map_err(|err| format!("Failed to copy buffer: {:?}", err))?;
+        let contents = peek_buffer(&bytes);
+        let buffer = BufReader::with_capacity(bytes.len(), &bytes[..]);
+        if contents.contains("<rss") {
+            ParsedFeed::parse_rss(buffer)
+        } else if contents.contains("<feed") {
+            ParsedFeed::parse_atom(buffer)
+        } else {
+            Err(format!(
+                "XML response doesn't contain <rss or <feed in the first few bytes: {}",
+                contents
+            ))
+        }
+    } else {
+        Err(format!("Unhandled content type: {}", c_type(&resp)))
+    }
+}
+
+fn peek_buffer(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(&bytes[0..256]).into()
+}
+
+fn is_rss(resp: &Response) -> bool {
+    c_type(resp).contains("application/rss+xml")
+}
+
+fn is_atom(resp: &Response) -> bool {
+    c_type(resp).contains("application/atom+xml")
+}
+
+fn is_xml(resp: &Response) -> bool {
+    c_type(resp).contains("application/xml") || c_type(resp).contains("text/xml")
+}
+
+fn c_type(resp: &Response) -> String {
+    resp.headers()
+        .get(CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_owned()
+}
+
+fn atom_link(links: &[atom_syndication::Link]) -> Option<&str> {
+    links.iter().next().map(|l| l.href())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -322,7 +425,7 @@ mod tests {
     #[test]
     fn fetch_atom_theverge_indirect() {
         let url = Url::parse("https://theverge.com").unwrap();
-        let feeds = fetch_feeds(&url).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url).expect("Failed to fetch feeds");
         assert_eq!(2, feeds.len());
         let all_posts = feeds
             .iter()
@@ -353,7 +456,7 @@ mod tests {
     #[test]
     fn fetch_atom_theverge_direct() {
         let url = Url::parse("https://theverge.com/rss/index.xml").unwrap();
-        let feeds = fetch_feeds(&url).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url).expect("Failed to fetch feeds");
         assert_eq!(1, feeds.len());
         let all_posts = feeds
             .iter()
@@ -373,7 +476,7 @@ mod tests {
     fn fetch_rss_sedaily_direct() {
         let url =
             Url::parse("https://softwareengineeringdaily.com/category/podcast/feed/").unwrap();
-        let feeds = fetch_feeds(&url).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url).expect("Failed to fetch feeds");
         assert_eq!(1, feeds.len());
         let all_posts = feeds.iter().next().expect("Missing channel");
         assert_eq!(
@@ -389,7 +492,7 @@ mod tests {
     #[test]
     fn fetch_rss_acolyer_indirect() {
         let url = Url::parse("https://blog.acolyer.org").unwrap();
-        let feeds = fetch_feeds(&url).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url).expect("Failed to fetch feeds");
         assert_eq!(2, feeds.len());
         println!("all: {:?}", feeds);
         let feed = feeds
@@ -415,6 +518,22 @@ mod tests {
                 link: "https://blog.acolyer.org".into(),
             },
             *comments
+        );
+    }
+
+    #[test]
+    fn fetch_rss_nytimes_indirect() {
+        let url = Url::parse("https://nytimes.com").unwrap();
+        let feeds = fetch_channel_info(&url).expect("Failed to fetch feeds");
+        assert_eq!(1, feeds.len());
+        let feed = feeds[0].clone();
+        assert_eq!(
+            ChannelInfo {
+                name: "NYT > Top Stories".into(),
+                url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml".into(),
+                link: "https://www.nytimes.com?emc=rss&partner=rss".into(),
+            },
+            feed
         );
     }
 

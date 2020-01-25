@@ -41,7 +41,7 @@ pub fn channels_search(
         .filter(
             channel_type
                 .eq(c_type)
-                .and(link.ilike(&search_query).or(name.ilike(&search_query))),
+                .and(link.ilike(&search_query).or(url.ilike(&search_query))),
         )
         .get_results(conn)
         .map_err(|err| format!("Failed to fetch channels by query: {:?}", err))
