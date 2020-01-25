@@ -41,6 +41,7 @@ pub struct Channel {
     pub channel_type: ChannelType,
     pub name: String,
     pub link: Option<String>,
+    pub url: Option<String>,
     pub last_fetched: Option<DateTime<Utc>>,
     pub inserted: DateTime<Utc>,
 }
@@ -51,6 +52,7 @@ pub struct NewChannel {
     pub channel_type: ChannelType,
     pub name: String,
     pub link: String,
+    pub url: String,
 }
 
 #[derive(Debug, Insertable)]

@@ -110,13 +110,23 @@ impl Channel for Rss {
         SanitizedUrl::parse(url).map(|u| u.into())
     }
 
+    fn sanitize_for_db_search(&self, url: &str) -> Result<SanitizedName, String> {
+        SanitizedUrl::parse(url).map(|u| SanitizedName(u.to_string_without_scheme()))
+    }
+
+    fn search(&self, query: SanitizedName) -> Result<Vec<ChannelInfo>, SearchError> {
+        let url = SanitizedUrl::from(query).to_url();
+        fetch_feeds(&url).map_err(|e| e.into())
+    }
+
     fn fetch_updates(
         &self,
-        url: &SanitizedName,
+        _name: &str,
+        url: &str,
         last_fetched: Option<DateTime<Utc>>,
     ) -> Result<Vec<Update>, String> {
-        let rss_channel = RssChannel::from_url(&url.0)
-            .map_err(|err| format!("failed to fetch channel from url '{}': {:?}", url.0, err))?;
+        let rss_channel = RssChannel::from_url(url)
+            .map_err(|err| format!("failed to fetch channel from url '{}': {:?}", url, err))?;
         let mut updates = Vec::with_capacity(rss_channel.items().len());
         for item in rss_channel.items() {
             let update = Update {
@@ -161,11 +171,15 @@ pub enum FeedError {
     UnknownError(String),
 }
 
-#[derive(PartialEq, Debug)]
-pub struct FeedInfo {
-    pub title: String, // title of the feed
-    pub url: String,   // url of this feed (eg. theverge.com/feed.xml)
-    pub link: String,  // website of this feed (eg. theverge.com)
+impl Into<SearchError> for FeedError {
+    fn into(self) -> SearchError {
+        use FeedError::*;
+        match self {
+            NotFound(_) => SearchError::ChannelNotFound,
+            TechnicalError(msg) => SearchError::TechnicalError(msg),
+            UnknownError(msg) => SearchError::TechnicalError(msg),
+        }
+    }
 }
 
 impl From<ToStrError> for FeedError {
@@ -198,7 +212,7 @@ impl From<reqwest::Error> for FeedError {
     }
 }
 
-pub fn fetch_feeds(full_url: &Url) -> Result<Vec<FeedInfo>, FeedError> {
+pub fn fetch_feeds(full_url: &Url) -> Result<Vec<ChannelInfo>, FeedError> {
     use FeedError::*;
 
     let host = match full_url.host_str() {
@@ -235,8 +249,8 @@ pub fn fetch_feeds(full_url: &Url) -> Result<Vec<FeedInfo>, FeedError> {
         Some(c_type) if c_type.to_str()?.contains("application/xml") => {
             let buffer = BufReader::new(response);
             let feed: Feed = Feed::read_from(buffer)?;
-            Ok(vec![FeedInfo {
-                title: feed.title().into(),
+            Ok(vec![ChannelInfo {
+                name: feed.title().into(),
                 url: sane_url.clone(),
                 link: feed
                     .links()
@@ -249,8 +263,8 @@ pub fn fetch_feeds(full_url: &Url) -> Result<Vec<FeedInfo>, FeedError> {
         Some(c_type) if c_type.to_str()?.contains("application/rss+xml") => {
             let buffer = BufReader::new(response);
             let channel: RssChannel = RssChannel::read_from(buffer)?;
-            Ok(vec![FeedInfo {
-                title: channel.title().into(),
+            Ok(vec![ChannelInfo {
+                name: channel.title().into(),
                 url: sane_url,
                 link: channel.link().into(),
             }])
@@ -312,11 +326,11 @@ mod tests {
         assert_eq!(2, feeds.len());
         let all_posts = feeds
             .iter()
-            .find(|f| f.title == "The Verge -  All Posts")
+            .find(|f| f.name == "The Verge -  All Posts")
             .expect("Missing All Posts");
         assert_eq!(
-            FeedInfo {
-                title: "The Verge -  All Posts".into(),
+            ChannelInfo {
+                name: "The Verge -  All Posts".into(),
                 url: "https://theverge.com/rss/index.xml".into(),
                 link: "https://www.theverge.com/".into(),
             },
@@ -324,11 +338,11 @@ mod tests {
         );
         let front_pages = feeds
             .iter()
-            .find(|f| f.title == "The Verge -  Front Pages")
+            .find(|f| f.name == "The Verge -  Front Pages")
             .expect("Front Pages missing");
         assert_eq!(
-            FeedInfo {
-                title: "The Verge -  Front Pages".into(),
+            ChannelInfo {
+                name: "The Verge -  Front Pages".into(),
                 url: "https://www.theverge.com/rss/front-page/index.xml".into(),
                 link: "https://www.theverge.com/".into(),
             },
@@ -343,11 +357,11 @@ mod tests {
         assert_eq!(1, feeds.len());
         let all_posts = feeds
             .iter()
-            .find(|f| f.title == "The Verge -  All Posts")
+            .find(|f| f.name == "The Verge -  All Posts")
             .expect("Missing All Posts");
         assert_eq!(
-            FeedInfo {
-                title: "The Verge -  All Posts".into(),
+            ChannelInfo {
+                name: "The Verge -  All Posts".into(),
                 url: "https://theverge.com/rss/index.xml".into(),
                 link: "https://www.theverge.com/".into(),
             },
@@ -363,8 +377,8 @@ mod tests {
         assert_eq!(1, feeds.len());
         let all_posts = feeds.iter().next().expect("Missing channel");
         assert_eq!(
-            FeedInfo {
-                title: "Podcast – Software Engineering Daily".into(),
+            ChannelInfo {
+                name: "Podcast – Software Engineering Daily".into(),
                 url: "https://softwareengineeringdaily.com/category/podcast/feed/".into(),
                 link: "https://softwareengineeringdaily.com".into(),
             },
@@ -380,11 +394,11 @@ mod tests {
         println!("all: {:?}", feeds);
         let feed = feeds
             .iter()
-            .find(|f| f.title == "the morning paper")
+            .find(|f| f.name == "the morning paper")
             .expect("Missing feed");
         assert_eq!(
-            FeedInfo {
-                title: "the morning paper".into(),
+            ChannelInfo {
+                name: "the morning paper".into(),
                 url: "https://blog.acolyer.org/feed/".into(),
                 link: "https://blog.acolyer.org".into(),
             },
@@ -392,11 +406,11 @@ mod tests {
         );
         let comments = feeds
             .iter()
-            .find(|f| f.title == "Comments for the morning paper")
+            .find(|f| f.name == "Comments for the morning paper")
             .expect("Missing channel");
         assert_eq!(
-            FeedInfo {
-                title: "Comments for the morning paper".into(),
+            ChannelInfo {
+                name: "Comments for the morning paper".into(),
                 url: "https://blog.acolyer.org/comments/feed/".into(),
                 link: "https://blog.acolyer.org".into(),
             },

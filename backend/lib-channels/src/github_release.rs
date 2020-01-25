@@ -94,6 +94,10 @@ impl GithubRepository {
     fn to_string(&self) -> String {
         format!("{}/{}", self.owner, self.repository)
     }
+
+    fn to_url(&self) -> String {
+        format!("https://github.com/{}", self.to_string())
+    }
 }
 
 impl From<SanitizedName> for GithubRepository {
@@ -138,8 +142,7 @@ impl Channel for GithubRelease {
         GithubRepository::parse(name).map(|r| r.into())
     }
 
-    /*
-    fn validate(&self, name: SanitizedName) -> Result<SanitizedName, ValidationError> {
+    fn search(&self, name: SanitizedName) -> Result<Vec<ChannelInfo>, SearchError> {
         let repo: GithubRepository = GithubRepository::from(name);
         let query = self
             .client
@@ -153,41 +156,45 @@ impl Channel for GithubRelease {
             Ok((_, status, Some(json))) if status == StatusCode::OK => {
                 serde_json::from_value::<RepoResponse>(json.clone())
                     .map_err(|err| {
-                        eprintln!(
+                        SearchError::TechnicalError(format!(
                             "Failed to parse RepoResponse from json {:?}: {:?}",
-                            json, err
-                        );
-                        ValidationError::TechnicalError
+                            json, err,
+                        ))
                     })
                     .and_then(|repo| {
                         self.sanitize(&repo.full_name).map_err(|err| {
-                            eprintln!(
-                                "Failed to sanitize repository from github: {}",
-                                repo.full_name
-                            );
-                            ValidationError::TechnicalError
+                            SearchError::TechnicalError(format!(
+                                "Failed to sanitize repository '{}' from github: {:?}",
+                                repo.full_name, err
+                            ))
                         })
+                    })
+                    .map(|sanitized| {
+                        let repo = GithubRepository::from(sanitized);
+                        vec![ChannelInfo {
+                            name: repo.to_string(),
+                            link: repo.to_url(),
+                            url: repo.to_url(),
+                        }]
                     })
             }
             Ok((_, status, _)) if status == StatusCode::NOT_FOUND => {
-                Err(ValidationError::ChannelNotFound)
+                Err(SearchError::ChannelNotFound)
             }
-            other => {
-                eprintln!(
-                    "Failed to query github whether repo {} is valid: {:?}",
-                    repo, other
-                );
-                Err(ValidationError::TechnicalError)
-            }
+            other => Err(SearchError::TechnicalError(format!(
+                "Failed to query github whether repo {} is valid: {:?}",
+                repo, other
+            ))),
         }
     }
-    */
+
     fn fetch_updates(
         &self,
-        name: &SanitizedName,
+        name: &str,
+        _url: &str,
         last_fetched: Option<DateTime<Utc>>,
     ) -> Result<Vec<Update>, String> {
-        let repo = GithubRepository::from(name.clone());
+        let repo = GithubRepository::parse(name)?;
         let query = self
             .client
             .get()

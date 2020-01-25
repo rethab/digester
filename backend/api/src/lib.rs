@@ -11,3 +11,4 @@ pub mod cache;
 pub mod controllers;
 pub mod iam;
 pub mod ratelimiting;
+pub mod subscriptions;

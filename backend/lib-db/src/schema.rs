@@ -22,6 +22,7 @@ table! {
         channel_type -> Text,
         name -> Text,
         link -> Nullable<Text>,
+        url -> Nullable<Text>,
         last_fetched -> Nullable<Timestamptz>,
         inserted -> Timestamptz,
     }

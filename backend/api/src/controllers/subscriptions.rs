@@ -1,12 +1,14 @@
-use lib_channels::rss;
+use lib_channels as channels;
 use lib_db as db;
 
+use super::super::subscriptions::search;
 use super::common::*;
+use channels::github_release::GithubRelease;
 use chrono::naive::NaiveTime;
 use db::{ChannelType, Day, Frequency};
 use rocket::http::RawStr;
 use rocket::request::FromFormValue;
-use rocket::Rocket;
+use rocket::{Rocket, State};
 use rocket_contrib::json::{Json, JsonValue};
 
 pub fn mount(rocket: Rocket) -> Rocket {
@@ -83,18 +85,22 @@ impl Subscription {
 struct Channel {
     id: i32,
     channel_type: ChannelType,
-    name: String, // human readable name of thing
-    // todo make non optional
-    link: Option<String>, // link to the website
+    name: String,
+    link: String,
 }
 
 impl Channel {
     fn from_db(c: db::Channel) -> Self {
+        // todo migrate database
+        let link = c
+            .link
+            .map(|l| l.to_owned())
+            .unwrap_or(format!("https://github.com/{}", c.name));
         Self {
             id: c.id,
             channel_type: c.channel_type,
             name: c.name,
-            link: c.link,
+            link,
         }
     }
 }
@@ -129,6 +135,7 @@ fn search(
     // fixme _session: Protected,
     db: DigesterDbConn,
     channel_type: SearchChannelType,
+    gh_token: State<GithubApiToken>,
     query: &RawStr,
 ) -> JsonResponse {
     let query = match query.url_decode() {
@@ -139,78 +146,35 @@ fn search(
         }
     };
 
-    let sanititzed_url = match rss::SanitizedUrl::parse(&query) {
-        Ok(url) => url,
+    // todo only initialize this if needed
+    let github: GithubRelease = match GithubRelease::new(&gh_token.0) {
+        Ok(github) => github,
         Err(err) => {
-            eprintln!("Query is not a URL: {:?}", err);
-            return JsonResponse::BadRequest("not a url".into());
-        }
-    };
-
-    // we need to search for the sanitized URL as long as we search for exact matches,
-    // because otherwise we might store https://bla.bla but the user searches for bla.bla
-
-    // searching w/o scheme means the user can search for http and we find https
-    let query = sanititzed_url.to_string_without_scheme();
-
-    let channels = match db::channels_search(&db, channel_type.0, &query) {
-        Ok(channels) => channels,
-        Err(err) => {
-            eprintln!(
-                "Failed to search for channel by query '{}': {:?}",
-                query, err
-            );
+            eprintln!("Failed to resolve github client: {:?}", err);
             return JsonResponse::InternalServerError;
         }
     };
 
-    println!("Found {} channels in search '{}'", channels.len(), query);
+    let db_channel_type = channel_type.0;
 
-    if !channels.is_empty() {
-        return JsonResponse::Ok(json!({
-            "channels": channels.into_iter().map(|c| Channel::from_db(c)).collect::<Vec<Channel>>()
-        }));
-    }
-
-    if channel_type.0 != ChannelType::RssFeed {
-        eprintln!(
-            "Search is only implemented for RSS feeds: {:?}",
-            channel_type.0
-        );
-        return JsonResponse::InternalServerError;
-    }
-
-    let url = sanititzed_url.to_url();
-    let feeds = match rss::fetch_feeds(&url) {
-        Err(err) => {
-            eprintln!("Failed to fetch feeds for url '{}': {:?}", url, err);
-            return JsonResponse::InternalServerError;
-        }
-        Ok(feeds) => feeds,
+    let channel_type = match db_channel_type {
+        db::ChannelType::GithubRelease => channels::ChannelType::GithubRelease,
+        db::ChannelType::RssFeed => channels::ChannelType::RssFeed,
     };
+    let channel = channels::factory(channel_type, &github);
 
-    if feeds.is_empty() {
-        let no_channels: Vec<Channel> = vec![];
-        return JsonResponse::Ok(json!({ "channels": no_channels }));
-    }
-
-    let channels = feeds
-        .iter()
-        .map(|f| db::NewChannel {
-            channel_type: channel_type.0,
-            name: f.url.clone(),
-            link: f.link.clone(),
-        })
-        .collect();
-
-    match db::channels_insert_many(&db, channels) {
-        Err(err) => {
-            eprintln!("Failed to insert new channels: {:?}", err);
-            JsonResponse::InternalServerError
+    use search::SearchError::*;
+    match search::search(&db.0, db_channel_type, channel, &query) {
+        Err(Unknown) => JsonResponse::InternalServerError,
+        Err(InvalidInput) => JsonResponse::BadRequest("Invalid Input".into()),
+        Err(NotFound) => JsonResponse::Ok(json!({ "channels": [] })),
+        Ok(channels) => {
+            let channels = channels
+                .into_iter()
+                .map(|c| Channel::from_db(c))
+                .collect::<Vec<Channel>>();
+            JsonResponse::Ok(json!({ "channels": channels }))
         }
-        Ok(channels) => JsonResponse::Ok(json!({
-            "channels": channels.into_iter().map(|c| Channel::from_db(c)).collect::<Vec<Channel>>()
-        })),
     }
 }
 
