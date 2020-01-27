@@ -81,7 +81,13 @@ fn list(session: Protected, db: DigesterDbConn, offset: u32, limit: u32) -> Json
 
     let timezone = user.timezone.map(|tz| tz.0).unwrap_or_else(|| Tz::UTC);
     match db::updates_find_by_user_id(&db, user.id, offset, limit) {
-        Err(_) => JsonResponse::InternalServerError,
+        Err(err) => {
+            eprintln!(
+                "Failed to find updates for user {}. offset={}, limit={}. Err={:?}",
+                user.id, offset, limit, err
+            );
+            JsonResponse::InternalServerError
+        }
         Ok(subs) => subs
             .into_iter()
             .map(|(update, chan)| Update::from_db(update, chan, timezone))
