@@ -57,7 +57,7 @@ export default {
     },
     formatDate(datetime) {
       return moment(datetime, "YYYY-MM-DDTHH:mm:ss").calendar(null, {
-        lastWeek: "[Last] dddd",
+        lastWeek: "dddd",
         lastDay: "[Yesterday at] HH:mm",
         sameDay: "[Today at] HH:mm"
       });

@@ -62,6 +62,7 @@ export default {
       loading: false,
       snackbar: false,
 
+      type: Features().rssChannel() ? "RSS" : "GithubRelease",
       typeErrors: [],
 
       name: "",
@@ -92,9 +93,6 @@ export default {
       } else {
         return "";
       }
-    },
-    type() {
-      return this.rssChannel ? "RSS" : "GithubRelease";
     },
     types() {
       let types = [];
