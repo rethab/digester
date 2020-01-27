@@ -116,6 +116,8 @@ export default {
           const popupClosed = err.message === "Auth popup window closed";
           if (!popupClosed && !err.response) {
             this.$store.dispatch("setOffline");
+          } else if (err.response && err.response.data.error == "missing_permissions") {
+            this.$router.push({ name: "auth-login", query: { missingPermissions: true } });
           } else if (err.response && err.response.status == 429) {
             this.toomanyrequests = true;
           }

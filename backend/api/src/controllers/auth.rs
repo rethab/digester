@@ -108,15 +108,15 @@ fn oauth_exchange<P: IdentityProvider + Sync + Send>(
             }))
         }
         Err(AuthenticationError::MissingPermissions(msg)) => {
-            println!("Missing permissions: {}", msg);
-            JsonResponse::BadRequest("Not all necessary scopes granted".into())
+            eprintln!("Missing permissions: {}", msg);
+            JsonResponse::BadRequest("missing_permissions".into())
         }
         Err(AuthenticationError::UnknownFailure(msg)) => {
-            println!("Unknown auth failure: {}", msg);
+            eprintln!("Unknown auth failure: {}", msg);
             JsonResponse::InternalServerError
         }
         Err(AuthenticationError::TokenExchangeFailed(msg)) => {
-            println!("token exchange failure: {}", msg);
+            eprintln!("token exchange failure: {}", msg);
             JsonResponse::InternalServerError
         }
     }

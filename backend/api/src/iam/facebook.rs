@@ -22,7 +22,7 @@ impl Facebook {
 #[derive(Deserialize)]
 struct FacebookMeResponse {
     id: String,
-    email: String,
+    email: Option<String>,
     name: Option<String>,
 }
 
@@ -69,16 +69,23 @@ impl IdentityProvider for Facebook {
         };
         match resp.json::<FacebookMeResponse>() {
             Ok(me) => {
-                let email = me.email.clone();
-                Ok(ProviderUserInfo {
-                    provider: Facebook::IDENTIFIER,
-                    pid: me.id,
-                    email: email.clone(),
-                    // todo should the username become optional
-                    username: me.name.unwrap_or_else(|| email),
-                })
+                match me.email {
+                    Some(email) => {
+                        Ok(ProviderUserInfo {
+                            provider: Facebook::IDENTIFIER,
+                            pid: me.id,
+                            email: email.clone(),
+                            // todo should the username become optional
+                            username: me.name.unwrap_or_else(|| email),
+                        })
+                    }
+                    None => Err(MissingPermissions(format!(
+                        "Field 'email' missing in facebook response for {}",
+                        me.id
+                    ))),
+                }
             }
-            Err(err) => Err(MissingPermissions(format!(
+            Err(err) => Err(UnknownFailure(format!(
                 "Failed to parse facebook's response. body={}, err:{:?}",
                 resp.text().unwrap_or_else(|_| "[no body]".into()),
                 err
