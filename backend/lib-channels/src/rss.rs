@@ -176,7 +176,7 @@ fn atom_to_updates(feed: &Feed) -> Result<Vec<Update>, String> {
             published: entry
                 .published()
                 .cloned()
-                .ok_or_else(|| format!("No pub_date for {:?}", entry))?
+                .unwrap_or(entry.updated().clone()) // eg. wikipedia doesn't use published
                 .with_timezone(&Utc),
         };
         updates.push(update);
