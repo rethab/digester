@@ -250,8 +250,14 @@ fn fetch_channel_info(full_url: &Url, recursed: bool) -> Result<Vec<ChannelInfo>
         let links = extract_feeds_from_html(&full_url, &body)?;
         println!("Links in HTML: {:?} --> recurse", links);
         for link in links {
-            let mut new_feeds = fetch_channel_info(&link, true)?;
-            feeds.append(&mut new_feeds);
+            let new_feeds = fetch_channel_info(&link, true)?;
+            for new_feed in new_feeds {
+                if is_new_feed(&feeds, &new_feed) {
+                    feeds.push(new_feed);
+                } else {
+                    println!("Ignoring duplicate feed: {:?}", new_feed);
+                }
+            }
         }
         Ok(feeds)
     } else {
@@ -272,6 +278,22 @@ fn fetch_channel_info(full_url: &Url, recursed: bool) -> Result<Vec<ChannelInfo>
             ))),
         }
     }
+}
+
+// returns false if we already have the same feed. specifically,
+// we're trying to filter equivalent feeds that are exposed as
+// rss and atom
+fn is_new_feed(feeds: &[ChannelInfo], new_feed: &ChannelInfo) -> bool {
+    for feed in feeds {
+        if feed.url == new_feed.url {
+            // exactly the same, not even different type
+            return false;
+        } else if feed.name == new_feed.name && feed.link == new_feed.link {
+            // same title and pointing to same website --> most likely same
+            return false;
+        }
+    }
+    return true;
 }
 
 fn fetch_resource(url: &str) -> Result<Response, FeedError> {
@@ -592,6 +614,22 @@ mod tests {
                 url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCxec_VgCE-5DUZ8MocKbEdg"
                     .into(),
                 link: "https://www.youtube.com/channel/UCxec_VgCE-5DUZ8MocKbEdg".into(),
+            },
+            feed
+        );
+    }
+
+    #[test]
+    fn fetch_atom_rss_200ok_deduplicate() {
+        let url = Url::parse("https://200ok.ch/").unwrap();
+        let feeds = fetch_channel_info(&url, false).unwrap();
+        assert_eq!(1, feeds.len());
+        let feed = feeds[0].clone();
+        assert_eq!(
+            ChannelInfo {
+                name: "200ok - Consultancy, Research Lab, Incubator".into(),
+                url: "https://200ok.ch/rss.xml".into(),
+                link: "https://200ok.ch/".into(),
             },
             feed
         );
