@@ -2,6 +2,7 @@ use super::channel::*;
 
 use atom_syndication::Error as AtomError;
 use atom_syndication::Feed;
+use chrono::naive::NaiveDateTime;
 use chrono::{DateTime, Utc};
 use kuchiki::traits::*;
 use reqwest::blocking::{Client, Response};
@@ -157,14 +158,8 @@ fn rss_to_updates(channel: &RssChannel) -> Result<Vec<Update>, String> {
             // todo don't ignore parse error
             published: item
                 .pub_date()
-                .map(|date| {
-                    DateTime::parse_from_rfc2822(date)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .map_err(|parse_err| {
-                            format!("Failed to parse date '{}': {:?}", date, parse_err)
-                        })
-                })
-                .ok_or_else(|| format!("No pub_date for {:?}", item))??,
+                .ok_or(format!("Missing pub_date for {:?}", item))
+                .and_then(parse_pub_date)?,
         };
 
         updates.push(update);
@@ -434,9 +429,32 @@ fn atom_link(links: &[atom_syndication::Link]) -> Option<String> {
     found_link
 }
 
+fn parse_pub_date(datetime: &str) -> Result<DateTime<Utc>, String> {
+    if datetime.contains('+') {
+        DateTime::parse_from_rfc2822(datetime)
+            .map(|dt| dt.with_timezone(&Utc))
+            .map_err(|parse_err| {
+                format!(
+                    "Failed to parse date '{}' as rfc2822: {:?}",
+                    datetime, parse_err
+                )
+            })
+    } else {
+        NaiveDateTime::parse_from_str(datetime, "%a, %d %b %Y %H:%M:%S")
+            .map(|naive| DateTime::from_utc(naive, Utc))
+            .map_err(|parse_err| {
+                format!(
+                    "Failed to parse date '{}' with custom format: {:?}",
+                    datetime, parse_err
+                )
+            })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
 
     #[test]
     fn fetch_atom_theverge_indirect() {
@@ -608,6 +626,31 @@ mod tests {
             Url::parse("https://blog.appsignal.com/feed.xml").unwrap(),
             feeds[2],
         );
+    }
+
+    #[test]
+    fn parse_datetime_without_timezone() {
+        // example: https://craftcms.com/blog.rss
+        let actual = parse_pub_date("Tue, 10 Dec 2019 16:00:00").expect("Failed to parse date");
+        let expected = Utc.ymd(2019, 12, 10).and_hms(16, 0, 0);
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
+    fn parse_datetime_with_timezone_utc() {
+        // example: https://softwareengineeringdaily.com/category/podcast/feed/
+        let actual =
+            parse_pub_date("Tue, 28 Jan 2020 10:00:48 +0000").expect("Failed to parse date");
+        let expected = Utc.ymd(2020, 1, 28).and_hms(10, 0, 48);
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
+    fn parse_datetime_with_timezone_offset() {
+        let actual =
+            parse_pub_date("Tue, 28 Jan 2020 10:00:48 +0200").expect("Failed to parse date");
+        let expected = Utc.ymd(2020, 1, 28).and_hms(8, 0, 48);
+        assert_eq!(expected, actual)
     }
 
     #[test]
