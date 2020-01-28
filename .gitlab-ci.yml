@@ -13,6 +13,8 @@ services:
 
 build:
     stage: build
+    only:
+      - develop
     before_script:
       - docker info
       - cd backend
