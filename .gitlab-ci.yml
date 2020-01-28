@@ -36,6 +36,8 @@ build:
 
 deploy:
     stage: deploy
+    only:
+      - develop
     before_script:
         - apk add --update npm bash curl
         - curl https://cli-assets.heroku.com/install.sh | sh
