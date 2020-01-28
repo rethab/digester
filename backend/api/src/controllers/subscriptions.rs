@@ -208,7 +208,7 @@ fn add(
     match insert_subscription(&db, &new_subscription, &channel, &identity) {
         Ok(sub) => Subscription::from_db(sub, channel).into(),
         Err(db::InsertError::Duplicate) => {
-            JsonResponse::BadRequest("Already subscribed to repository".to_owned())
+            JsonResponse::BadRequest("Subscription already exists".to_owned())
         }
         Err(db::InsertError::Unknown) => JsonResponse::InternalServerError,
     }

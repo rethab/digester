@@ -2,14 +2,24 @@
   <v-card color="secondary" class="lighten-4">
     <div>
       <v-card-title>
+        <span>
+          <a
+            :href="value.channelLink"
+            target="_blank"
+            class="black--text"
+            style="text-decoration:none; word-break: break-word"
+          >{{value.channelName}}</a>
+          <v-icon small class="pl-1">{{ channelIcon }}</v-icon>
+        </span>
+      </v-card-title>
+      <v-card-subtitle>
         <a
           :href="value.channelLink"
+          class="grey--text"
           target="_blank"
-          class="black--text"
-          style="text-decoration:none"
-        >{{value.channelName}}</a>
-        <v-icon small class="pl-1">{{ channelIcon }}</v-icon>
-      </v-card-title>
+          style="text-decoration: none"
+        >{{value.channelLink}}</a>
+      </v-card-subtitle>
       <v-card-subtitle v-if="!editing">
         <v-icon small>{{ calendarIcon }}</v-icon>
         {{value | showFrequency}}

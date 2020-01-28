@@ -6,7 +6,7 @@ export default () => {
     const instance = axios.create({
         baseURL: process.env.VUE_APP_API_HOST,
         withCredentials: true,
-        timeout: 2000,
+        timeout: 4000,
         headers: {
             Accept: "application/json",
             "Content-Type": "application/json"

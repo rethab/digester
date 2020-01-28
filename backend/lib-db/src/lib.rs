@@ -38,9 +38,10 @@ pub fn channels_search(
     let search_query = format!("%{}%", query);
     channels
         .filter(
-            channel_type
-                .eq(c_type)
-                .and(link.ilike(&search_query).or(url.ilike(&search_query))),
+            channel_type.eq(c_type).and(
+                link.ilike(&search_query)
+                    .or(url.ilike(&search_query).or(name.ilike(&search_query))),
+            ),
         )
         .get_results(conn)
         .map_err(|err| format!("Failed to fetch channels by query: {:?}", err))
@@ -124,7 +125,7 @@ pub fn channels_insert_if_not_exists(
     let find = || -> Result<Option<Channel>, String> {
         channels
             .filter(
-                name.eq(&new_channel.url)
+                url.eq(&new_channel.url)
                     .and(channel_type.eq(&new_channel.channel_type)),
             )
             .load(conn)
