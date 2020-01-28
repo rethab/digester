@@ -17,6 +17,8 @@ struct Update {
     channel_name: String,
     #[serde(rename = "channelType")]
     channel_type: ChannelType,
+    #[serde(rename = "channelLink")]
+    channel_link: String,
     title: String,
     url: String,
     // in the user's timezone
@@ -53,8 +55,11 @@ impl Into<JsonResponse> for Vec<Update> {
 impl Update {
     fn from_db(update: db::Update, chan: db::Channel, user_tz: Tz) -> Update {
         Update {
-            channel_name: chan.name,
+            channel_name: chan.name.clone(),
             channel_type: chan.channel_type,
+            channel_link: chan
+                .link
+                .unwrap_or(format!("https://github.com/{}", chan.name)),
             title: update.title,
             url: update.url,
             published: utc_to_tz(update.published, user_tz),
