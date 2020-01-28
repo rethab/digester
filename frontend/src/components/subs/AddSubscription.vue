@@ -48,7 +48,7 @@ export default {
       errorSnackbar: false,
       errorMessage: null,
 
-      searchInput: "foo",
+      searchInput: "",
       searchChannelType: null,
       searchResults: null,
       selectedChannel: null

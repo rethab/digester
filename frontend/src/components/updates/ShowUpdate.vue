@@ -1,60 +1,48 @@
 <template>
   <div>
-    <v-subheader :key="index+'sh'" style="height: 20px">
-      <v-icon small class="mr-1">{{githubIcon}}</v-icon>
+    <v-subheader style="height: 20px">
+      <ChannelIcon class="mr-1" :small="true" :type="value.channelType" />
       <a
-        :href="value.channelName | urlify"
+        :href="value.channelLink"
         target="_blank"
         style="text-decoration: none"
         class="mr-1"
         color="secondary"
       >{{value.channelName}}</a>
       |
-      <span v-if="!mobile" class="ml-1">{{value.title}} |</span>
       <span class="ml-1">{{ value.published | formatDate }}</span>
     </v-subheader>
-    <v-divider :key="index + 'd'"></v-divider>
-    <v-list-item :key="index + 'li'" class="mb-2" style="min-height: 25px">
-      <v-list-item-title>
-        <a
-          :href="value.url"
-          target="_blank"
-          class="black--text"
-          style="font-size: 1.1em"
-        >{{linkText}}</a>
-      </v-list-item-title>
+    <v-divider></v-divider>
+    <v-list-item class="mb-2" style="min-height: 25px">
+      <v-list-item-content>
+        <span>
+          <a :href="value.url" target="_blank" class="black--text">{{linkText}}</a>
+        </span>
+      </v-list-item-content>
     </v-list-item>
   </div>
 </template>
 
 <script>
-import { mdiGithubCircle } from "@mdi/js";
+import ChannelIcon from "@/components/common/ChannelIcon.vue";
 import moment from "moment";
 export default {
-  components: {},
+  components: {
+    ChannelIcon
+  },
   props: {
     value: {
       type: Object,
       required: true
     }
   },
-  data() {
-    return {
-      githubIcon: mdiGithubCircle,
-
-      mobile: this.$vuetify.breakpoint.smAndDown
-    };
-  },
   computed: {
     linkText() {
-      if (this.mobile && this.value.title) return this.value.title;
+      if (this.value.title) return this.value.title;
       else return this.value.url;
     }
   },
   filters: {
-    urlify(repository) {
-      return `https://github.com/${repository}`;
-    },
     formatDate(datetime) {
       return moment(datetime, "YYYY-MM-DDTHH:mm:ss").calendar(null, {
         lastWeek: "dddd",

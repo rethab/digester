@@ -1,5 +1,5 @@
 <template>
-  <v-icon>{{icon}}</v-icon>
+  <v-icon :small="small">{{icon}}</v-icon>
 </template>
 <script>
 import { mdiRss, mdiGithubCircle } from "@mdi/js";
@@ -8,6 +8,10 @@ export default {
     type: {
       type: String,
       required: true
+    },
+    small: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
