@@ -6,7 +6,8 @@ use chrono::naive::NaiveDateTime;
 use chrono::{DateTime, Utc};
 use kuchiki::traits::*;
 use reqwest::blocking::{Client, Response};
-use reqwest::header::{ToStrError, CONTENT_TYPE};
+use reqwest::header;
+use reqwest::header::ToStrError;
 use reqwest::StatusCode;
 use rss::Channel as RssChannel;
 use rss::Error as RssError;
@@ -299,7 +300,11 @@ fn is_new_feed(feeds: &[ChannelInfo], new_feed: &ChannelInfo) -> bool {
 fn fetch_resource(url: &str) -> Result<Response, FeedError> {
     use FeedError::*;
 
-    let builder = Client::builder().build()?.get(url);
+    let mut builder = Client::builder().build()?.get(url);
+    builder = builder.header(
+        header::USER_AGENT,
+        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0",
+    );
 
     match builder.send() {
         Ok(resp) if resp.status() == StatusCode::OK => Ok(resp),
@@ -406,8 +411,8 @@ fn parse_feed(mut resp: Response) -> Result<ParsedFeed, String> {
             ParsedFeed::parse_atom(buffer)
         } else {
             Err(format!(
-                "XML response doesn't contain <rss or <feed in the first few bytes: {}",
-                contents
+                "XML response doesn't contain <rss or <feed in the first few bytes: {:?}",
+                bytes
             ))
         }
     } else {
@@ -433,7 +438,7 @@ fn is_xml(resp: &Response) -> bool {
 
 fn c_type(resp: &Response) -> String {
     resp.headers()
-        .get(CONTENT_TYPE)
+        .get(header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
         .unwrap_or("")
         .to_owned()
@@ -633,6 +638,13 @@ mod tests {
             },
             feed
         );
+    }
+
+    #[test]
+    fn fetch_rss_wpbeginner_bot_protection_without_user_agent() {
+        let url = Url::parse("https://www.wpbeginner.com/blog/").unwrap();
+        let feeds = fetch_channel_info(&url, false).unwrap();
+        assert_eq!(2, feeds.len());
     }
 
     #[test]

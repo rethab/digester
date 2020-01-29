@@ -1,6 +1,6 @@
 use super::*;
 
-use reqwest::Client;
+use reqwest::blocking::Client;
 use rocket::config::Config;
 use rocket_oauth2::hyper_sync_rustls_adapter::HyperSyncRustlsAdapter;
 use rocket_oauth2::{Adapter, OAuthConfig, TokenRequest};
@@ -50,9 +50,9 @@ impl IdentityProvider for Facebook {
             "https://graph.facebook.com/me?access_token={}&fields=email,name",
             access_token.0
         );
-        let mut resp = match Client::new().get(&url).send() {
+        let resp = match Client::new().get(&url).send() {
             Ok(resp) if resp.status().is_success() => resp,
-            Ok(mut resp) => {
+            Ok(resp) => {
                 return Err(UnknownFailure(format!(
                 "Non-200 response from facebook's graph api status={}, body={}, access_token={}",
                 resp.status(),
@@ -86,8 +86,7 @@ impl IdentityProvider for Facebook {
                 }
             }
             Err(err) => Err(UnknownFailure(format!(
-                "Failed to parse facebook's response. body={}, err:{:?}",
-                resp.text().unwrap_or_else(|_| "[no body]".into()),
+                "Failed to parse facebook's response. err:{:?}",
                 err
             ))),
         }

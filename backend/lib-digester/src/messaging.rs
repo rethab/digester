@@ -1,5 +1,5 @@
+use reqwest::blocking::Client;
 use reqwest::header::CONTENT_TYPE;
-use reqwest::Client;
 use serde::Serialize;
 
 use super::Env;
