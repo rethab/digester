@@ -254,7 +254,7 @@ fn fetch_channel_info(full_url: &Url, recursed: u8) -> Result<Vec<ChannelInfo>, 
         let mut feeds = Vec::new();
         let body = response.text()?;
         let links = extract_feeds_from_html(&full_url, &body)?;
-        println!("Links in HTML: {:?} --> recurse", links);
+        println!("Links in HTML: {:?} --> recurse({})", links, recursed);
         for link in links {
             let new_feeds = fetch_channel_info(&link, recursed + 1)?;
             for new_feed in new_feeds {
@@ -314,7 +314,11 @@ fn fetch_resource(url: &str) -> Result<Response, FeedError> {
 
     match builder.send() {
         Ok(resp) if resp.status() == StatusCode::OK => Ok(resp),
-        Ok(resp) => Err(NotFound(format!("Server returned code {}", resp.status()))),
+        Ok(resp) => Err(NotFound(format!(
+            "Server returned code {} for url {}",
+            resp.status(),
+            url
+        ))),
         Err(err) => Err(UnknownError(format!("Failed to fetch: {:?}", err))),
     }
 }
