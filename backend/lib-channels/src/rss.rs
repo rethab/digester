@@ -4,6 +4,7 @@ use atom_syndication::Error as AtomError;
 use atom_syndication::Feed;
 use chrono::naive::NaiveDateTime;
 use chrono::{DateTime, Utc};
+use kuchiki::iter::{Descendants, Elements, Select};
 use kuchiki::traits::*;
 use reqwest::blocking::{Client, Response};
 use reqwest::header;
@@ -315,10 +316,69 @@ fn fetch_resource(url: &str) -> Result<Response, FeedError> {
 }
 
 fn extract_feeds_from_html(url: &Url, html: &str) -> Result<Vec<Url>, FeedError> {
-    let attribute_value = |atts: &kuchiki::Attributes, name: &str| -> Option<String> {
-        atts.get(name).map(|v| v.to_owned())
+    // create absolute urls from relative urls
+    let mk_urls = |links: Vec<String>| {
+        let mut urls = Vec::with_capacity(links.len());
+        for link in links {
+            match url.join(&link) {
+                Ok(link_url) => urls.push(link_url),
+                Err(err) => eprintln!("Ignoring invalid link '{}': {:?}", link, err),
+            }
+        }
+        urls
     };
 
+    let document = kuchiki::parse_html().one(html);
+
+    let link_tags = match document.select("link") {
+        Err(err) => {
+            return Err(FeedError::TechnicalError(format!(
+                "failed to extract links from document: {:?}",
+                err,
+            )))
+        }
+        Ok(tags) => tags,
+    };
+
+    let head_links = extract_feeds_from_html_link(link_tags);
+    if !head_links.is_empty() {
+        return Ok(mk_urls(head_links));
+    }
+
+    let div_tags = match document.select("div[data-rss-url]") {
+        Err(err) => {
+            return Err(FeedError::TechnicalError(format!(
+                "failed to extract div[data-rss-url] from document: {:?}",
+                err,
+            )))
+        }
+        Ok(tags) => tags,
+    };
+
+    let div_links = extract_feeds_from_html_div(div_tags);
+    Ok(mk_urls(div_links))
+}
+
+fn extract_feeds_from_html_div(div_tags: Select<Elements<Descendants>>) -> Vec<String> {
+    let mut links: Vec<String> = Vec::new();
+    for div in div_tags {
+        let div: &kuchiki::NodeRef = div.as_node();
+        if let Some(kuchiki::ElementData { attributes, .. }) = div.as_element() {
+            let attr_value = attributes
+                .borrow()
+                .get("data-rss-url")
+                .map(|v| v.to_owned());
+            match attr_value {
+                Some(link_value) => links.push(link_value),
+                None => eprintln!("Missing value in data-rss-url: {:?}", div),
+            }
+        }
+    }
+
+    links
+}
+
+fn extract_feeds_from_html_link(link_tags: Select<Elements<Descendants>>) -> Vec<String> {
     let is_feed_link = |maybe_type: Option<String>| -> bool {
         maybe_type
             .map(|t| match t.as_str() {
@@ -329,30 +389,14 @@ fn extract_feeds_from_html(url: &Url, html: &str) -> Result<Vec<Url>, FeedError>
             .unwrap_or(false)
     };
 
-    let mut links = Vec::new();
-    let document = kuchiki::parse_html().one(html);
-    let all_links = match document.select("link") {
-        Err(err) => {
-            return Err(FeedError::TechnicalError(format!(
-                "failed to extract links from document: {:?}",
-                err,
-            )))
-        }
-        Ok(all_links) => all_links,
-    };
-
-    for link in all_links {
+    let mut links: Vec<String> = Vec::new();
+    for link in link_tags {
         let node: &kuchiki::NodeRef = link.as_node();
         if let Some(kuchiki::ElementData { attributes, .. }) = node.as_element() {
-            let link_type = attribute_value(&attributes.borrow(), "type");
+            let link_type = attributes.borrow().get("type").map(|v| v.to_owned());
             if is_feed_link(link_type) {
-                if let Some(href) = attribute_value(&attributes.borrow(), "href") {
-                    match url.join(&href) {
-                        Ok(link_url) => links.push(link_url),
-                        Err(err) => {
-                            eprintln!("Failed to attach {} to base url {:?}: {:?}", href, url, err)
-                        }
-                    }
+                if let Some(href) = attributes.borrow().get("href") {
+                    links.push(href.into());
                 } else {
                     eprintln!("link/rss tag without href. attributes: {:?}", attributes);
                 }
@@ -360,7 +404,7 @@ fn extract_feeds_from_html(url: &Url, html: &str) -> Result<Vec<Url>, FeedError>
         }
     }
 
-    Ok(links)
+    links
 }
 
 fn is_html(resp: &Response) -> bool {
@@ -649,7 +693,7 @@ mod tests {
     }
 
     #[test]
-    fn extract_links_in_html() {
+    fn extract_links_in_html_head() {
         let html = r"
           <!DOCTYPE html>
           <html lang='en'>
@@ -676,6 +720,22 @@ mod tests {
         assert_eq!(
             Url::parse("https://blog.appsignal.com/feed.xml").unwrap(),
             feeds[2],
+        );
+    }
+
+    #[test]
+    fn extract_links_in_html_body() {
+        let html = r"
+          <!DOCTYPE html><html lang='en'><head></head><body>
+            <div data-rss-url='https://www.toptal.com/blog.rss' data-title='Toptal Blog: Business, Design, and Technology' data-url='https://www.toptal.com/blog'>
+          </body></html>
+        ";
+        let base_url = Url::parse("https://toptal.com").unwrap();
+        let feeds = extract_feeds_from_html(&base_url, html).expect("Failed to parse");
+        assert_eq!(1, feeds.len());
+        assert_eq!(
+            Url::parse("https://www.toptal.com/blog.rss").unwrap(),
+            feeds[0],
         );
     }
 
