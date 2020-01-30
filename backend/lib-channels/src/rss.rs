@@ -120,7 +120,7 @@ impl Channel for Rss {
 
     fn search(&self, query: SanitizedName) -> Result<Vec<ChannelInfo>, SearchError> {
         let url = SanitizedUrl::from(query).to_url();
-        fetch_channel_info(&url, false).map_err(|e| e.into())
+        fetch_channel_info(&url, 0).map_err(|e| e.into())
     }
 
     fn fetch_updates(
@@ -234,17 +234,21 @@ impl From<reqwest::Error> for FeedError {
     }
 }
 
-fn fetch_channel_info(full_url: &Url, recursed: bool) -> Result<Vec<ChannelInfo>, FeedError> {
+// recursed determines how many times we already recursively
+// called this method. we want to prevent infinite recursion
+// because an html page could point to itself and then we'd
+// never get out of here
+fn fetch_channel_info(full_url: &Url, recursed: u8) -> Result<Vec<ChannelInfo>, FeedError> {
     let sane_url = full_url.to_string();
     let response = fetch_resource(&sane_url)?;
 
     if is_html(&response) {
         // if we didn't prevent this, we might recurse forever if a page
         // points to itself (maliciously or not..)
-        if recursed {
+        if recursed > 2 {
             return Err(FeedError::TechnicalError(format!(
-                "Url {} points to html, but we already recursed",
-                sane_url,
+                "Url {} points to html, but we already recursed {}",
+                sane_url, recursed
             )));
         }
         let mut feeds = Vec::new();
@@ -252,7 +256,7 @@ fn fetch_channel_info(full_url: &Url, recursed: bool) -> Result<Vec<ChannelInfo>
         let links = extract_feeds_from_html(&full_url, &body)?;
         println!("Links in HTML: {:?} --> recurse", links);
         for link in links {
-            let new_feeds = fetch_channel_info(&link, true)?;
+            let new_feeds = fetch_channel_info(&link, recursed + 1)?;
             for new_feed in new_feeds {
                 if is_new_feed(&feeds, &new_feed) {
                     feeds.push(new_feed);
@@ -355,22 +359,37 @@ fn extract_feeds_from_html(url: &Url, html: &str) -> Result<Vec<Url>, FeedError>
         Ok(tags) => tags,
     };
 
-    let div_links = extract_feeds_from_html_div(div_tags);
-    Ok(mk_urls(div_links))
+    let div_links = extract_feeds_from_html_attribute(div_tags, "data-rss-url");
+    if !div_links.is_empty() {
+        return Ok(mk_urls(div_links));
+    }
+
+    let meta_tags = match document.select("meta[property='article:author']") {
+        Err(err) => {
+            return Err(FeedError::TechnicalError(format!(
+                "failed to extract meta[property='article:author'] from document: {:?}",
+                err,
+            )))
+        }
+        Ok(tags) => tags,
+    };
+
+    let meta_tags = extract_feeds_from_html_attribute(meta_tags, "content");
+    Ok(mk_urls(meta_tags))
 }
 
-fn extract_feeds_from_html_div(div_tags: Select<Elements<Descendants>>) -> Vec<String> {
+fn extract_feeds_from_html_attribute(
+    div_tags: Select<Elements<Descendants>>,
+    attr_name: &str,
+) -> Vec<String> {
     let mut links: Vec<String> = Vec::new();
     for div in div_tags {
         let div: &kuchiki::NodeRef = div.as_node();
         if let Some(kuchiki::ElementData { attributes, .. }) = div.as_element() {
-            let attr_value = attributes
-                .borrow()
-                .get("data-rss-url")
-                .map(|v| v.to_owned());
+            let attr_value = attributes.borrow().get(attr_name).map(|v| v.to_owned());
             match attr_value {
                 Some(link_value) => links.push(link_value),
-                None => eprintln!("Missing value in data-rss-url: {:?}", div),
+                None => eprintln!("Missing value in '{}': {:?}", attr_name, div),
             }
         }
     }
@@ -531,7 +550,7 @@ mod tests {
     #[test]
     fn fetch_atom_theverge_indirect() {
         let url = Url::parse("https://theverge.com").unwrap();
-        let feeds = fetch_channel_info(&url, false).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url, 0).expect("Failed to fetch feeds");
         assert_eq!(2, feeds.len());
         let all_posts = feeds
             .iter()
@@ -562,13 +581,13 @@ mod tests {
     #[test]
     fn fetch_refuse_to_recurse() {
         let url = Url::parse("https://theverge.com").unwrap();
-        assert_eq!(true, fetch_channel_info(&url, true).is_err())
+        assert_eq!(true, fetch_channel_info(&url, 3).is_err())
     }
 
     #[test]
     fn fetch_atom_theverge_direct() {
         let url = Url::parse("https://theverge.com/rss/index.xml").unwrap();
-        let feeds = fetch_channel_info(&url, false).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url, 0).expect("Failed to fetch feeds");
         assert_eq!(1, feeds.len());
         let all_posts = feeds
             .iter()
@@ -588,7 +607,7 @@ mod tests {
     fn fetch_rss_sedaily_direct() {
         let url =
             Url::parse("https://softwareengineeringdaily.com/category/podcast/feed/").unwrap();
-        let feeds = fetch_channel_info(&url, false).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url, 0).expect("Failed to fetch feeds");
         assert_eq!(1, feeds.len());
         let all_posts = feeds.iter().next().expect("Missing channel");
         assert_eq!(
@@ -604,7 +623,7 @@ mod tests {
     #[test]
     fn fetch_rss_acolyer_indirect() {
         let url = Url::parse("https://blog.acolyer.org").unwrap();
-        let feeds = fetch_channel_info(&url, false).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url, 0).expect("Failed to fetch feeds");
         assert_eq!(2, feeds.len());
         println!("all: {:?}", feeds);
         let feed = feeds
@@ -636,7 +655,7 @@ mod tests {
     #[test]
     fn fetch_rss_nytimes_indirect() {
         let url = Url::parse("https://nytimes.com").unwrap();
-        let feeds = fetch_channel_info(&url, false).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url, 0).expect("Failed to fetch feeds");
         assert_eq!(1, feeds.len());
         let feed = feeds[0].clone();
         assert_eq!(
@@ -648,6 +667,25 @@ mod tests {
             feed
         );
     }
+    #[test]
+    fn fetch_rss_medium_via_article_indirect() {
+        // article points to author page, points to rss
+        let url = Url::parse(
+            "https://medium.com/@nikitonsky/medium-is-a-poor-choice-for-blogging-bb0048d19133",
+        )
+        .unwrap();
+        let feeds = fetch_channel_info(&url, 0).expect("Failed to fetch feeds");
+        assert_eq!(1, feeds.len());
+        let feed = feeds[0].clone();
+        assert_eq!(
+            ChannelInfo {
+                name: "Stories by Nikitonsky on Medium".into(),
+                url: "https://medium.com/feed/@nikitonsky".into(),
+                link: "https://medium.com/@nikitonsky?source=rss-5247cb846abe------2".into(),
+            },
+            feed
+        );
+    }
 
     #[test]
     fn fetch_atom_youtube_direct() {
@@ -655,7 +693,7 @@ mod tests {
             "https://www.youtube.com/feeds/videos.xml?channel_id=UCxec_VgCE-5DUZ8MocKbEdg",
         )
         .unwrap();
-        let feeds = fetch_channel_info(&url, false).expect("Failed to fetch feeds");
+        let feeds = fetch_channel_info(&url, 0).expect("Failed to fetch feeds");
         assert_eq!(1, feeds.len());
         let feed = feeds[0].clone();
         assert_eq!(
@@ -672,7 +710,7 @@ mod tests {
     #[test]
     fn fetch_atom_rss_200ok_deduplicate() {
         let url = Url::parse("https://200ok.ch/").unwrap();
-        let feeds = fetch_channel_info(&url, false).unwrap();
+        let feeds = fetch_channel_info(&url, 0).unwrap();
         assert_eq!(1, feeds.len());
         let feed = feeds[0].clone();
         assert_eq!(
@@ -688,7 +726,7 @@ mod tests {
     #[test]
     fn fetch_rss_wpbeginner_bot_protection_without_user_agent() {
         let url = Url::parse("https://www.wpbeginner.com/blog/").unwrap();
-        let feeds = fetch_channel_info(&url, false).unwrap();
+        let feeds = fetch_channel_info(&url, 0).unwrap();
         assert_eq!(2, feeds.len());
     }
 
@@ -735,6 +773,27 @@ mod tests {
         assert_eq!(1, feeds.len());
         assert_eq!(
             Url::parse("https://www.toptal.com/blog.rss").unwrap(),
+            feeds[0],
+        );
+    }
+
+    #[test]
+    fn extract_links_in_html_head_meta() {
+        // medium uses this thing on articles, which then points to the author's page,
+        // which contains an rss link
+        let html = r"
+          <!DOCTYPE html><html lang='en'><head>
+            <meta data-rh='true' property='article:author' content='https://medium.com/@nikitonsky'/>
+          </head><body></body></html>
+        ";
+        let base_url = Url::parse(
+            "https://medium.com/@nikitonsky/medium-is-a-poor-choice-for-blogging-bb0048d19133",
+        )
+        .unwrap();
+        let feeds = extract_feeds_from_html(&base_url, html).expect("Failed to parse");
+        assert_eq!(1, feeds.len());
+        assert_eq!(
+            Url::parse("https://medium.com/@nikitonsky").unwrap(),
             feeds[0],
         );
     }
