@@ -502,7 +502,7 @@ fn atom_link(links: &[atom_syndication::Link]) -> Option<String> {
 }
 
 fn parse_pub_date(datetime: &str) -> Result<DateTime<Utc>, String> {
-    if datetime.contains('+') {
+    if datetime.contains('+') || datetime.contains('-') || datetime.contains("GMT") {
         DateTime::parse_from_rfc2822(datetime)
             .map(|dt| dt.with_timezone(&Utc))
             .map_err(|parse_err| {
@@ -757,10 +757,26 @@ mod tests {
     }
 
     #[test]
+    fn parse_datetime_with_timezone_gmt() {
+        // example: the guardian
+        let actual = parse_pub_date("Thu, 30 Jan 2020 09:29:07 GMT").expect("Failed to parse date");
+        let expected = Utc.ymd(2020, 1, 30).and_hms(9, 29, 07);
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
     fn parse_datetime_with_timezone_offset() {
         let actual =
             parse_pub_date("Tue, 28 Jan 2020 10:00:48 +0200").expect("Failed to parse date");
         let expected = Utc.ymd(2020, 1, 28).and_hms(8, 0, 48);
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
+    fn parse_datetime_with_timezone_negative_offset() {
+        let actual =
+            parse_pub_date("Tue, 28 Jan 2020 10:00:48 -0200").expect("Failed to parse date");
+        let expected = Utc.ymd(2020, 1, 28).and_hms(12, 0, 48);
         assert_eq!(expected, actual)
     }
 
