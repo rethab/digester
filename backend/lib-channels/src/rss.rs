@@ -489,7 +489,14 @@ fn parse_feed(mut resp: Response) -> Result<ParsedFeed, String> {
             .map_err(|err| format!("Failed to copy buffer: {:?}", err))?;
         let contents = peek_buffer(&bytes);
         let buffer = BufReader::with_capacity(bytes.len(), &bytes[..]);
-        if contents.contains("<rss") {
+        if bytes.starts_with(&vec![31, 139, 8]) {
+            // happens if a website returns a gzip'd response w/o
+            // setting the header. eg. https://onlineitguru.com/blog/feed
+            Err(format!(
+                "Looks like a gzip response in disguise: {:?}",
+                bytes
+            ))
+        } else if contents.contains("<rss") {
             ParsedFeed::parse_rss(buffer)
         } else if contents.contains("<feed") {
             ParsedFeed::parse_atom(buffer)
