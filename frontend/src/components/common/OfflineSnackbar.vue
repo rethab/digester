@@ -1,6 +1,6 @@
 <template>
   <v-snackbar v-model="snackbar" :timeout="10000" :top="true">
-    Either you are offline or we are offline. ¯\_(ツ)_/¯
+    This is taking longer than expected.. Please try again in a few seconds
     <v-btn text @click="snackbar = false" color="error">Close</v-btn>
   </v-snackbar>
 </template>

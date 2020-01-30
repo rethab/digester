@@ -4,6 +4,7 @@ use atom_syndication::Error as AtomError;
 use atom_syndication::Feed;
 use chrono::naive::NaiveDateTime;
 use chrono::{DateTime, Utc};
+use core::time::Duration;
 use kuchiki::iter::{Descendants, Elements, Select};
 use kuchiki::traits::*;
 use reqwest::blocking::{Client, Response};
@@ -191,6 +192,7 @@ pub enum FeedError {
     NotFound(String),
     TechnicalError(String),
     UnknownError(String),
+    Timeout(String),
 }
 
 impl Into<SearchError> for FeedError {
@@ -198,6 +200,7 @@ impl Into<SearchError> for FeedError {
         use FeedError::*;
         match self {
             NotFound(msg) => SearchError::ChannelNotFound(msg),
+            Timeout(msg) => SearchError::Timeout(msg),
             TechnicalError(msg) => SearchError::TechnicalError(msg),
             UnknownError(msg) => SearchError::TechnicalError(msg),
         }
@@ -305,7 +308,12 @@ fn is_new_feed(feeds: &[ChannelInfo], new_feed: &ChannelInfo) -> bool {
 fn fetch_resource(url: &str) -> Result<Response, FeedError> {
     use FeedError::*;
 
-    let mut builder = Client::builder().gzip(true).build()?.get(url);
+    let timeout = Duration::from_secs(3);
+    let mut builder = Client::builder()
+        .gzip(true)
+        .timeout(timeout)
+        .build()?
+        .get(url);
     builder = builder.header(
         header::USER_AGENT,
         "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0",
@@ -318,6 +326,14 @@ fn fetch_resource(url: &str) -> Result<Response, FeedError> {
             "Server returned code {} for url {}",
             resp.status(),
             url
+        ))),
+        Err(err) if format!("{:?}", err).contains("Name or service not known") => {
+            // todo I guess the above could be improved ;-)
+            Err(NotFound(format!("DNS lookup failed: {:?}", err)))
+        }
+        Err(err) if err.is_timeout() => Err(Timeout(format!(
+            "Failed to fetch resource within {:?}: {:?}",
+            timeout, err
         ))),
         Err(err) => Err(UnknownError(format!("Failed to fetch: {:?}", err))),
     }

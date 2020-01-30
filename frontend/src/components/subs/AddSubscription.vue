@@ -18,6 +18,7 @@
         v-on:openDialog="openDialog"
         :channels="searchResults"
         :channelType="searchChannelType"
+        :searchError="searchError"
       />
     </section>
     <FrequencyDialog
@@ -51,6 +52,7 @@ export default {
       searchInput: "",
       searchChannelType: null,
       searchResults: null,
+      searchError: null,
       selectedChannel: null
     };
   },
@@ -69,13 +71,17 @@ export default {
     },
     search(type, name) {
       this.searchResults = null;
+      this.searchError = null;
       this.searchChannelType = type;
       this.searchInput = name;
       this.loading = true;
 
       let params = { channel_type: type, query: name };
       Api()
-        .get("subscriptions/search", { params: params })
+        .get("subscriptions/search", {
+          params: params,
+          timeout: 6000 // default timeout is 4s, but here we need to query upstream..
+        })
         .then(resp => {
           this.loading = false;
           this.searchResults = resp.data.channels;
@@ -99,9 +105,15 @@ export default {
             this.$vuetify.goTo("#searchResults");
           }
         })
-        .catch(() => {
+        .catch(err => {
           this.loading = false;
           this.searchResults = [];
+          if (err.response && err.response.data && err.response.data.error) {
+            this.searchError = err.response.data.error;
+          } else {
+            this.searchError =
+              "Something went wrong. Please make sure the input is valid. Contact us info@digester.app if you think this should be working.";
+          }
         });
     },
     subscribe(channel, frequency) {

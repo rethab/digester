@@ -65,6 +65,9 @@ export default {
     channels: {
       type: Array,
       required: true
+    },
+    searchError: {
+      type: String
     }
   },
   data() {
@@ -75,7 +78,11 @@ export default {
   computed: {
     ...mapGetters(["subscriptions"]),
     noResultsText() {
-      if (this.channelType == "RssFeed") {
+      // specific error message from server or generic 'no results' message
+      // based on channel type
+      if (this.searchError) {
+        return this.searchError;
+      } else if (this.channelType == "RssFeed") {
         return "We could not find a blog with this URL.<br /><br />Are you sure this points to a blog? (We need an RSS or Atom feed). If you think this should be working, please contact us at info@digester.app and we'll take a look.";
       } else if (this.channelType == "GithubRelease") {
         return "We could not find a repository with this name.<br /><br />Are you sure it exists and is public?";

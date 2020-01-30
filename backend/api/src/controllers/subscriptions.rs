@@ -173,7 +173,12 @@ fn search(
     match search::search(&db.0, db_channel_type, channel, &query) {
         Err(Unknown) => JsonResponse::InternalServerError,
         Err(InvalidInput) => JsonResponse::BadRequest("Invalid Input".into()),
-        Err(NotFound) => JsonResponse::Ok(json!({ "channels": [] })),
+        Err(NotFound) => JsonResponse::BadRequest(
+            "This does not exist. Are you sure the input is correct?".into(),
+        ),
+        Err(Timeout) => JsonResponse::BadRequest(
+            "We could not fetch your feed fast enough. Please try again later.".into(),
+        ),
         Ok(channels) => {
             let channels = channels
                 .into_iter()

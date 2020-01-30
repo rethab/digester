@@ -8,6 +8,7 @@ pub enum SearchError {
     InvalidInput,
     NotFound,
     Unknown,
+    Timeout,
 }
 
 pub fn search(
@@ -58,6 +59,10 @@ pub fn search(
         ChannelSearchError::TechnicalError(msg) => {
             eprintln!("Technical error during search: {}", msg);
             SearchError::Unknown
+        }
+        ChannelSearchError::Timeout(msg) => {
+            eprintln!("Timeout during online search: {}", msg);
+            SearchError::Timeout
         }
     })?;
 

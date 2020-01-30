@@ -42,6 +42,8 @@ impl Update {
 pub enum SearchError {
     /// The channel format is valid, but it doesn't exist (404)
     ChannelNotFound(String),
+    /// The operation took too long
+    Timeout(String),
     /// Something went wrong. Please try again later
     TechnicalError(String),
 }
