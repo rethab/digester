@@ -4,6 +4,7 @@ antidote	1.0.0	Steven Fackler <sfackler@gmail.com>	https://github.com/sfackler/r
 anyhow	1.0.26	David Tolnay <dtolnay@gmail.com>	https://github.com/dtolnay/anyhow	Apache-2.0 OR MIT		Flexible concrete Error type built on std::error::Error
 api	0.1.0	Reto Habluetzel <rethab@protonmail.ch>				
 ascii	0.9.3	Thomas Bahn <thomas@thomas-bahn.net>|Torbjørn Birch Moltu <t.b.moltu@lyse.net>|Simon Sapin <simon.sapin@exyr.org>	https://github.com/tomprogrammer/rust-ascii	Apache-2.0 OR MIT		ASCII-only equivalents to `char`, `str` and `String`.
+async-compression	0.2.0	Wim Looman <wim@nemo157.com>|Allen Bui <fairingrey@gmail.com>	https://github.com/rustasync/async-compression	Apache-2.0 OR MIT		Adaptors between compression crates and Rust's modern asynchronous IO types.
 atom_syndication	0.8.0	James Hurst <jh.jameshurst@gmail.com>	https://github.com/rust-syndication/atom	Apache-2.0 OR MIT		Library for serializing the Atom web content syndication format
 atty	0.2.14	softprops <d.tangren@gmail.com>	https://github.com/softprops/atty	MIT		A simple interface for querying atty
 autocfg	0.1.7	Josh Stone <cuviper@gmail.com>	https://github.com/cuviper/autocfg	Apache-2.0 OR MIT		Automatic cfg for Rust compiler features

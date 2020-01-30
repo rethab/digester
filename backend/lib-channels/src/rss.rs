@@ -300,11 +300,12 @@ fn is_new_feed(feeds: &[ChannelInfo], new_feed: &ChannelInfo) -> bool {
 fn fetch_resource(url: &str) -> Result<Response, FeedError> {
     use FeedError::*;
 
-    let mut builder = Client::builder().build()?.get(url);
+    let mut builder = Client::builder().gzip(true).build()?.get(url);
     builder = builder.header(
         header::USER_AGENT,
         "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0",
     );
+    builder = builder.header(header::ACCEPT_ENCODING, "gzip");
 
     match builder.send() {
         Ok(resp) if resp.status() == StatusCode::OK => Ok(resp),
