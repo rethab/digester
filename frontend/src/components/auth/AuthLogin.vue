@@ -13,9 +13,7 @@
         </p>
       </v-col>
       <v-col cols="12" md="6" :order="this.mobile ? 'first' : 'last'">
-        <h2 class="title">
-          Available Login Methods
-        </h2>
+        <h2 class="title">Available Login Methods</h2>
         <v-checkbox v-model="cookieConsent" v-if="showConsentBox">
           <template v-slot:label>
             <span class="body-2">
@@ -100,18 +98,22 @@ export default {
         })
         .then(resp => {
           this[loadingName] = false;
-          if (resp.data.first_login) {
-            this.$router.push({ name: "home", query: { firstLogin: true } });
-          } else {
-            this.$router.push({ name: "subscriptions" });
-          }
+
+          const query = resp.data.first_login ? { firstLogin: true } : {};
+          this.$router.push({ name: "subscriptions", query: query });
         })
         .catch(err => {
           const popupClosed = err.message === "Auth popup window closed";
           if (!popupClosed && !err.response) {
             this.$store.dispatch("setOffline");
-          } else if (err.response && err.response.data.error == "missing_permissions") {
-            this.$router.push({ name: "auth-login", query: { missingPermissions: true } });
+          } else if (
+            err.response &&
+            err.response.data.error == "missing_permissions"
+          ) {
+            this.$router.push({
+              name: "auth-login",
+              query: { missingPermissions: true }
+            });
           } else if (err.response && err.response.status == 429) {
             this.toomanyrequests = true;
           }

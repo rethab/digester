@@ -1,6 +1,5 @@
 <template>
   <v-container>
-    <InitializeTimezone v-if="isAuthenticated && firstLogin" />
     <v-row justify="center">
       <v-col class="text-center">
         <h1 class="display-2 font-weight-medium">Introducing Digester</h1>
@@ -86,7 +85,6 @@
 import AuthLogin from "@/components/auth/AuthLogin.vue";
 import LandingPageCard from "@/components/landing/LandingPageCard.vue";
 import HowItWorksCard from "@/components/landing/HowItWorksCard.vue";
-import InitializeTimezone from "@/components/settings/InitializeTimezone.vue";
 export default {
   data() {
     return {
@@ -94,7 +92,6 @@ export default {
     };
   },
   components: {
-    InitializeTimezone,
     AuthLogin,
     LandingPageCard,
     HowItWorksCard
@@ -102,9 +99,6 @@ export default {
   computed: {
     isAuthenticated() {
       return this.$store.getters.isAuthenticated;
-    },
-    firstLogin() {
-      return this.$route.query.firstLogin;
     }
   }
 };

@@ -8,7 +8,7 @@
         <br />Having a timezone is cruicial in order to send the digests at the correct time."
       to="/settings"
     />
-    <v-snackbar :value="timezoneSet" top="true" multi-line="true">
+    <v-snackbar :value="timezoneSet" :top="true" :multi-line="true">
       We have automatically set your timezone to {{timezone}}.
       <br />You can adjust this in the settings.
       <v-btn dark text @click="timezoneSet = false">Dismiss</v-btn>
