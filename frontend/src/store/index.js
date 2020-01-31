@@ -21,7 +21,7 @@ Vue.use(Vuex)
  */
 const authRefresher = store => {
 
-  const TIMEOUT = 30000;
+  const TIMEOUT = 60000; // ms
 
   const pokeAuthState = () => {
     store.dispatch("refreshAuth");

@@ -1,6 +1,6 @@
 <template>
   <v-snackbar v-model="snackbar" :timeout="10000" :top="true">
-    This is taking longer than expected.. Please try again in a few seconds
+    {{ message() }}
     <v-btn text @click="snackbar = false" color="error">Close</v-btn>
   </v-snackbar>
 </template>
@@ -31,6 +31,13 @@ export default {
         // we would only set offline=true while it is already
         // true, which means no update is fired.
         this.$store.dispatch("setOnline");
+      }
+    },
+    message() {
+      if (window.navigator && !window.navigator.onLine) {
+        return "Are you connected to the internet?";
+      } else {
+        return "Looks like our hamsters are having some trouble keeping up. Please give them some rest and try again.";
       }
     }
   }
