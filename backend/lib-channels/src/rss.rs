@@ -561,26 +561,14 @@ fn rss_dc_date(item: &RssItem) -> Option<&str> {
 }
 
 fn parse_pub_date(datetime: &str) -> Result<DateTime<Utc>, String> {
-    if datetime.contains('+') || datetime.contains('-') || datetime.contains("GMT") {
-        DateTime::parse_from_rfc2822(datetime)
-            .or_else(|_| DateTime::parse_from_rfc3339(datetime))
-            .map(|dt| dt.with_timezone(&Utc))
-            .map_err(|parse_err| {
-                format!(
-                    "Failed to parse date '{}' as rfc2822 or rfc3339: {:?}",
-                    datetime, parse_err
-                )
-            })
-    } else {
-        NaiveDateTime::parse_from_str(datetime, "%a, %d %b %Y %H:%M:%S")
-            .map(|naive| DateTime::from_utc(naive, Utc))
-            .map_err(|parse_err| {
-                format!(
-                    "Failed to parse date '{}' with custom format: {:?}",
-                    datetime, parse_err
-                )
-            })
-    }
+    DateTime::parse_from_rfc2822(datetime)
+        .or_else(|_| DateTime::parse_from_rfc3339(datetime))
+        .map(|dt| dt.with_timezone(&Utc))
+        .or_else(|_| {
+            NaiveDateTime::parse_from_str(datetime, "%a, %d %b %Y %H:%M:%S")
+                .map(|naive| DateTime::from_utc(naive, Utc))
+        })
+        .map_err(|parse_err| format!("Failed to parse date '{}' {:?}", datetime, parse_err))
 }
 
 #[cfg(test)]
@@ -918,6 +906,14 @@ mod tests {
         // example: the guardian
         let actual = parse_pub_date("Thu, 30 Jan 2020 09:29:07 GMT").expect("Failed to parse date");
         let expected = Utc.ymd(2020, 1, 30).and_hms(9, 29, 07);
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
+    fn parse_datetime_with_timezone_est() {
+        // example: https://blog.burntsushi.net/index.xml
+        let actual = parse_pub_date("Mon, 27 Jan 2020 17:55:00 EST").expect("Failed to parse date");
+        let expected = Utc.ymd(2020, 1, 27).and_hms(22, 55, 0);
         assert_eq!(expected, actual)
     }
 
