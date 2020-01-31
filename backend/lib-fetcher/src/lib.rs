@@ -45,11 +45,7 @@ impl App<'_> {
 
     fn fetch_articles(&self, channel: &Channel) -> Result<(), String> {
         let c = self.get_channel(channel);
-        // todo migrate db
-        let url = channel
-            .url
-            .clone()
-            .unwrap_or(format!("https://github.com/{}", channel.name));
+        let url = channel.url.clone();
         let updates = c.fetch_updates(&channel.name, &url, channel.last_fetched)?;
 
         println!(

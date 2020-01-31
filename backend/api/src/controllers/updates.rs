@@ -57,9 +57,7 @@ impl Update {
         Update {
             channel_name: chan.name.clone(),
             channel_type: chan.channel_type,
-            channel_link: chan
-                .link
-                .unwrap_or(format!("https://github.com/{}", chan.name)),
+            channel_link: chan.link,
             title: update.title,
             url: update.url,
             published: utc_to_tz(update.published, user_tz),

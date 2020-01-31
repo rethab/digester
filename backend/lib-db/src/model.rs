@@ -40,8 +40,8 @@ pub struct Channel {
     pub id: i32,
     pub channel_type: ChannelType,
     pub name: String,
-    pub link: Option<String>,
-    pub url: Option<String>,
+    pub link: String,
+    pub url: String,
     pub last_fetched: Option<DateTime<Utc>>,
     pub inserted: DateTime<Utc>,
 }

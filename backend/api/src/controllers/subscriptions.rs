@@ -79,9 +79,7 @@ impl Subscription {
             channel_name: chan.name.clone(),
             channel_type: chan.channel_type,
             channel_id: chan.id,
-            channel_link: chan
-                .link
-                .unwrap_or(format!("https://github.com/{}", chan.name)),
+            channel_link: chan.link,
             frequency: sub.frequency,
             day: sub.day,
             time: sub.time,
@@ -99,13 +97,11 @@ struct Channel {
 
 impl Channel {
     fn from_db(c: db::Channel) -> Self {
-        // todo migrate database
-        let link = c.link.unwrap_or(format!("https://github.com/{}", c.name));
         Self {
             id: c.id,
             channel_type: c.channel_type,
             name: c.name,
-            link,
+            link: c.link,
         }
     }
 }
