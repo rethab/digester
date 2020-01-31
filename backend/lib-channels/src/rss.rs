@@ -11,8 +11,8 @@ use reqwest::blocking::{Client, Response};
 use reqwest::header;
 use reqwest::header::ToStrError;
 use reqwest::StatusCode;
-use rss::Channel as RssChannel;
 use rss::Error as RssError;
+use rss::{Channel as RssChannel, Item as RssItem};
 use std::fmt::Display;
 use std::io::{BufRead, BufReader};
 use url::Url;
@@ -158,10 +158,10 @@ fn rss_to_updates(channel: &RssChannel) -> Result<Vec<Update>, String> {
                 .link()
                 .ok_or_else(|| format!("No url for {:?}", item))?
                 .to_owned(),
-            // todo don't ignore parse error
             published: item
                 .pub_date()
-                .ok_or(format!("Missing pub_date for {:?}", item))
+                .or_else(|| rss_dc_date(&item))
+                .ok_or(format!("Neither pub_date nor dc:date for {:?}", item))
                 .and_then(parse_pub_date)?,
         };
 
@@ -179,7 +179,7 @@ fn atom_to_updates(feed: &Feed) -> Result<Vec<Update>, String> {
             published: entry
                 .published()
                 .cloned()
-                .unwrap_or(entry.updated().clone()) // eg. wikipedia doesn't use published
+                .unwrap_or_else(|| *entry.updated()) // eg. wikipedia doesn't use published
                 .with_timezone(&Utc),
         };
         updates.push(update);
@@ -294,15 +294,16 @@ fn fetch_channel_info(full_url: &Url, recursed: u8) -> Result<Vec<ChannelInfo>, 
 // rss and atom
 fn is_new_feed(feeds: &[ChannelInfo], new_feed: &ChannelInfo) -> bool {
     for feed in feeds {
-        if feed.url == new_feed.url {
-            // exactly the same, not even different type
-            return false;
-        } else if feed.name == new_feed.name && feed.link == new_feed.link {
+        if
+        // exactly the same, not even different type
+        feed.url == new_feed.url ||
             // same title and pointing to same website --> most likely same
+        (feed.name == new_feed.name && feed.link == new_feed.link)
+        {
             return false;
         }
     }
-    return true;
+    true
 }
 
 fn fetch_resource(url: &str) -> Result<Response, FeedError> {
@@ -489,7 +490,7 @@ fn parse_feed(mut resp: Response) -> Result<ParsedFeed, String> {
             .map_err(|err| format!("Failed to copy buffer: {:?}", err))?;
         let contents = peek_buffer(&bytes);
         let buffer = BufReader::with_capacity(bytes.len(), &bytes[..]);
-        if bytes.starts_with(&vec![31, 139, 8]) {
+        if bytes.starts_with(&[31, 139, 8]) {
             // happens if a website returns a gzip'd response w/o
             // setting the header. eg. https://onlineitguru.com/blog/feed
             Err(format!(
@@ -548,13 +549,25 @@ fn atom_link(links: &[atom_syndication::Link]) -> Option<String> {
     found_link
 }
 
+fn rss_dc_date(item: &RssItem) -> Option<&str> {
+    if let Some(ext) = item.dublin_core_ext() {
+        match ext.dates().iter().next() {
+            Some(date) => Some(date),
+            None => None,
+        }
+    } else {
+        None
+    }
+}
+
 fn parse_pub_date(datetime: &str) -> Result<DateTime<Utc>, String> {
     if datetime.contains('+') || datetime.contains('-') || datetime.contains("GMT") {
         DateTime::parse_from_rfc2822(datetime)
+            .or_else(|_| DateTime::parse_from_rfc3339(datetime))
             .map(|dt| dt.with_timezone(&Utc))
             .map_err(|parse_err| {
                 format!(
-                    "Failed to parse date '{}' as rfc2822: {:?}",
+                    "Failed to parse date '{}' as rfc2822 or rfc3339: {:?}",
                     datetime, parse_err
                 )
             })
@@ -788,6 +801,17 @@ mod tests {
     }
 
     #[test]
+    fn fetch_rdf_updates() {
+        // this blog uses 'Dublin Core Metadata Initiative' (dc:date)
+        let url = "https://hasbrouck.org/blog/index.rdf";
+        let rss = Rss {};
+        let updates = rss
+            .fetch_updates("The Practical Nomad", url, None)
+            .expect("Failed to fetch");
+        assert_eq!(false, updates.is_empty())
+    }
+
+    #[test]
     fn extract_links_in_html_head() {
         let html = r"
           <!DOCTYPE html>
@@ -911,6 +935,17 @@ mod tests {
             parse_pub_date("Tue, 28 Jan 2020 10:00:48 -0200").expect("Failed to parse date");
         let expected = Utc.ymd(2020, 1, 28).and_hms(12, 0, 48);
         assert_eq!(expected, actual)
+    }
+
+    #[test]
+    fn parse_datetime_rfc_8601() {
+        let actual = parse_pub_date("2020-01-31T10:51:50+02:00").expect("Failed to parse date");
+        let expected = Utc.ymd(2020, 1, 31).and_hms(8, 51, 50);
+        assert_eq!(expected, actual);
+
+        let actual = parse_pub_date("2020-01-31T10:51:50Z").expect("Failed to parse date");
+        let expected = Utc.ymd(2020, 1, 31).and_hms(10, 51, 50);
+        assert_eq!(expected, actual);
     }
 
     #[test]

@@ -26,8 +26,8 @@ CREATE TABLE channels (
   id SERIAL PRIMARY KEY,
   channel_type VARCHAR NOT NULL, -- eg. github_release, etc..
   name VARCHAR NULL, -- name of the channel, eg. 'kubernetes/kubernetes'. format depends on type
-  link VARCHAR NULL, -- link of the website eg. blog.acolyer.com or github.com/kubernetes/kubernetes
-  url VARCHAR NULL, -- ulr of the channel where we can fetch updates from eg. blog.acolyer.org/feed.xml
+  link VARCHAR NOT NULL, -- link of the website eg. blog.acolyer.com or github.com/kubernetes/kubernetes
+  url VARCHAR NOT NULL, -- ulr of the channel where we can fetch updates from eg. blog.acolyer.org/feed.xml
   last_fetched TIMESTAMP WITH TIME ZONE NULL, -- last successful fetch
   inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(channel_type, name) -- cannot have channel twice
