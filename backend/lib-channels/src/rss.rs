@@ -496,7 +496,7 @@ fn parse_feed(mut resp: Response) -> Result<ParsedFeed, String> {
                 "Looks like a gzip response in disguise: {:?}",
                 bytes
             ))
-        } else if contents.contains("<rss") {
+        } else if contents.contains("<rss") || contents.contains("<rdf:RDF") {
             ParsedFeed::parse_rss(buffer)
         } else if contents.contains("<feed") {
             ParsedFeed::parse_atom(buffer)
@@ -516,7 +516,8 @@ fn peek_buffer(bytes: &[u8]) -> String {
 }
 
 fn is_rss(resp: &Response) -> bool {
-    c_type(resp).contains("application/rss+xml")
+    c_type(resp).contains("application/")
+        && (c_type(resp).contains("rss") || c_type(resp).contains("rdf"))
 }
 
 fn is_atom(resp: &Response) -> bool {
@@ -758,6 +759,35 @@ mod tests {
     }
 
     #[test]
+    fn fetch_rss_artima_xrss_direct() {
+        let url = Url::parse("https://www.artima.com/weblogs/feeds/bloggers/guido.rss").unwrap();
+        let feeds = fetch_channel_info(&url, 0).unwrap();
+        assert_eq!(1, feeds.len());
+    }
+
+    #[test]
+    fn fetch_rdf_content_type_xml_slashdot_indirect() {
+        let url = Url::parse("https://slashdot.org/").unwrap();
+        let feeds = fetch_channel_info(&url, 0).unwrap();
+        let feed = feeds[0].clone();
+        assert_eq!(
+            ChannelInfo {
+                name: "Slashdot".into(),
+                url: "http://rss.slashdot.org/Slashdot/slashdotMain".into(),
+                link: "https://slashdot.org/".into(),
+            },
+            feed
+        );
+    }
+
+    #[test]
+    fn fetch_rdf_content_type_rdf_hasbrouck_direct() {
+        let url = Url::parse("http://hasbrouck.org/blog/index.rdf").unwrap();
+        let feeds = fetch_channel_info(&url, 0).unwrap();
+        assert_eq!(1, feeds.len())
+    }
+
+    #[test]
     fn extract_links_in_html_head() {
         let html = r"
           <!DOCTYPE html>
@@ -789,7 +819,24 @@ mod tests {
     }
 
     #[test]
-    fn extract_links_in_html_body() {
+    fn extract_links_in_html_body_div() {
+        let html = r"
+          <!DOCTYPE html><html lang='en'><head></head><body>
+            <div data-rss-url='https://www.toptal.com/blog.rss' data-title='Toptal Blog: Business, Design, and Technology' data-url='https://www.toptal.com/blog'>
+          </body></html>
+        ";
+        let base_url = Url::parse("https://toptal.com").unwrap();
+        let feeds = extract_feeds_from_html(&base_url, html).expect("Failed to parse");
+        assert_eq!(1, feeds.len());
+        assert_eq!(
+            Url::parse("https://www.toptal.com/blog.rss").unwrap(),
+            feeds[0],
+        );
+    }
+
+    #[test]
+    fn extract_links_in_html_body_a() {
+        // eg. codepen.io
         let html = r"
           <!DOCTYPE html><html lang='en'><head></head><body>
             <div data-rss-url='https://www.toptal.com/blog.rss' data-title='Toptal Blog: Business, Design, and Technology' data-url='https://www.toptal.com/blog'>
