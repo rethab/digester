@@ -259,13 +259,9 @@ fn fetch_channel_info(full_url: &Url, recursed: u8) -> Result<Vec<ChannelInfo>, 
         let links = extract_feeds_from_html(&full_url, &body)?;
         println!("Links in HTML: {:?} --> recurse({})", links, recursed);
         for link in links {
-            let new_feeds = fetch_channel_info(&link, recursed + 1)?;
-            for new_feed in new_feeds {
-                if is_new_feed(&feeds, &new_feed) {
-                    feeds.push(new_feed);
-                } else {
-                    println!("Ignoring duplicate feed: {:?}", new_feed);
-                }
+            let channel_infos = fetch_channel_info(&link, recursed + 1)?;
+            for channel_info in channel_infos {
+                add_channel_info(&mut feeds, channel_info)
             }
         }
         Ok(feeds)
@@ -289,21 +285,43 @@ fn fetch_channel_info(full_url: &Url, recursed: u8) -> Result<Vec<ChannelInfo>, 
     }
 }
 
-// returns false if we already have the same feed. specifically,
-// we're trying to filter equivalent feeds that are exposed as
-// rss and atom
-fn is_new_feed(feeds: &[ChannelInfo], new_feed: &ChannelInfo) -> bool {
-    for feed in feeds {
+// adds the new feed to the existing feed if it is new or replaces
+// an existing if it is the same feed in a newer format. For example,
+// if we have an rss feed for site x and `new_feed` is an atom feed
+// for the same page, the rss feed will be replaced
+fn add_channel_info(feeds: &mut Vec<ChannelInfo>, new_feed: ChannelInfo) {
+    let mut maybe_duplicate: Option<usize> = None;
+    for (index, feed) in feeds.iter().enumerate() {
         if
         // exactly the same, not even different type
         feed.url == new_feed.url ||
-            // same title and pointing to same website --> most likely same
+        // same title and pointing to same website --> most likely same
         (feed.name == new_feed.name && feed.link == new_feed.link)
         {
-            return false;
+            maybe_duplicate = Some(index);
+            break;
         }
     }
-    true
+
+    if let Some(index) = maybe_duplicate {
+        if is_better(&new_feed, &feeds[index]) {
+            std::mem::replace(&mut feeds[index], new_feed);
+        } else {
+            println!("Ignoring duplicate feed: {:?}", new_feed);
+        }
+    } else {
+        feeds.push(new_feed);
+    }
+}
+
+// returns true if the new feed is better and should replace the old one
+fn is_better(new_feed: &ChannelInfo, existing: &ChannelInfo) -> bool {
+    let guess_atom = |feed: &ChannelInfo| {
+        feed.name.to_ascii_lowercase().contains("atom")
+            || feed.url.to_ascii_lowercase().contains("atom")
+    };
+
+    guess_atom(new_feed) && !guess_atom(existing)
 }
 
 fn fetch_resource(url: &str) -> Result<Response, FeedError> {
@@ -745,7 +763,7 @@ mod tests {
         assert_eq!(
             ChannelInfo {
                 name: "200ok - Consultancy, Research Lab, Incubator".into(),
-                url: "https://200ok.ch/rss.xml".into(),
+                url: "https://200ok.ch/atom.xml".into(),
                 link: "https://200ok.ch/".into(),
             },
             feed
@@ -942,6 +960,79 @@ mod tests {
         let actual = parse_pub_date("2020-01-31T10:51:50Z").expect("Failed to parse date");
         let expected = Utc.ymd(2020, 1, 31).and_hms(10, 51, 50);
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn compare_channel_infos() {
+        let rss_hint_in_url = ChannelInfo {
+            name: "blog a".into(),
+            url: "https://a.ch/rss.xml".into(),
+            link: "https://a.ch/".into(),
+        };
+        let atom_hint_in_url = ChannelInfo {
+            name: "blog a".into(),
+            url: "https://a.ch/atom.xml".into(),
+            link: "https://a.ch/".into(),
+        };
+        let rss_hint_in_name = ChannelInfo {
+            name: "blog a rss feed".into(),
+            url: "https://a.ch/feed.xml".into(),
+            link: "https://a.ch/".into(),
+        };
+        let atom_hint_in_name = ChannelInfo {
+            name: "blog a atom feed".into(),
+            url: "https://a.ch/feed.xml".into(),
+            link: "https://a.ch/".into(),
+        };
+        let other_blog_with_no_hint = ChannelInfo {
+            name: "blog b".into(),
+            url: "https://b.ch/feed.xml".into(),
+            link: "https://b.ch/".into(),
+        };
+        let other_blog_with_rss_hint = ChannelInfo {
+            name: "blog c rss feed".into(),
+            url: "https://c.ch/feed.xml".into(),
+            link: "https://c.ch/".into(),
+        };
+
+        // SCENARIO 1: Atom replaces Rss (hint in URL)
+        let mut feeds: Vec<ChannelInfo> = Vec::new();
+        add_channel_info(&mut feeds, rss_hint_in_url.clone());
+        assert_eq!(1, feeds.len());
+
+        // not add duplicate
+        add_channel_info(&mut feeds, rss_hint_in_url.clone());
+        assert_eq!(1, feeds.len());
+
+        // replace with atom
+        add_channel_info(&mut feeds, atom_hint_in_url.clone());
+        assert_eq!(1, feeds.len());
+        assert!(feeds.contains(&atom_hint_in_url));
+
+        // not replace with rss
+        add_channel_info(&mut feeds, rss_hint_in_url.clone());
+        assert_eq!(1, feeds.len());
+        assert!(feeds.contains(&atom_hint_in_url));
+
+        // SCENARIO 2: Atom replaces Rss (hint in name)
+        let mut feeds: Vec<ChannelInfo> = Vec::new();
+        add_channel_info(&mut feeds, rss_hint_in_name.clone());
+        add_channel_info(&mut feeds, atom_hint_in_name.clone());
+        assert_eq!(1, feeds.len());
+        assert!(feeds.contains(&atom_hint_in_name));
+
+        // SCENARIO 3: add unrelated blog
+        let mut feeds: Vec<ChannelInfo> = Vec::new();
+        add_channel_info(&mut feeds, atom_hint_in_name.clone());
+        add_channel_info(&mut feeds, other_blog_with_rss_hint.clone());
+        add_channel_info(&mut feeds, other_blog_with_no_hint.clone());
+        assert_eq!(3, feeds.len());
+
+        // SCENARIO 4: distinct rss feeds for same website
+        let mut feeds: Vec<ChannelInfo> = Vec::new();
+        add_channel_info(&mut feeds, rss_hint_in_name.clone());
+        add_channel_info(&mut feeds, rss_hint_in_url.clone());
+        assert_eq!(2, feeds.len());
     }
 
     #[test]
