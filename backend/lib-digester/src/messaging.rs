@@ -33,7 +33,7 @@ pub fn create_subject(env: &Env, subs: &[MailjetSubscription]) -> String {
 
     subject.push_str("Digests from ");
 
-    let max_len = 60;
+    let max_len = 50; // mailjet says too long subjects could be suspicious/spammy
     let mut there_would_be_more = false;
     let mut added_one = false;
 
@@ -180,8 +180,7 @@ mod tests {
         let sub4 = MailjetSubscription::new("node/node", Vec::new());
 
         let actual = create_subject(&Env::Prod, &[sub1, sub2, sub3, sub4]);
-        let expected =
-            "Digests from kubernetes/kubernetes, golang/tools, node/node and more".to_owned();
+        let expected = "Digests from kubernetes/kubernetes, golang/tools and more".to_owned();
         assert_eq!(expected, actual)
     }
 
