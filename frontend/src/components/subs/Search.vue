@@ -102,6 +102,12 @@ export default {
     },
     validate() {
       if (this.isGithubRelease) {
+        // if a user enters a github url, we help them a bit by
+        // extracting the repository
+        let repoWithUrl = /^.*github\.com.*\/([^/]+\/[^/]+)$/.exec(this.name);
+        if (repoWithUrl) {
+          this.name = repoWithUrl[1];
+        }
         if (!/^[^/]+\/[^/]+$/.test(this.name)) {
           this.nameErrors.push("Format: author/repository");
         }
