@@ -9,7 +9,7 @@ use diesel::*;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 
-#[derive(Queryable, Clone)]
+#[derive(Queryable, Clone, Debug)]
 pub struct Identity {
     pub id: i32,
     pub provider: String,
@@ -151,6 +151,21 @@ pub struct Digest {
     pub subscription_id: i32,
     pub due: DateTime<Utc>,
     pub sent: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Queryable, AsChangeset, Identifiable)]
+pub struct List {
+    pub id: i32,
+    pub name: String,
+    pub creator: i32,
+    pub inserted: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug)]
+#[table_name = "lists"]
+pub struct NewList {
+    pub name: String,
+    pub creator: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, FromSqlRow, AsExpression)]

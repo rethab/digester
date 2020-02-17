@@ -61,6 +61,23 @@ table! {
     }
 }
 
+table! {
+    lists(id) {
+      id -> Integer,
+      name -> Text,
+      creator -> Integer,
+      inserted -> Timestamptz,
+    }
+}
+
+table! {
+    lists_channels(list_id, channel_id) {
+      list_id -> Integer,
+      channel_id -> Integer,
+      inserted -> Timestamptz,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(subscriptions, digests);
 allow_tables_to_appear_in_same_query!(subscriptions, users);
 allow_tables_to_appear_in_same_query!(subscriptions, channels);
