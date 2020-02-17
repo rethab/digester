@@ -7,6 +7,7 @@ use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::result;
 use diesel::result::Error;
+use either::{Either, Left, Right};
 use std::env;
 
 pub struct Connection(pub PgConnection);
@@ -221,19 +222,13 @@ pub fn updates_find_by_user_id(
     limit: u32,
 ) -> Result<Vec<(Update, Channel)>, String> {
     let mut channel_ids = Vec::new();
-    for (sub, _, _) in subscriptions_find_by_user_id(conn, user_id)? {
-        match (sub.channel_id, sub.list_id) {
-            (Some(channel_id), None) => channel_ids.push(channel_id),
-            (None, Some(list_id)) => {
-                for channel in channels_find_by_list_id(conn, list_id)? {
+    for (_, chan_or_list) in subscriptions_find_by_user_id(conn, user_id)? {
+        match chan_or_list {
+            Left(chan) => channel_ids.push(chan.id),
+            Right(list) => {
+                for channel in channels_find_by_list_id(conn, list.id)? {
                     channel_ids.push(channel.id);
                 }
-            }
-            _ => {
-                return Err(format!(
-                    "Subscription {} has both channel and list set or none",
-                    sub.id
-                ))
             }
         }
     }
@@ -255,7 +250,7 @@ pub fn subscriptions_find_by_id(
     conn: &PgConnection,
     id: i32,
     user_id: i32,
-) -> Result<Option<(Subscription, Option<Channel>, Option<List>)>, String> {
+) -> Result<Option<(Subscription, Either<Channel, List>)>, String> {
     use schema::subscriptions;
 
     let mb_sub = subscriptions::table
@@ -313,7 +308,7 @@ pub fn subscriptions_find_without_due_digest(
 pub fn subscriptions_find_by_user_id(
     conn: &PgConnection,
     user_id: i32,
-) -> Result<Vec<(Subscription, Option<Channel>, Option<List>)>, String> {
+) -> Result<Vec<(Subscription, Either<Channel, List>)>, String> {
     use schema::subscriptions;
 
     let subscriptions = subscriptions::table
@@ -337,14 +332,14 @@ pub fn subscriptions_find_by_user_id(
 fn subscriptions_zip_with_channel_or_list(
     conn: &PgConnection,
     sub: Subscription,
-) -> Result<(Subscription, Option<Channel>, Option<List>), String> {
+) -> Result<(Subscription, Either<Channel, List>), String> {
     match (sub.channel_id, sub.list_id) {
         (Some(channel_id), None) => {
             let channel = channels_find_by_id(conn, channel_id)?;
-            Ok((sub, Some(channel), None))
+            Ok((sub, Left(channel)))
         }
         (None, Some(list_id)) => match lists_find_by_id(conn, list_id)? {
-            Some((list, _)) => Ok((sub, None, Some(list))),
+            Some((list, _)) => Ok((sub, Right(list))),
             None => Err(format!(
                 "Failed to fetch list {} for subscription {}",
                 list_id, sub.id
@@ -476,7 +471,7 @@ pub fn digests_remove_unsent_for_subscription(
 
 pub fn digests_remove_unsent_for_user(conn: &PgConnection, user: &User) -> Result<(), String> {
     let subs = subscriptions_find_by_user_id(conn, user.id)?;
-    for (sub, _, _) in subs {
+    for (sub, _) in subs {
         digests_remove_unsent_for_subscription(conn, &sub)?;
     }
     Ok(())

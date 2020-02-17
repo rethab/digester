@@ -6,6 +6,7 @@ use super::common::*;
 use channels::github_release::GithubRelease;
 use chrono::naive::NaiveTime;
 use db::{ChannelType, Day, Frequency};
+use either::{Left, Right};
 use rocket::http::RawStr;
 use rocket::request::FromFormValue;
 use rocket::{Rocket, State};
@@ -31,14 +32,16 @@ struct NewSubscription {
 #[derive(Serialize, Clone, Debug, PartialEq)]
 struct Subscription {
     id: i32,
-    #[serde(rename = "channelName")]
-    channel_name: String,
+    #[serde(rename = "name")]
+    name: String,
     #[serde(rename = "channelType")]
-    channel_type: ChannelType,
+    channel_type: Option<ChannelType>,
     #[serde(rename = "channelId")]
-    channel_id: i32,
+    channel_id: Option<i32>,
+    #[serde(rename = "listId")]
+    list_id: Option<i32>,
     #[serde(rename = "channelLink")]
-    channel_link: String,
+    channel_link: Option<String>,
     frequency: Frequency,
     day: Option<Day>,
     time: NaiveTime,
@@ -78,23 +81,24 @@ impl Subscription {
     fn from_db_channel(sub: db::Subscription, chan: db::Channel) -> Subscription {
         Subscription {
             id: sub.id,
-            channel_name: chan.name.clone(),
-            channel_type: chan.channel_type,
-            channel_id: chan.id,
-            channel_link: chan.link,
+            name: chan.name.clone(),
+            channel_type: Some(chan.channel_type),
+            channel_id: Some(chan.id),
+            list_id: None,
+            channel_link: Some(chan.link),
             frequency: sub.frequency,
             day: sub.day,
             time: sub.time,
         }
     }
-   
     fn from_db_list(sub: db::Subscription, list: db::List) -> Subscription {
         Subscription {
             id: sub.id,
-            channel_name: chan.name.clone(),
-            channel_type: chan.channel_type,
-            channel_id: chan.id,
-            channel_link: chan.link,
+            name: list.name.clone(),
+            channel_type: None,
+            channel_id: None,
+            list_id: Some(list.id),
+            channel_link: None,
             frequency: sub.frequency,
             day: sub.day,
             time: sub.time,
@@ -140,7 +144,10 @@ fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
         Err(_) => JsonResponse::InternalServerError,
         Ok(subs) => subs
             .into_iter()
-            .map(|(sub, chan)| Subscription::from_db(sub, chan))
+            .map(|(sub, chan_or_list)| match chan_or_list {
+                Left(channel) => Subscription::from_db_channel(sub, channel),
+                Right(list) => Subscription::from_db_list(sub, list),
+            })
             .collect::<Vec<Subscription>>()
             .into(),
     }
@@ -212,7 +219,6 @@ fn add(
     };
 
     match (new_subscription.channel_id, new_subscription.list_id) {
-        (Some(_), Some(_)) => return JsonResponse::BadRequest("Cannot set both channel_id and list_id".into());
         (Some(chan_id), None) => {
             let channel = match db::channels_find_by_id(&db, chan_id) {
                 Err(err) => {
@@ -229,14 +235,15 @@ fn add(
                 }
                 Err(db::InsertError::Unknown) => JsonResponse::InternalServerError,
             }
-        },
+        }
         (None, Some(list_id)) => {
             let list = match db::lists_find_by_id(&db, list_id) {
                 Err(err) => {
                     eprintln!("Failed to fetch list by id '{}': {:?}", list_id, err);
                     return JsonResponse::BadRequest("list does not exist".into());
                 }
-                Ok(channel) => channel,
+                Ok(Some((list, _))) => list,
+                Ok(None) => return JsonResponse::BadRequest("list does not exist".into()),
             };
 
             match insert_list_subscription(&db, &new_subscription, &list, &identity) {
@@ -247,6 +254,7 @@ fn add(
                 Err(db::InsertError::Unknown) => JsonResponse::InternalServerError,
             }
         }
+        _ => JsonResponse::BadRequest("Cannot set both channel_id and list_id or none".into()),
     }
 }
 
@@ -264,22 +272,17 @@ fn update(
     id: i32,
     updated_subscription: Json<UpdatedSubscription>,
 ) -> JsonResponse {
-    let (original, mb_channel, mb_list) = match db::subscriptions_find_by_id(&db.0, id, session.0.user_id) {
-        Ok(Some((sub, mb_chan, mb_list))) => (sub, mb_chan, mb_list),
-        Ok(None) => return JsonResponse::NotFound,
-        Err(_) => return JsonResponse::InternalServerError,
-    };
+    let (original, channel_or_list) =
+        match db::subscriptions_find_by_id(&db.0, id, session.0.user_id) {
+            Ok(Some((sub, channel_or_list))) => (sub, channel_or_list),
+            Ok(None) => return JsonResponse::NotFound,
+            Err(_) => return JsonResponse::InternalServerError,
+        };
 
     match update_subscription(&db, updated_subscription.0, original) {
-        Ok(sub) => {
-            match (mb_channel, mb_list) {
-                (Some(channel), None) => Subscription::from_db_channel(sub, channel).into(),
-                (None, Some(list)) => Subscription::from_db_list(sub, list).into(),
-                _ => {
-                    eprintln!("Subscription {} has channel and list or none", id);
-                    return JsonResponse::InternalServerError
-                },
-            }
+        Ok(sub) => match channel_or_list {
+            Left(channel) => Subscription::from_db_channel(sub, channel).into(),
+            Right(list) => Subscription::from_db_list(sub, list).into(),
         },
         Err(_) => JsonResponse::InternalServerError,
     }
@@ -327,14 +330,10 @@ fn update_subscription(
     original: db::Subscription,
 ) -> Result<db::Subscription, String> {
     let db_sub = db::Subscription {
-        id: original.id,
-        email: original.email,
-        channel_id: original.channel_id,
-        user_id: original.user_id,
         frequency: updated.frequency,
         day: updated.day,
         time: updated.time,
-        inserted: original.inserted,
+        ..original
     };
     db::subscriptions_update(&conn.0, db_sub).map(|sub| {
         if let Err(err) = db::digests_remove_unsent_for_subscription(&conn.0, &sub) {
@@ -363,7 +362,8 @@ mod tests {
         )
         .expect("Failed to parse");
         let exp = NewSubscription {
-            channel_id: 1,
+            channel_id: Some(1),
+            list_id: None,
             frequency: Frequency::Weekly,
             day: Some(Day::Sat),
             time: NaiveTime::from_hms_milli(9, 0, 0, 0),
