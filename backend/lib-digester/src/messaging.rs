@@ -22,6 +22,18 @@ pub fn send_email(cred: &SendgridCredentials, message: SendgridMessage) -> Resul
     }
 }
 
+pub fn create_subject_for_list(env: &Env, list: &db::List) -> String {
+    let mut subject = String::new();
+
+    if *env != Env::Prod {
+        subject.push_str(&format!("[{:?}] ", env));
+    }
+
+    subject.push_str("Digests from ");
+    subject.push_str(list.name);
+    subject
+}
+
 pub fn create_subject(env: &Env, subs: &[SendgridSubscription]) -> String {
     let mut subject = String::new();
 
