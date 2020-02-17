@@ -46,7 +46,10 @@ CREATE TABLE updates (
 CREATE TABLE subscriptions (
   id SERIAL PRIMARY KEY,
   email VARCHAR NOT NULL,
+  -- depending on whether the subscription is for a channel or a list,
+  -- the respective attribute is set
   channel_id INT REFERENCES channels(id),
+  list_id INT REFERENCES lists(id),
   user_id INT REFERENCES users(id),
   frequency VARCHAR NOT NULL, -- daily or weekly
   day VARCHAR NULL, -- any three-letter day: set if frequency is weekly, we also have a day
@@ -70,3 +73,19 @@ CREATE TABLE digests (
 
 -- per subscription, we can only have one unsent digest
 CREATE UNIQUE INDEX digests_only_one_unsent_idx ON digests (subscription_id) WHERE sent IS NULL;
+
+-- LISTS
+
+CREATE TABLE lists (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR NOT NULL,
+  creator INT REFERENCES users(id),
+  inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE lists_channels (
+  list_id INT REFERENCES lists(id),
+  channel_id INT REFERENCES channels(id),
+  inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(list_id, channel_id)
+);

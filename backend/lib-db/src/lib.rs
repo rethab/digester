@@ -536,6 +536,22 @@ pub fn identities_find_by_user_id(
         })
 }
 
+pub fn identities_find_by_user_ids(
+    conn: &PgConnection,
+    ids_of_users: &[i32],
+) -> Result<Vec<Identity>, String> {
+    use schema::identities::dsl::*;
+    identities
+        .filter(user_id.eq_any(ids_of_users))
+        .get_results(conn)
+        .map_err(|err| {
+            format!(
+                "Failed to fetch identity for user_id {:?}: {:?}",
+                ids_of_users, err
+            )
+        })
+}
+
 pub fn identities_find_by_email_or_id(
     conn: &PgConnection,
     provider: &str,
@@ -584,4 +600,100 @@ pub fn identities_insert(conn: &PgConnection, identity: NewIdentity) -> Result<I
         .returning(identities::all_columns)
         .get_result(conn)
         .map_err(|err| format!("Failed to insert new identity: {:?}", err))
+}
+
+// finds lists and their creators. Note that if the creator
+// has two identities, the first one is picked at random
+fn lists_zip_with_identities(
+    conn: &PgConnection,
+    lists: Vec<List>,
+) -> Result<Vec<(List, Identity)>, String> {
+    let user_ids = lists.iter().map(|l: &List| l.creator).collect::<Vec<i32>>();
+    let identities = identities_find_by_user_ids(conn, &user_ids).map_err(|err| {
+        format!(
+            "Failed to fetch identities for user ids: {:?}: {:?}",
+            user_ids, err
+        )
+    })?;
+
+    let mut results: Vec<(List, Identity)> = Vec::with_capacity(lists.len());
+    for list in lists {
+        match find_identity(&identities, list.creator) {
+            Some(identity) => results.push((list, identity)),
+            None => eprintln!(
+                "Found no identity for list {} with creator id {}",
+                list.id, list.creator
+            ),
+        }
+    }
+    Ok(results)
+}
+
+fn find_identity(identities: &[Identity], user_id: i32) -> Option<Identity> {
+    for identity in identities {
+        if identity.user_id == user_id {
+            return Some(identity.clone());
+        }
+    }
+    None
+}
+
+pub fn lists_find(
+    conn: &PgConnection,
+    creator_id: Option<i32>,
+) -> Result<Vec<(List, Identity)>, String> {
+    use schema::lists::dsl::*;
+    let results = match creator_id {
+        Some(user_id) => lists.filter(creator.eq(user_id)).get_results(conn),
+        None => lists.get_results(conn),
+    };
+    lists_zip_with_identities(
+        conn,
+        results.map_err(|err| format!("Failed to query for lists: {:?}", err))?,
+    )
+}
+
+pub fn lists_find_by_id(
+    conn: &PgConnection,
+    list_id: i32,
+) -> Result<Option<(List, Identity)>, String> {
+    use schema::lists::dsl::*;
+    let ls = lists
+        .find(list_id)
+        .get_results(conn)
+        .map_err(|err| format!("Failed to query for lists: {:?}", err))?;
+
+    let list_and_identity = lists_zip_with_identities(conn, ls)?;
+    if list_and_identity.len() == 1 {
+        Ok(list_and_identity.into_iter().next())
+    } else if list_and_identity.is_empty() {
+        Ok(None)
+    } else {
+        Err(format!(
+            "Searching lists by id {} returned more than one result: {:?}",
+            list_id, list_and_identity
+        ))
+    }
+}
+
+pub fn lists_delete_by_id(conn: &PgConnection, list_id: i32) -> Result<(), String> {
+    use schema::lists;
+    diesel::delete(lists::table.filter(lists::id.eq(list_id)))
+        .execute(conn)
+        .map(|_| ())
+        .map_err(|err| format!("Failed to delete list with id {}: {:?}", list_id, err))
+}
+
+pub fn lists_insert(conn: &PgConnection, new_list: &NewList) -> Result<List, String> {
+    use schema::lists;
+    diesel::insert_into(lists::table)
+        .values(new_list)
+        .returning(lists::all_columns)
+        .get_result(conn)
+        .map_err(|err| format!("Failed to insert new list {:?}: {:?}", new_list, err))
+}
+
+pub fn lists_update_name(conn: &PgConnection, list: List) -> Result<List, String> {
+    list.save_changes(conn)
+        .map_err(|err| format!("Failed to update list: {:?}", err))
 }
