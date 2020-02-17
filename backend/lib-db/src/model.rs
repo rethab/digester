@@ -119,7 +119,8 @@ impl Into<chrono::Weekday> for Day {
 pub struct Subscription {
     pub id: i32,
     pub email: String,
-    pub channel_id: i32,
+    pub channel_id: Option<i32>,
+    pub list_id: Option<i32>,
     pub user_id: i32,
     pub frequency: Frequency,
     pub day: Option<Day>,
@@ -131,7 +132,8 @@ pub struct Subscription {
 #[table_name = "subscriptions"]
 pub struct NewSubscription {
     pub email: String,
-    pub channel_id: i32,
+    pub channel_id: Option<i32>,
+    pub list_id: Option<i32>,
     pub user_id: i32,
     pub frequency: Frequency,
     pub day: Option<Day>,

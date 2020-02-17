@@ -88,17 +88,46 @@ impl App<'_> {
     }
 
     fn send_digest(&self, user: &User, d_and_s: &[(Digest, Subscription)]) -> Result<(), String> {
-        let mut sendgrid_subscriptions = Vec::with_capacity(d_and_s.len());
+
+        let mut channel_digests = Vec::new();
+        let mut list_digests = Vec::new();
+
         for (digest, subscription) in d_and_s {
+            match (subscription.channel_id, subscription.list_id) {
+                (Some(_), Some(_)) => return Err(format!("Subscription {} has both channel and list set", subscription.id));
+                (Some(channel_id), None) => channel_digests.push((digest, subscription, channel_id)),
+                (None, Some(list_id)) => list_digests.push((digest, subscription, list_id)),
+            }
+        }
+
+        // channel messages are batched
+        let mut messages = Vec::new();
+        if let Some(message) = self.create_message_for_channels(&user, &channel_digests)? {
+            messages.push(message);
+        }
+
+        // list messages are sent per list
+        for (digest, subscription, list_id) in list_digests {
+            if let Some(message) = self.create_message_for_lists(&user, digest, subscription, list_id)? {
+                messages.push(message)
+            }
+        }
+
+
+        messaging::send_email(&self.sendgrid, messages)
+    }
+
+    fn create_message_for_channels(&self, user: &User, d_and_s: &[(Digest, Subscription, i32)]) -> Result<Option<SendgridMessage>, String> {
+        let mut sendgrid_subscriptions = Vec::with_capacity(d_and_s.len());
+        for (digest, subscription, channel_id) in d_and_s {
             // we send new updates since the last digest or since
             // when the subscription was created if this is the first digest
             let updates_since = db::digests_find_previous(&self.db_conn, &digest)?
                 .and_then(|d| d.sent)
                 .unwrap_or(subscription.inserted);
-            let updates = db::updates_find_new(&self.db_conn, &subscription, updates_since)?;
-
+            let updates = db::updates_find_new(&self.db_conn, channel_id, updates_since)?;
             if !updates.is_empty() {
-                let channel = db::channels_find_by_id(&self.db_conn.0, subscription.channel_id)?;
+                let channel = db::channels_find_by_id(&self.db_conn.0, channel_id)?;
                 let sendgrid_updates = updates
                     .into_iter()
                     .map(|u| SendgridUpdate {
@@ -117,7 +146,7 @@ impl App<'_> {
                 "No updates to send for User {} in any of their digests",
                 user.id
             );
-            Ok(())
+            Ok(None)
         } else {
             println!(
                 "{} updates to send for user {}",
@@ -126,10 +155,62 @@ impl App<'_> {
             );
             let subject = messaging::create_subject(&self.env, &sendgrid_subscriptions);
             let recipient = d_and_s[0].1.email.clone();
-            let message = SendgridMessage::new(recipient, subject, sendgrid_subscriptions);
-            messaging::send_email(&self.sendgrid, message)
+            Ok(Some(SendgridMessage::new(recipient, subject, sendgrid_subscriptions)))
         }
+
     }
+
+    fn create_message_for_lists(&self, user: &User, digest: Digest, sub: Subscription, list_id: i32) -> Result<Option<SendgridMessage>, String> {
+        let list = match db::lists_find_by_id(&self.db_conn.0, list_id)? {
+            None => return Err(format!("List with id {} not found", list_id)),
+            Some(list) => list,
+        };
+
+        // we send new updates since the last digest or since
+        // when the subscription was created if this is the first digest
+        let updates_since = db::digests_find_previous(&self.db_conn, &digest)?
+            .and_then(|d| d.sent)
+            .unwrap_or(sub.inserted);
+
+        let channels = db::channels_find_by_list_id(&self.db_conn, list_id)?;
+
+        let mut sendgrid_subscriptions = Vec::with_capacity(d_and_s.len());
+        for (digest, subscription, list_id) in d_and_s {
+            let updates = db::updates_find_new(&self.db_conn, channel_id, updates_since)?;
+            if !updates.is_empty() {
+                let channel = db::channels_find_by_id(&self.db_conn.0, channel_id)?;
+                let sendgrid_updates = updates
+                    .into_iter()
+                    .map(|u| SendgridUpdate {
+                        title: u.title,
+                        url: u.url,
+                    })
+                    .collect();
+                sendgrid_subscriptions
+                    .push(SendgridSubscription::new(&channel.name, sendgrid_updates));
+            }
+        }
+
+        if sendgrid_subscriptions.is_empty() {
+            // happens if user has a due digest, but we have no updates..
+            println!(
+                "No updates to send for User {} in any of their digests (via lists)",
+                user.id
+            );
+            Ok(None)
+        } else {
+            println!(
+                "{} updates to send for user {} (via lists)",
+                sendgrid_subscriptions.len(),
+                user.id
+            );
+            let subject = messaging::create_subject_for_list(&self.env, &list);
+            let recipient = sub.email.clone();
+            Ok(Some(SendgridMessage::new(recipient, subject, sendgrid_subscriptions)))
+        }
+
+    }
+
 }
 
 fn next_due_date_for_subscription(subscription: &Subscription, now: DateTime<Tz>) -> DateTime<Tz> {

@@ -78,6 +78,17 @@ pub fn channels_find_by_last_fetched(
         })
 }
 
+pub fn channels_find_by_list_id(conn: &PgConnection, list_id: i32) -> Result<Vec<Channel>, String> {
+    use schema::channels;
+    use schema::lists_channels;
+
+    channels::table
+        .inner_join(lists_channels::table.on(lists_channels::channel_id.eq(channels::id)))
+        .select(channels::all_columns)
+        .load::<Channel>(conn)
+        .map_err(|err| format!("Failed to load channels by list id {}: {:?}", list_id, err))
+}
+
 pub enum InsertError {
     Duplicate,
     Unknown,
@@ -193,16 +204,12 @@ pub fn updates_insert_new(conn: &Connection, update: &NewUpdate) -> Result<(), I
 
 pub fn updates_find_new(
     conn: &Connection,
-    subscription: &Subscription,
+    chan_id: i32,
     since: DateTime<Utc>,
 ) -> Result<Vec<Update>, String> {
     use schema::updates::dsl::*;
     updates
-        .filter(
-            channel_id
-                .eq(subscription.channel_id)
-                .and(published.gt(since)),
-        )
+        .filter(channel_id.eq(chan_id).and(published.gt(since)))
         .load(&conn.0)
         .map_err(|err| format!("Failed to load updates: {:?}", err))
 }
@@ -213,14 +220,29 @@ pub fn updates_find_by_user_id(
     offset: u32,
     limit: u32,
 ) -> Result<Vec<(Update, Channel)>, String> {
-    use schema::channels;
-    use schema::subscriptions;
-    use schema::updates;
+    let mut channel_ids = Vec::new();
+    for (sub, _, _) in subscriptions_find_by_user_id(conn, user_id)? {
+        match (sub.channel_id, sub.list_id) {
+            (Some(channel_id), None) => channel_ids.push(channel_id),
+            (None, Some(list_id)) => {
+                for channel in channels_find_by_list_id(conn, list_id)? {
+                    channel_ids.push(channel.id);
+                }
+            }
+            _ => {
+                return Err(format!(
+                    "Subscription {} has both channel and list set or none",
+                    sub.id
+                ))
+            }
+        }
+    }
 
-    subscriptions::table
-        .inner_join(channels::table.on(subscriptions::channel_id.eq(channels::id)))
+    use schema::channels;
+    use schema::updates;
+    channels::table
         .inner_join(updates::table.on(channels::id.eq(updates::channel_id)))
-        .filter(subscriptions::user_id.eq(user_id))
+        .filter(channels::id.eq_any(channel_ids))
         .order_by(updates::published.desc())
         .offset(offset as i64)
         .limit(limit as i64)
@@ -233,20 +255,25 @@ pub fn subscriptions_find_by_id(
     conn: &PgConnection,
     id: i32,
     user_id: i32,
-) -> Result<Option<(Subscription, Channel)>, String> {
-    use schema::channels;
+) -> Result<Option<(Subscription, Option<Channel>, Option<List>)>, String> {
     use schema::subscriptions;
-    subscriptions::table
-        .inner_join(channels::table.on(subscriptions::channel_id.eq(channels::id)))
+
+    let mb_sub = subscriptions::table
         .filter(
             subscriptions::id
                 .eq(id)
                 .and(subscriptions::user_id.eq(user_id)),
         )
-        .select((subscriptions::all_columns, channels::all_columns))
-        .load::<(Subscription, Channel)>(conn)
-        .map(|subs| subs.into_iter().next())
-        .map_err(|err| format!("Failed to load subscription by id: {:?}", err))
+        .first(conn)
+        .optional()
+        .map_err(|err| format!("Failed to load subscription by id: {:?}", err))?;
+
+    let sub = match mb_sub {
+        Some(sub) => sub,
+        None => return Ok(None),
+    };
+
+    Ok(Some(subscriptions_zip_with_channel_or_list(conn, sub)?))
 }
 
 pub fn subscriptions_find_by_digest(
@@ -286,20 +313,48 @@ pub fn subscriptions_find_without_due_digest(
 pub fn subscriptions_find_by_user_id(
     conn: &PgConnection,
     user_id: i32,
-) -> Result<Vec<(Subscription, Channel)>, String> {
-    use schema::channels;
+) -> Result<Vec<(Subscription, Option<Channel>, Option<List>)>, String> {
     use schema::subscriptions;
-    subscriptions::table
-        .inner_join(channels::table.on(subscriptions::channel_id.eq(channels::id)))
+
+    let subscriptions = subscriptions::table
         .filter(subscriptions::user_id.eq(user_id))
-        .select((subscriptions::all_columns, channels::all_columns))
-        .load::<(Subscription, Channel)>(conn)
+        .select(subscriptions::all_columns)
+        .load::<Subscription>(conn)
         .map_err(|err| {
             format!(
-                "Failed to run query in subscriptions_find_without_due_digests: {:?}",
-                err
+                "Failed to fetch subscriptions for user {}: {:?}",
+                user_id, err
             )
-        })
+        })?;
+
+    let mut results = Vec::new();
+    for sub in subscriptions {
+        results.push(subscriptions_zip_with_channel_or_list(conn, sub)?);
+    }
+    Ok(results)
+}
+
+fn subscriptions_zip_with_channel_or_list(
+    conn: &PgConnection,
+    sub: Subscription,
+) -> Result<(Subscription, Option<Channel>, Option<List>), String> {
+    match (sub.channel_id, sub.list_id) {
+        (Some(channel_id), None) => {
+            let channel = channels_find_by_id(conn, channel_id)?;
+            Ok((sub, Some(channel), None))
+        }
+        (None, Some(list_id)) => match lists_find_by_id(conn, list_id)? {
+            Some((list, _)) => Ok((sub, None, Some(list))),
+            None => Err(format!(
+                "Failed to fetch list {} for subscription {}",
+                list_id, sub.id
+            )),
+        },
+        _ => Err(format!(
+            "Subscription {} has channel_id and list_id or neither",
+            sub.id
+        )),
+    }
 }
 
 pub fn subscriptions_insert(
@@ -421,7 +476,7 @@ pub fn digests_remove_unsent_for_subscription(
 
 pub fn digests_remove_unsent_for_user(conn: &PgConnection, user: &User) -> Result<(), String> {
     let subs = subscriptions_find_by_user_id(conn, user.id)?;
-    for (sub, _) in subs {
+    for (sub, _, _) in subs {
         digests_remove_unsent_for_subscription(conn, &sub)?;
     }
     Ok(())

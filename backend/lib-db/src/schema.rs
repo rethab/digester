@@ -43,7 +43,8 @@ table! {
     subscriptions(id) {
       id -> Integer,
       email -> Text,
-      channel_id -> Integer,
+      channel_id -> Nullable<Integer>,
+      list_id -> Nullable<Integer>,
       user_id -> Integer,
       frequency -> Text,
       day -> Nullable<Text>,
@@ -85,3 +86,4 @@ allow_tables_to_appear_in_same_query!(subscriptions, updates);
 allow_tables_to_appear_in_same_query!(digests, users);
 allow_tables_to_appear_in_same_query!(updates, channels);
 allow_tables_to_appear_in_same_query!(users, identities);
+allow_tables_to_appear_in_same_query!(channels, lists_channels);
