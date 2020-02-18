@@ -3,6 +3,7 @@ import VueRouter from 'vue-router'
 import store from '@/store/index.js';
 import Home from '@/views/Home.vue'
 import Subscriptions from '@/views/Subscriptions.vue'
+import Lists from '@/views/Lists.vue'
 import Updates from '@/views/Updates.vue'
 import Settings from '@/views/Settings.vue'
 import AuthLogin from '@/views/AuthLogin.vue'
@@ -21,6 +22,12 @@ const routes = [
     name: 'subscriptions',
     component: Subscriptions,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/lists',
+    name: 'lists',
+    component: Lists,
+    meta: { requiresAuth: false } // fixme
   },
   {
     path: '/updates',

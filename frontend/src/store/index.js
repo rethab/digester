@@ -2,6 +2,7 @@ import Vue from 'vue'
 import Vuex from 'vuex'
 import auth from '@/store/modules/auth.js';
 import subscriptions from '@/store/modules/subscriptions.js';
+import lists from '@/store/modules/lists.js';
 import updates from '@/store/modules/updates.js';
 import settings from '@/store/modules/settings.js';
 import offline from '@/store/modules/offline.js';
@@ -58,6 +59,7 @@ export default new Vuex.Store({
   modules: {
     auth,
     subscriptions,
+    lists,
     updates,
     settings,
     offline
