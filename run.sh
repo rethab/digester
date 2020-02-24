@@ -100,13 +100,29 @@ function run_heroku_stg() {
 function run_prod_backup() {
   local env="prod";
 
+  local userid;
+  local groupid;
+  userid=$(id -u "$USER")
+  groupid=$(id -g "$USER")
+
   local dbstring;
   dbstring=$(heroku config --app digester-api-$env | awk '/DATABASE_URL/{print $2}');
 
   local filename;
   filename="$env-$(date --iso-8601=seconds --utc)"
+
+  local tempdirs;
+  tempdirs="/tmp/$env-pgbackups"
+  mkdir -p $tempdirs
   
-  pg_dump --format=c --file="/home/rethab/data/digester-backups/$filename" "$dbstring?sslmode=require"
+
+  docker run --interactive \
+    --volume "$tempdirs":"$tempdirs" \
+    --user "$userid":"$groupid" \
+    postgres:12.1  \
+    pg_dump "$dbstring?sslmode=require" --format=c --file "$tempdirs/$filename"
+  mv "$tempdirs/$filename" /home/rethab/data/digester-backups
+  rm -r $tempdirs
 }
 
 function run_sanity_check() {
