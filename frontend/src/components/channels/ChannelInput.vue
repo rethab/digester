@@ -36,15 +36,25 @@ export default {
     nameErrors: {
       type: Array,
       required: true
+    },
+    showList: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
+    let types = [
+      { text: "Blog / News", value: Channel.Rss },
+      { text: "Github", value: Channel.GithubRelease }
+    ];
+
+    if (this.showList) {
+      types.unshift({ text: "List", value: Channel.List });
+    }
+
     return {
       channel: new Channel(this.value.type, this.value.name),
-      types: [
-        { text: "Blog / News", value: "RssFeed" },
-        { text: "Github", value: "GithubRelease" }
-      ]
+      types: types
     };
   }
 };
