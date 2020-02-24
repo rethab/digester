@@ -1,15 +1,11 @@
 <template>
   <v-dialog :value="true" fullscreen hide-overlay>
     <v-card>
-      <v-toolbar dark color="primary">
-        <v-btn icon dark @click="$emit('closeDialog')">
-          <v-icon>{{ closeIcon }}</v-icon>
-        </v-btn>
-        <v-spacer></v-spacer>
-        <v-toolbar-items>
-          <v-btn dark text @click="$emit('subscribe', channel, frequency)">Subscribe</v-btn>
-        </v-toolbar-items>
-      </v-toolbar>
+      <DialogToolbar
+        actionText="Subscribe"
+        v-on:closeDialog="$emit('closeDialog')"
+        v-on:dialogAction="$emit('subscribe', channel, frequency)"
+      />
       <v-card-title>
         <span>
           <ChannelIcon :type="channel.channel_type" />
@@ -25,11 +21,12 @@
 </template>
 <script>
 import ChannelIcon from "@/components/common/ChannelIcon.vue";
+import DialogToolbar from "@/components/common/DialogToolbar.vue";
 import FrequencySelection from "@/components/subs/FrequencySelection.vue";
-import { mdiClose } from "@mdi/js";
 export default {
   components: {
     ChannelIcon,
+    DialogToolbar,
     FrequencySelection
   },
   props: {
@@ -40,7 +37,6 @@ export default {
   },
   data() {
     return {
-      closeIcon: mdiClose,
       frequency: {
         frequency: "Weekly",
         day: "Sat",

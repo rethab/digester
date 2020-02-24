@@ -1,24 +1,7 @@
 import Api from '@/services/api.js';
 
 const state = {
-    lists: [
-        {
-            name: 'Top of Scala',
-            channels: [
-                { name: 'Scala Programming Blog', channelType: 'RssFeed' },
-                { name: 'lightbend/scalac', channelType: 'GithubRelease' },
-                { name: 'Propsensive\' Thoughts on Reality', channelType: 'RssFeed' },
-            ]
-        },
-        {
-            name: 'Android Dev',
-            channels: [
-                { name: 'Jetbrains Android Studio Blog', channelType: 'RssFeed' },
-                { name: 'google/android', channelType: 'GithubRelease' },
-                { name: 'Andy Rubyn Daily', channelType: 'RssFeed' },
-            ]
-        },
-    ]
+    lists: []
 };
 
 const getters = {
@@ -40,12 +23,38 @@ const actions = {
                     reject(err)
                 })
         })
-    }
+    },
+    createList({ commit }, list) {
+        return new Promise((resolve, reject) => {
+            Api().put("lists", {
+                name: list.name
+            }).then(resp => {
+                list.id = resp.data.id;
+                list.channels = [];
+                commit('ADD_LIST', list);
+                resolve(list);
+            }).catch(err => {
+                reject(err)
+            });
+        })
+    },
+    addChannel({ commit }, { list, channel }) {
+        commit('ADD_CHANNEL', { list, channel });
+        Promise.resolve(channel);
+        // todo impl api :)
+    },
 }
 
 const mutations = {
     SET_LISTS: (state, lists) => {
         state.lists = lists;
+    },
+    ADD_LIST: (state, list) => {
+        state.lists.unshift(list);
+    },
+    ADD_CHANNEL: (state, { list, channel }) => {
+        const index = state.lists.findIndex(x => x.id == list.id);
+        state.lists[index].channels.unshift(channel);
     }
 }
 

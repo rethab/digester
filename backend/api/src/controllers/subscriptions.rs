@@ -109,6 +109,7 @@ impl Subscription {
 #[derive(Serialize)]
 struct Channel {
     id: i32,
+    #[serde(rename = "type")]
     channel_type: ChannelType,
     name: String,
     link: String,

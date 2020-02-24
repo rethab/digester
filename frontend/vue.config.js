@@ -12,6 +12,7 @@ module.exports = {
   },
   configureWebpack: {
     devServer: {
+      host: 'digester.local',
       disableHostCheck: true,
       headers: {
         'X-Content-Type-Options': 'nosniff'

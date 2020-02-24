@@ -12,13 +12,15 @@
       <Search :initialValue="searchInput" :loading="loading" v-on:search="search" />
     </section>
     <section id="searchResults">
-      <SearchResults
+      <ChannelSearchResults
         class="mt-6"
         v-if="searchResults"
-        v-on:openDialog="openDialog"
+        v-on:channelSelected="openDialog"
         :channels="searchResults"
         :channelType="searchChannelType"
         :searchError="searchError"
+        :alreadyThere="alreadySubscribed"
+        alreadyThereMessage="Already subscribed"
       />
     </section>
     <FrequencyDialog
@@ -32,14 +34,14 @@
 
 <script>
 import Search from "@/components/subs/Search.vue";
-import SearchResults from "@/components/subs/SearchResults.vue";
+import ChannelSearchResults from "@/components/channels/ChannelSearchResults.vue";
 import FrequencyDialog from "@/components/subs/FrequencyDialog.vue";
 import Api from "@/services/api.js";
 import { mapGetters } from "vuex";
 export default {
   components: {
     Search,
-    SearchResults,
+    ChannelSearchResults,
     FrequencyDialog
   },
   data() {

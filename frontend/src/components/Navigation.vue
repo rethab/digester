@@ -25,6 +25,15 @@
         <v-list-item-title>Subscriptions</v-list-item-title>
       </v-list-item-content>
     </v-list-item>
+    <v-list-item v-if="isAuthenticated" to="/lists">
+      <v-list-item-icon>
+        <v-icon>{{ updatesIcon }}</v-icon>
+      </v-list-item-icon>
+      <v-list-item-content>
+        <v-list-item-title>List Management</v-list-item-title>
+      </v-list-item-content>
+    </v-list-item>
+    <v-divider></v-divider>
     <v-list-item v-if="isAuthenticated" to="/updates">
       <v-list-item-icon>
         <v-icon>{{ updatesIcon }}</v-icon>
