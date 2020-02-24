@@ -8,7 +8,7 @@
             target="_blank"
             class="black--text"
             style="text-decoration:none; word-break: break-word"
-          >{{value.channelName}}</a>
+          >{{value.name}}</a>
           <v-icon small class="pl-1">{{ channelIcon }}</v-icon>
         </span>
       </v-card-title>

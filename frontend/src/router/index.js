@@ -27,7 +27,7 @@ const routes = [
     path: '/lists',
     name: 'lists',
     component: Lists,
-    meta: { requiresAuth: false } // fixme
+    meta: { requiresAuth: true }
   },
   {
     path: '/updates',

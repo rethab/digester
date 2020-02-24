@@ -1,33 +1,21 @@
 <template>
   <v-card>
     <v-card-title>New Subscription</v-card-title>
-    <v-card-subtitle v-if="isGithubRelease">
+    <v-card-subtitle v-if="channel.isGithubRelease()">
       Into golang? Try
       <span class="font-italic">golang/tools</span>
     </v-card-subtitle>
-    <v-card-subtitle v-if="isRss">
+    <v-card-subtitle v-if="channel.isRss()">
       Into tech news? Try
       <span class="font-italic">theverge.com</span>
     </v-card-subtitle>
     <v-form @submit.prevent="submit">
       <v-card-text class="pb-0">
-        <v-row dense>
-          <v-col cols="12">
-            <v-select
-              :items="types"
-              v-model="type"
-              :error-messages="typeErrors"
-              label="Type"
-              append-icon
-              :disabled="types.length === 1"
-            ></v-select>
-          </v-col>
-        </v-row>
-        <v-row dense>
-          <v-col cols="12">
-            <v-text-field v-model.trim="name" :error-messages="nameErrors" :label="nameLabel"></v-text-field>
-          </v-col>
-        </v-row>
+        <ChannelInput
+          v-on:selectChannel="channel = $event"
+          v-bind:value="channel"
+          :nameErrors="nameErrors"
+        />
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -38,7 +26,12 @@
 </template>
 
 <script>
+import ChannelInput from "@/components/channels/ChannelInput.vue";
+import Channel from "@/models/Channel.js";
 export default {
+  components: {
+    ChannelInput
+  },
   props: {
     loading: {
       type: Boolean,
@@ -53,14 +46,8 @@ export default {
     return {
       snackbar: false,
 
-      type: "RssFeed",
-      types: [
-        { text: "Blog / News", value: "RssFeed" },
-        { text: "Github", value: "GithubRelease" }
-      ],
-      typeErrors: [],
+      channel: new Channel("RssFeed", this.initialValue),
 
-      name: this.initialValue,
       nameErrors: [],
 
       searchResults: null,
@@ -70,56 +57,27 @@ export default {
   },
   computed: {
     hasErrors() {
-      return this.typeErrors.length == 0 && this.nameErrors.length == 0;
-    },
-    isGithubRelease() {
-      return this.type === "GithubRelease";
-    },
-    isRss() {
-      return this.type === "RssFeed";
-    },
-    nameLabel() {
-      if (this.isGithubRelease) {
-        return "Repository";
-      } else if (this.isRss) {
-        return "Url";
-      } else {
-        return "";
-      }
+      return this.nameErrors.length == 0;
     }
   },
   watch: {
     initialValue(newValue) {
-      this.name = newValue;
+      this.channel.name = newValue;
     }
   },
   methods: {
     submit() {
       this.clearErrors();
       if (this.validate()) {
-        this.$emit("search", this.type, this.name);
+        console.log(`Search.search(${this.channel.show()})`);
+        this.$emit("search", this.channel.type, this.channel.name);
       }
     },
     validate() {
-      if (this.isGithubRelease) {
-        // if a user enters a github url, we help them a bit by
-        // extracting the repository
-        let repoWithUrl = /^.*github\.com.*\/([^/]+\/[^/]+)$/.exec(this.name);
-        if (repoWithUrl) {
-          this.name = repoWithUrl[1];
-        }
-        if (!/^[^/]+\/[^/]+$/.test(this.name)) {
-          this.nameErrors.push("Format: author/repository");
-        }
-      } else if (this.isRss) {
-        if (!/^.*[^.]+\.[^.]+.*$/.test(this.name)) {
-          this.nameErrors.push("Format: theverge.com");
-        }
-      }
+      this.nameErrors = this.channel.validate();
       return this.hasErrors;
     },
     clearErrors() {
-      this.typeErrors = [];
       this.nameErrors = [];
     }
   }

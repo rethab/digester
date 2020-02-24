@@ -1,17 +1,14 @@
 <template>
   <v-container>
-    <AddList />
-    <ListLists />
+    <ListOverview />
   </v-container>
 </template>
 
 <script>
-import AddList from "@/components/lists/AddList.vue";
-import ListLists from "@/components/lists/ListLists.vue";
+import ListOverview from "@/components/lists/ListOverview.vue";
 export default {
   components: {
-    AddList,
-    ListLists
+    ListOverview
   }
 };
 </script>

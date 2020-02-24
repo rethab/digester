@@ -19,11 +19,8 @@
       >
         <v-card color="secondary" class="lighten-4" raised>
           <v-card-title>
-            <span
-              :class="alreadySubscribed(channel) ? 'grey--text' : ''"
-              style="word-break: break-word"
-            >
-              <ChannelIcon :type="channel.channel_type" />
+            <span :class="alreadyThere(channel) ? 'grey--text' : ''" style="word-break: break-word">
+              <ChannelIcon :type="channel.type" />
               {{channel.name}}
             </span>
           </v-card-title>
@@ -37,8 +34,8 @@
           </v-card-subtitle>
           <v-card-actions class="mt-n5">
             <v-spacer></v-spacer>
-            <v-btn v-if="alreadySubscribed(channel)" text disabled>Already subscribed</v-btn>
-            <v-btn v-else @click="$emit('openDialog', channel)" fab dark small class="primary">
+            <v-btn v-if="alreadyThere(channel)" text disabled>{{alreadyThereMessage}}</v-btn>
+            <v-btn v-else @click="$emit('channelSelected', channel)" fab dark small class="primary">
               <v-icon dark>{{plusIcon}}</v-icon>
             </v-btn>
           </v-card-actions>
@@ -51,7 +48,6 @@
 <script>
 import ChannelIcon from "@/components/common/ChannelIcon.vue";
 import { mdiPlus } from "@mdi/js";
-import { mapGetters } from "vuex";
 
 export default {
   components: {
@@ -68,6 +64,14 @@ export default {
     },
     searchError: {
       type: String
+    },
+    alreadyThere: {
+      type: Function,
+      required: true
+    },
+    alreadyThereMessage: {
+      type: String,
+      required: true
     }
   },
   data() {
@@ -76,7 +80,6 @@ export default {
     };
   },
   computed: {
-    ...mapGetters(["subscriptions"]),
     noResultsText() {
       // specific error message from server or generic 'no results' message
       // based on channel type
@@ -89,11 +92,6 @@ export default {
       } else {
         return "Found no results";
       }
-    }
-  },
-  methods: {
-    alreadySubscribed(channel) {
-      return this.subscriptions.some(sub => sub.channelId == channel.id);
     }
   }
 };

@@ -43,6 +43,22 @@ CREATE TABLE updates (
   UNIQUE(channel_id, title, published) -- title could be duplicate, but not for the same published date
 );
 
+-- LISTS
+
+CREATE TABLE lists (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR NOT NULL,
+  creator INT REFERENCES users(id),
+  inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE lists_channels (
+  list_id INT REFERENCES lists(id),
+  channel_id INT REFERENCES channels(id),
+  inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(list_id, channel_id)
+);
+
 CREATE TABLE subscriptions (
   id SERIAL PRIMARY KEY,
   email VARCHAR NOT NULL,
@@ -73,19 +89,3 @@ CREATE TABLE digests (
 
 -- per subscription, we can only have one unsent digest
 CREATE UNIQUE INDEX digests_only_one_unsent_idx ON digests (subscription_id) WHERE sent IS NULL;
-
--- LISTS
-
-CREATE TABLE lists (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR NOT NULL,
-  creator INT REFERENCES users(id),
-  inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE lists_channels (
-  list_id INT REFERENCES lists(id),
-  channel_id INT REFERENCES channels(id),
-  inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY(list_id, channel_id)
-);

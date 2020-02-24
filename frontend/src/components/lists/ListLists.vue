@@ -8,7 +8,7 @@
         <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
       </v-overlay>
       <v-row dense>
-        <v-col v-for="list in lists" :key="list.name" cols="12">
+        <v-col v-for="(list, idx) in lists" :key="idx" cols="12">
           <ShowList :value="list" />
         </v-col>
       </v-row>

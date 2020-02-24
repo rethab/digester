@@ -1,11 +1,12 @@
 use lib_db as db;
 
 use super::common::*;
+use db::ChannelType;
 use rocket::Rocket;
 use rocket_contrib::json::{Json, JsonValue};
 
 pub fn mount(rocket: Rocket) -> Rocket {
-    rocket.mount("/lists", routes![list, get, add, update, delete])
+    rocket.mount("/lists", routes![list, add, update, delete])
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
@@ -18,6 +19,15 @@ struct List {
     id: i32,
     name: String,
     creator: String,
+    channels: Vec<Channel>,
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+struct Channel {
+    name: String,
+    #[serde(rename = "type")]
+    channel_type: ChannelType,
+    link: String,
 }
 
 impl Into<JsonResponse> for List {
@@ -48,11 +58,25 @@ impl Into<JsonResponse> for Vec<List> {
 }
 
 impl List {
-    fn from_db(l: db::List, user: db::Identity) -> List {
+    fn from_db(l: db::List, user: db::Identity, channels: Vec<db::Channel>) -> List {
         List {
             id: l.id,
             name: l.name,
             creator: user.username,
+            channels: channels
+                .into_iter()
+                .map(Channel::from_db)
+                .collect::<Vec<Channel>>(),
+        }
+    }
+}
+
+impl Channel {
+    fn from_db(c: db::Channel) -> Channel {
+        Channel {
+            name: c.name,
+            channel_type: c.channel_type,
+            link: c.link,
         }
     }
 }
@@ -74,23 +98,22 @@ fn list(session: Option<Protected>, db: DigesterDbConn, own: Option<bool>) -> Js
         }
     };
 
-    lists
-        .into_iter()
-        .map(|(list, identity)| List::from_db(list, identity))
-        .collect::<Vec<List>>()
-        .into()
-}
-
-#[get("/<list_id>")]
-fn get(db: DigesterDbConn, list_id: i32) -> JsonResponse {
-    match db::lists_find_by_id(&db, list_id) {
-        Ok(Some((list, identity))) => List::from_db(list, identity).into(),
-        Ok(None) => JsonResponse::NotFound,
-        Err(err) => {
-            eprintln!("Failed to fetch list by id: {}", err);
-            JsonResponse::InternalServerError
+    let mut lists_with_channels = Vec::with_capacity(lists.len());
+    for (list, identity) in lists {
+        match db::channels_find_by_list_id(&db, list.id) {
+            Ok(channels) => lists_with_channels.push((list, identity, channels)),
+            Err(err) => eprintln!(
+                "Failed to fetch channels for list {} from db: {:?}",
+                list.id, err
+            ),
         }
     }
+
+    lists_with_channels
+        .into_iter()
+        .map(|(list, identity, channels)| List::from_db(list, identity, channels))
+        .collect::<Vec<List>>()
+        .into()
 }
 
 #[delete("/<list_id>")]
