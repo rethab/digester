@@ -5,7 +5,7 @@
       <div>
         <v-card-title>{{value.name}}</v-card-title>
         <v-card-text>
-          <span v-for="(channel, i) in value.channels" :key="channel.name">
+          <span v-for="(channel, i) in value.channels" :key="i">
             <span v-if="i > 0">|</span>
             <ChannelIcon :type="channel.type" :small="true" />
             {{channel.name}}
