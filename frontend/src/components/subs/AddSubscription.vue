@@ -20,7 +20,7 @@
         :channelType="searchChannelType"
         :searchError="searchError"
         :alreadyThere="alreadySubscribed"
-        alreadyThereMessage="Already subscribed"
+        alreadyThereMessage="Already Subscribed"
       />
     </section>
     <FrequencyDialog

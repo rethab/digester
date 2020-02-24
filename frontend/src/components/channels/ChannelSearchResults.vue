@@ -10,38 +10,42 @@
         <v-btn @click="$vuetify.goTo('#searchInput')" outlined>Try another?</v-btn>
       </v-card-actions>
     </v-card>
-    <v-row v-else>
-      <v-col
-        v-for="(channel, i) in channels"
-        :key="i+'-'+channel.id"
-        cols="12"
-        :md="channels.length == 1 ? 12 : 6"
-      >
-        <v-card color="secondary" class="lighten-4" raised>
-          <v-card-title>
-            <span :class="alreadyThere(channel) ? 'grey--text' : ''" style="word-break: break-word">
-              <ChannelIcon :type="channel.type" />
-              {{channel.name}}
-            </span>
-          </v-card-title>
-          <v-card-subtitle>
+    <v-list v-else>
+      <v-list-item v-for="(channel, i) in channels" :key="i" class="px-0">
+        <v-list-item-avatar>
+          <ChannelIcon :type="channel.type" />
+        </v-list-item-avatar>
+        <v-list-item-content>
+          <v-list-item-title style="word-break: break-word">
+            {{channel.name}}
+            <span
+              v-if="alreadyThere(channel)"
+              class="font-italic grey--text caption"
+            >&nbsp;({{alreadyThereMessage}})</span>
+          </v-list-item-title>
+          <v-list-item-subtitle>
             <a
               class="grey--text mt-n3"
               :href="channel.link"
               style="text-decoration: none"
               target="_blank"
             >{{channel.link}}</a>
-          </v-card-subtitle>
-          <v-card-actions class="mt-n5">
-            <v-spacer></v-spacer>
-            <v-btn v-if="alreadyThere(channel)" text disabled>{{alreadyThereMessage}}</v-btn>
-            <v-btn v-else @click="$emit('channelSelected', channel)" fab dark small class="primary">
-              <v-icon dark>{{plusIcon}}</v-icon>
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-col>
-    </v-row>
+          </v-list-item-subtitle>
+        </v-list-item-content>
+        <v-list-item-action>
+          <v-btn
+            :disabled="alreadyThere(channel)"
+            @click="$emit('channelSelected', channel)"
+            icon
+            :dark="!alreadyThere(channel)"
+            small
+            :class="alreadyThere(channel) ? '' : 'primary'"
+          >
+            <v-icon>{{plusIcon}}</v-icon>
+          </v-btn>
+        </v-list-item-action>
+      </v-list-item>
+    </v-list>
   </div>
 </template>
 
