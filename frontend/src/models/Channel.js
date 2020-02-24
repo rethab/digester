@@ -6,12 +6,28 @@ export default class Channel {
         this.name = name;
     }
 
+    static get Rss() {
+        return "RssFeed";
+    }
+
+    static get GithubRelease() {
+        return "GithubRelease";
+    }
+
+    static get List() {
+        return "List";
+    }
+
     isRss() {
-        return this.type === "RssFeed";
+        return this.type === Channel.Rss;
     }
 
     isGithubRelease() {
-        return this.type === "GithubRelease";
+        return this.type === Channel.GithubRelease;
+    }
+
+    isList() {
+        return this.type === Channel.List;
     }
 
     label() {
@@ -19,6 +35,8 @@ export default class Channel {
             return "Repository";
         } else if (this.isRss()) {
             return "Url";
+        } else if (this.isList()) {
+            return "Name of the List";
         } else {
             throw `Unknown type ${this.type}`;
         }
@@ -39,6 +57,10 @@ export default class Channel {
         } else if (this.isRss()) {
             if (!/^.*[^.]+\.[^.]+.*$/.test(this.name)) {
                 errors.push("Format: theverge.com");
+            }
+        } else if (this.isList()) {
+            if (!this.name || this.name < 3) {
+                errors.push("Enter the name of a List")
             }
         } else {
             throw `Unknwon channel type: ${this.type}`;

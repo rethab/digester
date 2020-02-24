@@ -9,12 +9,17 @@
       Into tech news? Try
       <span class="font-italic">theverge.com</span>
     </v-card-subtitle>
+    <v-card-subtitle v-if="channel.isList()">
+      Into Android? Try
+      <span class="font-italic">Kotlin</span>
+    </v-card-subtitle>
     <v-form @submit.prevent="submit">
       <v-card-text class="pb-0">
         <ChannelInput
           v-on:selectChannel="channel = $event"
           v-bind:value="channel"
           :nameErrors="nameErrors"
+          :showList="true"
         />
       </v-card-text>
       <v-card-actions>
@@ -46,7 +51,7 @@ export default {
     return {
       snackbar: false,
 
-      channel: new Channel("RssFeed", this.initialValue),
+      channel: new Channel("List", this.initialValue),
 
       nameErrors: [],
 
