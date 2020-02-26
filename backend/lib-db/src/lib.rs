@@ -703,6 +703,10 @@ pub fn lists_find(
     )
 }
 
+pub fn lists_search(conn: &PgConnection, query: &str) -> Result<Vec<(List, Identity)>, String> {
+    unimplemented!()
+}
+
 pub fn lists_find_by_id(
     conn: &PgConnection,
     list_id: i32,

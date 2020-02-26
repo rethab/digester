@@ -2,11 +2,12 @@ use lib_db as db;
 
 use super::common::*;
 use db::ChannelType;
+use rocket::http::RawStr;
 use rocket::Rocket;
 use rocket_contrib::json::{Json, JsonValue};
 
 pub fn mount(rocket: Rocket) -> Rocket {
-    rocket.mount("/lists", routes![list, add, update, delete])
+    rocket.mount("/lists", routes![list, search, add, update, delete])
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
@@ -98,6 +99,23 @@ fn list(session: Option<Protected>, db: DigesterDbConn, own: Option<bool>) -> Js
         }
     };
 
+    lists_to_resp(&db, lists).into()
+}
+
+#[get("/search?<query>")]
+fn search(db: DigesterDbConn, query: &RawStr) -> JsonResponse {
+    let lists = match db::lists_search(&db, query) {
+        Ok(lists) => lists,
+        Err(err) => {
+            eprintln!("Failed to search for lists by '{}': {:?}", query, err);
+            return JsonResponse::InternalServerError;
+        }
+    };
+
+    lists_to_resp(&db, lists).into()
+}
+
+fn lists_to_resp(db: &DigesterDbConn, lists: Vec<(db::List, db::Identity)>) -> Vec<List> {
     let mut lists_with_channels = Vec::with_capacity(lists.len());
     for (list, identity) in lists {
         match db::channels_find_by_list_id(&db, list.id) {
@@ -113,7 +131,6 @@ fn list(session: Option<Protected>, db: DigesterDbConn, own: Option<bool>) -> Js
         .into_iter()
         .map(|(list, identity, channels)| List::from_db(list, identity, channels))
         .collect::<Vec<List>>()
-        .into()
 }
 
 #[delete("/<list_id>")]
