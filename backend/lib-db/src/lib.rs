@@ -92,19 +92,19 @@ pub fn channels_find_by_list_id(conn: &PgConnection, list_id: i32) -> Result<Vec
 
 pub enum InsertError {
     Duplicate,
-    Unknown,
+    Unknown(diesel::result::Error),
 }
 
 impl InsertError {
     fn from_diesel(err: diesel::result::Error) -> InsertError {
-        if InsertError::is_unique_constrait_violation(err) {
+        if InsertError::is_unique_constrait_violation(&err) {
             InsertError::Duplicate
         } else {
-            InsertError::Unknown
+            InsertError::Unknown(err)
         }
     }
 
-    fn is_unique_constrait_violation(error: diesel::result::Error) -> bool {
+    fn is_unique_constrait_violation(error: &diesel::result::Error) -> bool {
         match error {
             result::Error::DatabaseError(kind, _) => match kind {
                 result::DatabaseErrorKind::UniqueViolation => true,
@@ -172,7 +172,9 @@ pub fn channels_insert_if_not_exists(
                         None => Err("Found no channel after duplicate insert error".to_owned()),
                     })
                 }
-                Err(InsertError::Unknown) => Err("Failed to insert new channel".to_owned()),
+                Err(InsertError::Unknown(err)) => {
+                    Err(format!("Failed to insert new channel: {:?}", err))
+                }
             }
         }
     }
@@ -704,7 +706,15 @@ pub fn lists_find(
 }
 
 pub fn lists_search(conn: &PgConnection, query: &str) -> Result<Vec<(List, Identity)>, String> {
-    unimplemented!()
+    use schema::lists::dsl::*;
+
+    let search_query = format!("%{}%", query);
+    let results = lists
+        .filter(name.ilike(search_query))
+        .get_results(conn)
+        .map_err(|err| format!("Failed to fetch channels by query: {:?}", err))?;
+
+    lists_zip_with_identities(conn, results)
 }
 
 pub fn lists_find_by_id(
@@ -750,4 +760,44 @@ pub fn lists_insert(conn: &PgConnection, new_list: &NewList) -> Result<List, Str
 pub fn lists_update_name(conn: &PgConnection, list: List) -> Result<List, String> {
     list.save_changes(conn)
         .map_err(|err| format!("Failed to update list: {:?}", err))
+}
+
+pub fn lists_add_channel(conn: &PgConnection, list: List, channel_id: i32) -> Result<(), String> {
+    use schema::lists_channels;
+
+    let list_channel = NewListChannel {
+        list_id: list.id,
+        channel_id,
+    };
+    diesel::insert_into(lists_channels::table)
+        .values(list_channel)
+        .execute(conn)
+        .map(|_| ())
+        .or_else(|err| match InsertError::from_diesel(err) {
+            InsertError::Duplicate => Ok(()),
+            InsertError::Unknown(err) => Err(format!("Failed to insert: {:?}", err)),
+        })
+}
+
+pub fn lists_remove_channel(
+    conn: &PgConnection,
+    list: List,
+    channel_id: i32,
+) -> Result<(), String> {
+    use schema::lists_channels;
+    diesel::delete(
+        lists_channels::table.filter(
+            lists_channels::list_id
+                .eq(list.id)
+                .and(lists_channels::channel_id.eq(channel_id)),
+        ),
+    )
+    .execute(conn)
+    .map(|_| ())
+    .map_err(|err| {
+        format!(
+            "Failed to delete list {} channel {} mapping: {:?}",
+            list.id, channel_id, err
+        )
+    })
 }

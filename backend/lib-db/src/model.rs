@@ -170,6 +170,13 @@ pub struct NewList {
     pub creator: i32,
 }
 
+#[derive(Insertable, Debug)]
+#[table_name = "lists_channels"]
+pub struct NewListChannel {
+    pub list_id: i32,
+    pub channel_id: i32,
+}
+
 #[derive(Debug, Clone, PartialEq, FromSqlRow, AsExpression)]
 #[sql_type = "Text"]
 pub struct Timezone(pub chrono_tz::Tz);

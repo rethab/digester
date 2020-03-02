@@ -1,5 +1,4 @@
 use redis::{Commands, Connection, PipelineCommands, ToRedisArgs};
-use serde_cbor;
 use serde_derive::{Deserialize, Serialize};
 use time::Duration;
 

@@ -7,12 +7,33 @@ use rocket::Rocket;
 use rocket_contrib::json::{Json, JsonValue};
 
 pub fn mount(rocket: Rocket) -> Rocket {
-    rocket.mount("/lists", routes![list, search, add, update, delete])
+    rocket.mount(
+        "/lists",
+        routes![
+            list,
+            search,
+            add,
+            update,
+            add_channel,
+            remove_channel,
+            delete
+        ],
+    )
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
 struct NewList {
     name: String,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+struct AddChannel {
+    id: i32,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+struct RemoveChannel {
+    id: i32,
 }
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
@@ -135,21 +156,10 @@ fn lists_to_resp(db: &DigesterDbConn, lists: Vec<(db::List, db::Identity)>) -> V
 
 #[delete("/<list_id>")]
 fn delete(session: Protected, db: DigesterDbConn, list_id: i32) -> JsonResponse {
-    let list = match db::lists_find_by_id(&db, list_id) {
-        Ok(Some((list, _))) => list,
-        Ok(None) => return JsonResponse::NotFound,
-        Err(err) => {
-            eprintln!(
-                "Failed to fetch list with id {} for deletion: {}",
-                list_id, err
-            );
-            return JsonResponse::InternalServerError;
-        }
+    // ensure list exists and is owned by active user
+    if let Err(err) = get_own_list(&db, &session, list_id) {
+        return err;
     };
-
-    if list.creator != session.0.user_id {
-        return JsonResponse::Forbidden;
-    }
 
     println!(
         "Deleting list with id {} for user_id {}",
@@ -192,21 +202,10 @@ fn update(
     list_id: i32,
     updated_list: Json<NewList>,
 ) -> JsonResponse {
-    let list = match db::lists_find_by_id(&db, list_id) {
-        Ok(Some((list, _))) => list,
-        Ok(None) => return JsonResponse::NotFound,
-        Err(err) => {
-            eprintln!(
-                "Failed to fetch list with id {} for deletion: {}",
-                list_id, err
-            );
-            return JsonResponse::InternalServerError;
-        }
+    let list = match get_own_list(&db, &session, list_id) {
+        Ok(list) => list,
+        Err(err) => return err,
     };
-
-    if list.creator != session.0.user_id {
-        return JsonResponse::Forbidden;
-    }
 
     let mut list_name = updated_list.name.clone();
     list_name = list_name.trim().into();
@@ -225,5 +224,74 @@ fn update(
             eprintln!("Failed to update list {}: {:?}", list_id, err);
             JsonResponse::InternalServerError
         }
+    }
+}
+
+#[post("/<list_id>/add_channel", data = "<add_channel>")]
+fn add_channel(
+    session: Protected,
+    db: DigesterDbConn,
+    list_id: i32,
+    add_channel: Json<AddChannel>,
+) -> JsonResponse {
+    let list = match get_own_list(&db, &session, list_id) {
+        Ok(list) => list,
+        Err(err) => return err,
+    };
+    let channel_id = add_channel.id;
+    match db::lists_add_channel(&db, list, channel_id) {
+        Ok(()) => JsonResponse::Ok(json!("")),
+        Err(err) => {
+            eprintln!(
+                "Failed to add channel {} to list {}: {:?}",
+                channel_id, list_id, err
+            );
+            JsonResponse::InternalServerError
+        }
+    }
+}
+
+#[post("/<list_id>/remove_channel", data = "<remove_channel>")]
+fn remove_channel(
+    session: Protected,
+    db: DigesterDbConn,
+    list_id: i32,
+    remove_channel: Json<RemoveChannel>,
+) -> JsonResponse {
+    let list = match get_own_list(&db, &session, list_id) {
+        Ok(list) => list,
+        Err(err) => return err,
+    };
+    let channel_id = remove_channel.id;
+    match db::lists_remove_channel(&db, list, channel_id) {
+        Ok(()) => JsonResponse::Ok(json!("")),
+        Err(err) => {
+            eprintln!(
+                "Failed to remove channel {} from list {}: {:?}",
+                channel_id, list_id, err
+            );
+            JsonResponse::InternalServerError
+        }
+    }
+}
+
+fn get_own_list(
+    db: &DigesterDbConn,
+    session: &Protected,
+    list_id: i32,
+) -> Result<db::List, JsonResponse> {
+    let list = match db::lists_find_by_id(&db, list_id) {
+        Ok(Some((list, _))) => list,
+        Ok(None) => return Err(JsonResponse::NotFound),
+        Err(err) => {
+            eprintln!("Failed to fetch list with id {}: {}", list_id, err);
+            return Err(JsonResponse::InternalServerError);
+        }
+    };
+
+    if list.creator != session.0.user_id {
+        Err(JsonResponse::Forbidden)
+    } else {
+        Ok(list)
     }
 }
