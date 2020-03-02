@@ -85,6 +85,7 @@ pub fn channels_find_by_list_id(conn: &PgConnection, list_id: i32) -> Result<Vec
 
     channels::table
         .inner_join(lists_channels::table.on(lists_channels::channel_id.eq(channels::id)))
+        .filter(lists_channels::list_id.eq(list_id))
         .select(channels::all_columns)
         .load::<Channel>(conn)
         .map_err(|err| format!("Failed to load channels by list id {}: {:?}", list_id, err))
@@ -800,4 +801,28 @@ pub fn lists_remove_channel(
             list.id, channel_id, err
         )
     })
+}
+
+pub fn lists_identity_zip_with_channels(
+    conn: &PgConnection,
+    lists: Vec<(List, Identity)>,
+) -> Result<Vec<(List, Identity, Vec<Channel>)>, String> {
+    let mut lists_with_channels = Vec::with_capacity(lists.len());
+    for (list, identity) in lists {
+        let channels = channels_find_by_list_id(conn, list.id)?;
+        lists_with_channels.push((list, identity, channels));
+    }
+    Ok(lists_with_channels)
+}
+
+pub fn lists_zip_with_channels(
+    conn: &PgConnection,
+    lists: Vec<List>,
+) -> Result<Vec<(List, Vec<Channel>)>, String> {
+    let mut lists_with_channels = Vec::with_capacity(lists.len());
+    for list in lists {
+        let channels = channels_find_by_list_id(conn, list.id)?;
+        lists_with_channels.push((list, channels));
+    }
+    Ok(lists_with_channels)
 }

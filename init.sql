@@ -71,7 +71,8 @@ CREATE TABLE subscriptions (
   day VARCHAR NULL, -- any three-letter day: set if frequency is weekly, we also have a day
   time TIME WITHOUT TIME ZONE NOT NULL, -- timezone is based on user profile
   inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(channel_id, user_id) -- user can subscribe to channel only once
+  UNIQUE(channel_id, user_id), -- user can subscribe to channel only once
+  UNIQUE(list_id, user_id) -- user can subscribe to list only once
 );
 
 -- the idea is that we look at all subscriptions and create

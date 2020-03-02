@@ -25,18 +25,23 @@ const actions = {
         })
     },
     subscribe({ commit }, subscription) {
+
+        let payload = {
+            channelId: subscription.channel.id,
+            channelType: subscription.channel.type,
+            frequency: subscription.frequency,
+            day: subscription.day,
+            time: subscription.time,
+        };
+
         return new Promise((resolve, reject) => {
-            Api().post("subscriptions/add", {
-                channelId: subscription.id,
-                frequency: subscription.frequency,
-                day: subscription.day,
-                time: subscription.time,
-            }).then(resp => {
-                commit('ADD_SUBSCRIPTION', resp.data);
-                resolve(subscription);
-            }).catch(err => {
-                reject(err)
-            });
+            Api().post("subscriptions/add", payload)
+                .then(resp => {
+                    commit('ADD_SUBSCRIPTION', resp.data);
+                    resolve(subscription);
+                }).catch(err => {
+                    reject(err)
+                });
         })
     },
     updateSubscription({ commit }, subscription) {
