@@ -12,9 +12,6 @@
     </v-card>
     <v-list v-else>
       <v-list-item v-for="(channel, i) in channels" :key="i" class="px-0">
-        <v-list-item-avatar>
-          <ChannelIcon :type="channel.type" />
-        </v-list-item-avatar>
         <v-list-item-content>
           <v-list-item-title style="word-break: break-word">
             {{channel.name}}
@@ -50,13 +47,9 @@
 </template>
 
 <script>
-import ChannelIcon from "@/components/common/ChannelIcon.vue";
 import { mdiPlus } from "@mdi/js";
 
 export default {
-  components: {
-    ChannelIcon
-  },
   props: {
     channelType: {
       type: String,

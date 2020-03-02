@@ -9,16 +9,24 @@
             class="black--text"
             style="text-decoration:none; word-break: break-word"
           >{{value.name}}</a>
-          <v-icon small class="pl-1">{{ channelIcon }}</v-icon>
+          <ChannelIcon :type="value.channelType" class="pl-1" small />
         </span>
       </v-card-title>
       <v-card-subtitle>
         <a
+          v-if="value.channelLink"
           :href="value.channelLink"
           class="grey--text"
           target="_blank"
           style="text-decoration: none"
         >{{value.channelLink}}</a>
+        <a
+          v-else
+          :href="'/lists/' + value.channelId"
+          class="grey--text"
+          target="_blank"
+          style="text-decoration: none"
+        >{{value.summary}}</a>
       </v-card-subtitle>
       <v-card-subtitle v-if="!editing">
         <v-icon small>{{ calendarIcon }}</v-icon>
@@ -39,15 +47,12 @@
 
 <script>
 import FrequencySelection from "@/components/subs/FrequencySelection.vue";
-import {
-  mdiCalendar,
-  mdiRss,
-  mdiGithubCircle,
-  mdiPencilOutline
-} from "@mdi/js";
+import ChannelIcon from "@/components/common/ChannelIcon.vue";
+import { mdiCalendar, mdiPencilOutline } from "@mdi/js";
 export default {
   components: {
-    FrequencySelection
+    FrequencySelection,
+    ChannelIcon
   },
   props: {
     value: {
@@ -60,28 +65,10 @@ export default {
       editing: false,
 
       calendarIcon: mdiCalendar,
-      githubIcon: mdiGithubCircle,
-      rssIcon: mdiRss,
       pencilIcon: mdiPencilOutline
     };
   },
-  computed: {
-    isGithubRelease() {
-      return this.value.channelType === "GithubRelease";
-    },
-    isRss() {
-      return this.value.channelType === "RssFeed";
-    },
-    channelIcon() {
-      if (this.isGithubRelease) {
-        return this.githubIcon;
-      } else if (this.isRss) {
-        return this.rssIcon;
-      } else {
-        return "";
-      }
-    }
-  },
+  computed: {},
   methods: {
     save() {
       this.$store

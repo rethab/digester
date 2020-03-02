@@ -2,7 +2,11 @@
   <v-icon :small="small">{{icon}}</v-icon>
 </template>
 <script>
-import { mdiRss, mdiGithubCircle } from "@mdi/js";
+import {
+  mdiRss,
+  mdiGithubCircle,
+  mdiFormatListBulletedTriangle
+} from "@mdi/js";
 export default {
   props: {
     type: {
@@ -17,7 +21,8 @@ export default {
   data() {
     return {
       githubIcon: mdiGithubCircle,
-      rssIcon: mdiRss
+      rssIcon: mdiRss,
+      listIcon: mdiFormatListBulletedTriangle
     };
   },
   computed: {
@@ -27,6 +32,8 @@ export default {
           return this.githubIcon;
         case "RssFeed":
           return this.rssIcon;
+        case "List":
+          return this.listIcon;
         default:
           return "";
       }
