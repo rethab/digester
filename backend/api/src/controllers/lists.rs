@@ -137,16 +137,13 @@ fn search(db: DigesterDbConn, query: &RawStr) -> JsonResponse {
 }
 
 fn lists_to_resp(db: &DigesterDbConn, lists: Vec<(db::List, db::Identity)>) -> Vec<List> {
-    let mut lists_with_channels = Vec::with_capacity(lists.len());
-    for (list, identity) in lists {
-        match db::channels_find_by_list_id(&db, list.id) {
-            Ok(channels) => lists_with_channels.push((list, identity, channels)),
-            Err(err) => eprintln!(
-                "Failed to fetch channels for list {} from db: {:?}",
-                list.id, err
-            ),
+    let lists_with_channels = match db::lists_identity_zip_with_channels(&db, lists) {
+        Ok(lwc) => lwc,
+        Err(err) => {
+            eprintln!("Failed to zip channels for lists from db: {}", err);
+            return Vec::new();
         }
-    }
+    };
 
     lists_with_channels
         .into_iter()

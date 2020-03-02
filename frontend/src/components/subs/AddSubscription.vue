@@ -69,7 +69,9 @@ export default {
       this.selectedChannel = null;
     },
     alreadySubscribed(channel) {
-      return this.subscriptions.some(sub => sub.channelId == channel.id);
+      return this.subscriptions.some(
+        sub => sub.channelId == channel.id && sub.channelType == channel.type
+      );
     },
     search(type, name) {
       this.searchResults = null;
@@ -119,13 +121,15 @@ export default {
         });
     },
     subscribe(channel, frequency) {
+      let payload = {
+        channel: channel,
+        frequency: frequency.frequency,
+        day: frequency.day,
+        time: frequency.time
+      };
+
       this.$store
-        .dispatch("subscribe", {
-          id: channel.id,
-          frequency: frequency.frequency,
-          day: frequency.day,
-          time: frequency.time
-        })
+        .dispatch("subscribe", payload)
         .then(() => {
           this.successSnackbar = true;
           this.selectedChannel = null;

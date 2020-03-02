@@ -21,9 +21,9 @@ pub struct GithubApiToken(pub String);
 #[derive(Deserialize, Debug, PartialEq)]
 struct NewSubscription {
     #[serde(rename = "channelId")]
-    channel_id: Option<i32>,
-    #[serde(rename = "listId")]
-    list_id: Option<i32>,
+    channel_id: i32,
+    #[serde(rename = "channelType")]
+    channel_type: SearchChannelType,
     frequency: Frequency,
     day: Option<Day>,
     time: NaiveTime,
@@ -35,11 +35,10 @@ struct Subscription {
     #[serde(rename = "name")]
     name: String,
     #[serde(rename = "channelType")]
-    channel_type: Option<ChannelType>,
+    channel_type: SearchChannelType,
     #[serde(rename = "channelId")]
-    channel_id: Option<i32>,
-    #[serde(rename = "listId")]
-    list_id: Option<i32>,
+    channel_id: i32,
+    summary: Option<String>,
     #[serde(rename = "channelLink")]
     channel_link: Option<String>,
     frequency: Frequency,
@@ -82,22 +81,26 @@ impl Subscription {
         Subscription {
             id: sub.id,
             name: chan.name.clone(),
-            channel_type: Some(chan.channel_type),
-            channel_id: Some(chan.id),
-            list_id: None,
+            channel_type: SearchChannelType::from_db(chan.channel_type),
+            channel_id: chan.id,
+            summary: None,
             channel_link: Some(chan.link),
             frequency: sub.frequency,
             day: sub.day,
             time: sub.time,
         }
     }
-    fn from_db_list(sub: db::Subscription, list: db::List) -> Subscription {
+    fn from_db_list(
+        sub: db::Subscription,
+        list: db::List,
+        channels: Vec<db::Channel>,
+    ) -> Subscription {
         Subscription {
             id: sub.id,
             name: list.name.clone(),
-            channel_type: None,
-            channel_id: None,
-            list_id: Some(list.id),
+            channel_type: SearchChannelType::List,
+            channel_id: list.id,
+            summary: Some(format!("{} channels", channels.len())),
             channel_link: None,
             frequency: sub.frequency,
             day: sub.day,
@@ -110,30 +113,57 @@ impl Subscription {
 struct Channel {
     id: i32,
     #[serde(rename = "type")]
-    channel_type: ChannelType,
+    channel_type: SearchChannelType,
     name: String,
-    link: String,
+    summary: Option<String>,
+    link: Option<String>,
 }
 
 impl Channel {
     fn from_db(c: db::Channel) -> Self {
         Self {
             id: c.id,
-            channel_type: c.channel_type,
+            channel_type: SearchChannelType::from_db(c.channel_type),
             name: c.name,
-            link: c.link,
+            summary: None,
+            link: Some(c.link),
+        }
+    }
+
+    fn from_list(l: db::List, channels: Vec<db::Channel>) -> Self {
+        Self {
+            id: l.id,
+            channel_type: SearchChannelType::List,
+            name: l.name,
+            summary: Some(format!("{} channels", channels.len())),
+            link: None,
         }
     }
 }
 
-struct SearchChannelType(ChannelType);
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+enum SearchChannelType {
+    GithubRelease,
+    RssFeed,
+    List,
+}
+
+impl SearchChannelType {
+    fn from_db(channel_type: db::ChannelType) -> SearchChannelType {
+        match channel_type {
+            ChannelType::GithubRelease => SearchChannelType::GithubRelease,
+            ChannelType::RssFeed => SearchChannelType::RssFeed,
+        }
+    }
+}
 
 impl<'v> FromFormValue<'v> for SearchChannelType {
     type Error = String;
     fn from_form_value(form_value: &'v RawStr) -> Result<SearchChannelType, String> {
         match form_value.as_str() {
-            "GithubRelease" => Ok(SearchChannelType(ChannelType::GithubRelease)),
-            "RssFeed" => Ok(SearchChannelType(ChannelType::RssFeed)),
+            "GithubRelease" => Ok(SearchChannelType::GithubRelease),
+            "RssFeed" => Ok(SearchChannelType::RssFeed),
+            "List" => Ok(SearchChannelType::List),
             other => Err(format!("Invalid channel type: {}", other)),
         }
     }
@@ -143,14 +173,23 @@ impl<'v> FromFormValue<'v> for SearchChannelType {
 fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
     match db::subscriptions_find_by_user_id(&db, session.0.user_id) {
         Err(_) => JsonResponse::InternalServerError,
-        Ok(subs) => subs
-            .into_iter()
-            .map(|(sub, chan_or_list)| match chan_or_list {
-                Left(channel) => Subscription::from_db_channel(sub, channel),
-                Right(list) => Subscription::from_db_list(sub, list),
-            })
-            .collect::<Vec<Subscription>>()
-            .into(),
+        Ok(subs) => {
+            let mut collected = Vec::new();
+            for (sub, chan_or_list) in subs {
+                match chan_or_list {
+                    Left(channel) => collected.push(Subscription::from_db_channel(sub, channel)),
+                    Right(list) => match db::channels_find_by_list_id(&db, list.id) {
+                        Ok(channels) => {
+                            collected.push(Subscription::from_db_list(sub, list, channels))
+                        }
+                        Err(err) => {
+                            eprintln!("Failed to fetch channels for list {}: {}", list.id, err);
+                        }
+                    },
+                }
+            }
+            collected.into()
+        }
     }
 }
 
@@ -180,32 +219,64 @@ fn search(
         }
     };
 
-    let db_channel_type = channel_type.0;
-
-    let channel_type = match db_channel_type {
-        db::ChannelType::GithubRelease => channels::ChannelType::GithubRelease,
-        db::ChannelType::RssFeed => channels::ChannelType::RssFeed,
+    let channel_or_list = match channel_type {
+        SearchChannelType::List => Left(()),
+        SearchChannelType::GithubRelease => Right(ChannelType::GithubRelease),
+        SearchChannelType::RssFeed => Right(ChannelType::RssFeed),
     };
-    let channel = channels::factory(channel_type, &github);
 
-    use search::SearchError::*;
-    match search::search(&db.0, db_channel_type, channel, &query) {
-        Err(Unknown) => JsonResponse::InternalServerError,
-        Err(InvalidInput) => JsonResponse::BadRequest("Invalid Input".into()),
-        Err(NotFound) => JsonResponse::BadRequest(
-            "This does not exist. Are you sure the input is correct?".into(),
-        ),
-        Err(Timeout) => JsonResponse::BadRequest(
-            "We could not fetch your feed fast enough. Please try again later.".into(),
-        ),
-        Ok(channels) => {
-            let channels = channels
+    let channels = match channel_or_list {
+        Left(()) => {
+            let lists = match db::lists_search(&db, &query) {
+                Ok(lists) => lists,
+                Err(err) => {
+                    eprintln!("Failed to search for lists by '{}': {:?}", query, err);
+                    return JsonResponse::InternalServerError;
+                }
+            };
+
+            let lists_with_channels = match db::lists_identity_zip_with_channels(&db, lists) {
+                Ok(lwc) => lwc,
+                Err(err) => {
+                    eprintln!("Failed to zip channels for lists: {}", err);
+                    return JsonResponse::InternalServerError;
+                }
+            };
+
+            lists_with_channels
                 .into_iter()
-                .map(Channel::from_db)
-                .collect::<Vec<Channel>>();
-            JsonResponse::Ok(json!({ "channels": channels }))
+                .map(|(list, _, channels)| Channel::from_list(list, channels))
+                .collect::<Vec<Channel>>()
         }
-    }
+        Right(db_channel_type) => {
+            let channel_type = match db_channel_type {
+                db::ChannelType::GithubRelease => channels::ChannelType::GithubRelease,
+                db::ChannelType::RssFeed => channels::ChannelType::RssFeed,
+            };
+            let channel = channels::factory(channel_type, &github);
+
+            use search::SearchError::*;
+            match search::search(&db.0, db_channel_type, channel, &query) {
+                Err(Unknown) => return JsonResponse::InternalServerError,
+                Err(InvalidInput) => return JsonResponse::BadRequest("Invalid Input".into()),
+                Err(NotFound) => {
+                    return JsonResponse::BadRequest(
+                        "This does not exist. Are you sure the input is correct?".into(),
+                    );
+                }
+                Err(Timeout) => {
+                    return JsonResponse::BadRequest(
+                        "We could not fetch your feed fast enough. Please try again later.".into(),
+                    );
+                }
+                Ok(channels) => channels
+                    .into_iter()
+                    .map(Channel::from_db)
+                    .collect::<Vec<Channel>>(),
+            }
+        }
+    };
+    JsonResponse::Ok(json!({ "channels": channels }))
 }
 
 #[post("/add", data = "<new_subscription>")]
@@ -219,8 +290,40 @@ fn add(
         Err(_) => return JsonResponse::InternalServerError,
     };
 
-    match (new_subscription.channel_id, new_subscription.list_id) {
-        (Some(chan_id), None) => {
+    match new_subscription.channel_type {
+        SearchChannelType::List => {
+            let list_id = new_subscription.channel_id;
+            let list = match db::lists_find_by_id(&db, list_id) {
+                Err(err) => {
+                    eprintln!("Failed to fetch list by id '{}': {:?}", list_id, err);
+                    return JsonResponse::BadRequest("list does not exist".into());
+                }
+                Ok(Some((list, _))) => list,
+                Ok(None) => return JsonResponse::BadRequest("list does not exist".into()),
+            };
+
+            match insert_list_subscription(&db, &new_subscription, &list, &identity) {
+                Ok(sub) => {
+                    let channels = match db::channels_find_by_list_id(&db, list.id) {
+                        Ok(channels) => channels,
+                        Err(err) => {
+                            eprintln!("Failed to find channels by list id {}: {:?}", list.id, err);
+                            return JsonResponse::InternalServerError;
+                        }
+                    };
+                    Subscription::from_db_list(sub, list, channels).into()
+                }
+                Err(db::InsertError::Duplicate) => {
+                    JsonResponse::BadRequest("Subscription already exists".to_owned())
+                }
+                Err(db::InsertError::Unknown(err)) => {
+                    eprintln!("Failed to list channel subscription: {:?}", err);
+                    JsonResponse::InternalServerError
+                }
+            }
+        }
+        _ => {
+            let chan_id = new_subscription.channel_id;
             let channel = match db::channels_find_by_id(&db, chan_id) {
                 Err(err) => {
                     eprintln!("Failed to fetch channel by id '{}': {:?}", chan_id, err);
@@ -240,28 +343,6 @@ fn add(
                 }
             }
         }
-        (None, Some(list_id)) => {
-            let list = match db::lists_find_by_id(&db, list_id) {
-                Err(err) => {
-                    eprintln!("Failed to fetch list by id '{}': {:?}", list_id, err);
-                    return JsonResponse::BadRequest("list does not exist".into());
-                }
-                Ok(Some((list, _))) => list,
-                Ok(None) => return JsonResponse::BadRequest("list does not exist".into()),
-            };
-
-            match insert_list_subscription(&db, &new_subscription, &list, &identity) {
-                Ok(sub) => Subscription::from_db_list(sub, list).into(),
-                Err(db::InsertError::Duplicate) => {
-                    JsonResponse::BadRequest("Subscription already exists".to_owned())
-                }
-                Err(db::InsertError::Unknown(err)) => {
-                    eprintln!("Failed to list channel subscription: {:?}", err);
-                    JsonResponse::InternalServerError
-                }
-            }
-        }
-        _ => JsonResponse::BadRequest("Cannot set both channel_id and list_id or none".into()),
     }
 }
 
@@ -289,7 +370,16 @@ fn update(
     match update_subscription(&db, updated_subscription.0, original) {
         Ok(sub) => match channel_or_list {
             Left(channel) => Subscription::from_db_channel(sub, channel).into(),
-            Right(list) => Subscription::from_db_list(sub, list).into(),
+            Right(list) => {
+                let channels = match db::channels_find_by_list_id(&db, list.id) {
+                    Ok(channels) => channels,
+                    Err(err) => {
+                        eprintln!("Failed to find channels by list id {}: {:?}", list.id, err);
+                        return JsonResponse::InternalServerError;
+                    }
+                };
+                Subscription::from_db_list(sub, list, channels).into()
+            }
         },
         Err(_) => JsonResponse::InternalServerError,
     }
@@ -362,6 +452,7 @@ mod tests {
         let sub: NewSubscription = serde_json::from_str(
             r#"{
             "channelId":1,
+            "channelType": "RssFeed",
             "frequency":"Weekly",
             "day":"Sat",
             "time":"09:00:00.00"
@@ -369,8 +460,8 @@ mod tests {
         )
         .expect("Failed to parse");
         let exp = NewSubscription {
-            channel_id: Some(1),
-            list_id: None,
+            channel_id: 1,
+            channel_type: SearchChannelType::RssFeed,
             frequency: Frequency::Weekly,
             day: Some(Day::Sat),
             time: NaiveTime::from_hms_milli(9, 0, 0, 0),
