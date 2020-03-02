@@ -71,7 +71,7 @@ function run_psql() {
 
 function run_psql_stg() {
   source .env.integration.local
-  psql $DATABASE_URL?sslmode=require
+  psql "$DATABASE_URL"?sslmode=require
 }
 
 function run_redis() {

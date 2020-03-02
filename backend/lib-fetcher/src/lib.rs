@@ -64,8 +64,8 @@ impl App<'_> {
             };
             match db::updates_insert_new(&self.db, &new_update) {
                 Ok(_) => {}
-                Err(db::InsertError::Unknown) => {
-                    return Err("Error during updates insert".to_owned())
+                Err(db::InsertError::Unknown(err)) => {
+                    return Err(format!("Error during updates insert: {:?}", err))
                 }
                 Err(db::InsertError::Duplicate) => {
                     println!("Ignoring duplicate update: {}", new_update.title)

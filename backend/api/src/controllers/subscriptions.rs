@@ -234,7 +234,10 @@ fn add(
                 Err(db::InsertError::Duplicate) => {
                     JsonResponse::BadRequest("Subscription already exists".to_owned())
                 }
-                Err(db::InsertError::Unknown) => JsonResponse::InternalServerError,
+                Err(db::InsertError::Unknown(err)) => {
+                    eprintln!("Failed to insert channel subscription: {:?}", err);
+                    JsonResponse::InternalServerError
+                }
             }
         }
         (None, Some(list_id)) => {
@@ -252,7 +255,10 @@ fn add(
                 Err(db::InsertError::Duplicate) => {
                     JsonResponse::BadRequest("Subscription already exists".to_owned())
                 }
-                Err(db::InsertError::Unknown) => JsonResponse::InternalServerError,
+                Err(db::InsertError::Unknown(err)) => {
+                    eprintln!("Failed to list channel subscription: {:?}", err);
+                    JsonResponse::InternalServerError
+                }
             }
         }
         _ => JsonResponse::BadRequest("Cannot set both channel_id and list_id or none".into()),

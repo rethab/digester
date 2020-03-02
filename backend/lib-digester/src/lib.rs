@@ -74,9 +74,10 @@ impl App<'_> {
         };
         match db::digests_insert(&self.db_conn, &digest) {
             Ok(()) => Ok(()),
-            Err(db::InsertError::Unknown) => {
-                Err(format!("Failed to insert new digest: {:?}", digest))
-            }
+            Err(db::InsertError::Unknown(err)) => Err(format!(
+                "Failed to insert new digest {:?}: {:?}",
+                digest, err
+            )),
             Err(db::InsertError::Duplicate) => {
                 println!(
                     "Digest seems to have been inserted in the meantime.. {:?}",
