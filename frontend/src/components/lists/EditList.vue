@@ -51,7 +51,7 @@
                   </v-list-item-subtitle>
                 </v-list-item-content>
                 <v-list-item-action>
-                  <v-btn text icon color="error">
+                  <v-btn @click="removeChannel(channel)" text icon color="error">
                     <v-icon>{{removeIcon}}</v-icon>
                   </v-btn>
                 </v-list-item-action>
@@ -133,6 +133,18 @@ export default {
         .then(() => {
           this.channels.push(channel);
         });
+      // fixme handle error
+    },
+    removeChannel(channel) {
+      this.$store
+        .dispatch("removeChannel", {
+          list: this.list,
+          channel: channel
+        })
+        .then(() => {
+          this.channels = this.channels.filter(c => c.id != channel.id);
+        });
+      // fixme handle error
     },
     alreadyInList(channel) {
       return this.channels.some(chan => chan.id == channel.id);

@@ -39,9 +39,28 @@ const actions = {
         })
     },
     addChannel({ commit }, { list, channel }) {
-        commit('ADD_CHANNEL', { list, channel });
-        Promise.resolve(channel);
-        // todo impl api :)
+        return new Promise((resolve, reject) => {
+            Api().post(`lists/${list.id}/add_channel`, {
+                id: channel.id,
+            }).then(() => {
+                commit('ADD_CHANNEL', { list, channel });
+                resolve(channel);
+            }).catch(err => {
+                reject(err)
+            });
+        })
+    },
+    removeChannel({ commit }, { list, channel }) {
+        return new Promise((resolve, reject) => {
+            Api().post(`lists/${list.id}/remove_channel`, {
+                id: channel.id,
+            }).then(() => {
+                commit('REMOVE_CHANNEL', { list, channel });
+                resolve(channel);
+            }).catch(err => {
+                reject(err)
+            });
+        })
     },
 }
 
@@ -53,8 +72,13 @@ const mutations = {
         state.lists.unshift(list);
     },
     ADD_CHANNEL: (state, { list, channel }) => {
-        const index = state.lists.findIndex(x => x.id == list.id);
+        const index = state.lists.findIndex(l => l.id == list.id);
         state.lists[index].channels.unshift(channel);
+    },
+    REMOVE_CHANNEL: (state, { list, channel }) => {
+        const listIndex = state.lists.findIndex(l => l.id == list.id);
+        const channels = state.lists[listIndex].channels;
+        state.lists[listIndex].channels = channels.filter(c => c.id != channel.id);
     }
 }
 
