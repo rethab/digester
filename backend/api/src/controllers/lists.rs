@@ -12,6 +12,7 @@ pub fn mount(rocket: Rocket) -> Rocket {
         "/lists",
         routes![
             list,
+            show,
             search,
             add,
             update,
@@ -122,6 +123,22 @@ fn list(session: Option<Protected>, db: DigesterDbConn, own: Option<bool>) -> Js
     };
 
     lists_to_resp(&db, lists).into()
+}
+
+#[get("/<id>")]
+fn show(db: DigesterDbConn, id: i32) -> JsonResponse {
+    let list = match db::lists_find_by_id(&db, id) {
+        Ok(None) => return JsonResponse::NotFound,
+        Ok(Some(list)) => list,
+        Err(err) => {
+            eprintln!("Failed to fetch lists from db {:?}", err);
+            return JsonResponse::InternalServerError;
+        }
+    };
+
+    let mut lists = Vec::with_capacity(1);
+    lists.push(list);
+    lists_to_resp(&db, lists)[0].clone().into()
 }
 
 #[get("/search?<query>")]

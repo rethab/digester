@@ -4,6 +4,7 @@ import store from '@/store/index.js';
 import Home from '@/views/Home.vue'
 import Subscriptions from '@/views/Subscriptions.vue'
 import Lists from '@/views/Lists.vue'
+import ShowList from '@/views/ShowList.vue'
 import Updates from '@/views/Updates.vue'
 import Settings from '@/views/Settings.vue'
 import AuthLogin from '@/views/AuthLogin.vue'
@@ -28,6 +29,12 @@ const routes = [
     name: 'lists',
     component: Lists,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/list/:id',
+    name: 'list-show',
+    component: ShowList,
+    meta: { requiresAuth: false }
   },
   {
     path: '/updates',
