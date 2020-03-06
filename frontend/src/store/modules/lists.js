@@ -24,6 +24,18 @@ const actions = {
                 })
         })
     },
+    loadList({ commit }, id) {
+        return new Promise((resolve, reject) => {
+            Api().get(`lists/${id}`)
+                .then(resp => {
+                    if (commit) { false }
+                    resolve(resp.data);
+                })
+                .catch(err => {
+                    reject(err)
+                })
+        })
+    },
     createList({ commit }, list) {
         return new Promise((resolve, reject) => {
             Api().put("lists", {
