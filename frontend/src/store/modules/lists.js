@@ -14,7 +14,7 @@ const getters = {
 const actions = {
     loadLists({ commit }) {
         return new Promise((resolve, reject) => {
-            Api().get("lists")
+            Api().get("lists?own=true")
                 .then(resp => {
                     commit('SET_LISTS', resp.data);
                     resolve(resp);
