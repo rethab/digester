@@ -1,6 +1,7 @@
 use lib_db as db;
 
 use super::common::*;
+use chrono::naive::NaiveTime;
 use db::ChannelType;
 use rocket::http::RawStr;
 use rocket::Rocket;
@@ -184,12 +185,40 @@ fn add(session: Protected, db: DigesterDbConn, new_list: Json<NewList>) -> JsonR
         creator: session.0.user_id,
     };
     match db::lists_insert(&db, &new_list) {
-        Ok(list) => JsonResponse::Ok(json!({"id": list.id})),
+        Ok(list) => {
+            let user_id = session.0.user_id;
+            if let Err(err) = subscribe_user(db, user_id, &list) {
+                eprintln!(
+                    "Failed to subscribe user {} after creating list {}: {}",
+                    user_id, list.id, err
+                )
+            }
+            JsonResponse::Ok(json!({"id": list.id}))
+        }
         Err(err) => {
             eprintln!("Failed to insert new list {:?}: {:?}", new_list, err);
             JsonResponse::InternalServerError
         }
     }
+}
+
+fn subscribe_user(db: DigesterDbConn, user_id: i32, list: &db::List) -> Result<(), String> {
+    use db::InsertError::*;
+    let identity = db::identities_find_by_user_id(&db, user_id)?;
+    let new_sub = db::NewSubscription {
+        email: identity.email,
+        channel_id: None,
+        list_id: Some(list.id),
+        user_id: identity.user_id,
+        frequency: db::Frequency::Weekly,
+        day: Some(db::Day::Sat),
+        time: NaiveTime::from_hms(9, 0, 0),
+    };
+    db::subscriptions_insert(&db, new_sub).map_err(|err| match err {
+        Unknown(err) => format!("{:?}", err),
+        Duplicate => "Duplicate".to_owned(),
+    })?;
+    Ok(())
 }
 
 #[post("/<list_id>", data = "<updated_list>")]
