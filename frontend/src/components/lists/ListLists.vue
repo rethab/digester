@@ -9,7 +9,7 @@
       </v-overlay>
       <v-row dense>
         <v-col v-for="(list, idx) in lists" :key="idx" cols="12">
-          <ShowList :value="list" />
+          <ShowList :value="list" :dense="true" />
         </v-col>
       </v-row>
     </v-container>
