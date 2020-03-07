@@ -13,12 +13,12 @@
           <p v-if="value.channels.length == 0">This list contains no channels</p>
           <span v-for="(channel, i) in value.channels" :key="i">
             <span v-if="i > 0">
-              <span v-if="dense">|</span>
+              <span v-if="dense">&nbsp;|&nbsp;</span>
               <span v-else>
                 <br />
               </span>
             </span>
-            <ChannelIcon :type="channel.type" :small="true" />
+            <ChannelIcon :type="channel.type" :small="true" class="mr-1" />
             <a
               style="text-decoration: none; color: inherit"
               target="_blank"
