@@ -11,6 +11,7 @@ use rocket::fairing::AdHoc;
 use std::env;
 
 use api::controllers::auth;
+use api::controllers::channels;
 use api::controllers::common::*;
 use api::controllers::lists;
 use api::controllers::settings;
@@ -79,6 +80,7 @@ fn main() -> Result<(), String> {
     rocket = auth::mount(rocket);
     rocket = subscriptions::mount(rocket);
     rocket = lists::mount(rocket);
+    rocket = channels::mount(rocket);
     rocket = settings::mount(rocket);
     rocket = updates::mount(rocket);
 
