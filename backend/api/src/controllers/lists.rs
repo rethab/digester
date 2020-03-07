@@ -43,11 +43,14 @@ struct List {
     id: i32,
     name: String,
     creator: String,
+    #[serde(rename = "creatorId")]
+    creator_id: i32,
     channels: Vec<Channel>,
 }
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
 struct Channel {
+    id: i32,
     name: String,
     #[serde(rename = "type")]
     channel_type: ChannelType,
@@ -87,6 +90,7 @@ impl List {
             id: l.id,
             name: l.name,
             creator: user.username,
+            creator_id: user.id,
             channels: channels
                 .into_iter()
                 .map(Channel::from_db)
@@ -98,6 +102,7 @@ impl List {
 impl Channel {
     fn from_db(c: db::Channel) -> Channel {
         Channel {
+            id: c.id,
             name: c.name,
             channel_type: c.channel_type,
             link: c.link,

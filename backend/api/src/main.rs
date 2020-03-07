@@ -27,6 +27,11 @@ fn too_many_requests() -> JsonResponse {
     JsonResponse::TooManyRequests
 }
 
+#[catch(422)]
+fn unprocessable_entity() -> JsonResponse {
+    JsonResponse::TooManyRequests
+}
+
 #[catch(404)]
 fn not_found() -> JsonResponse {
     JsonResponse::NotFound
@@ -90,6 +95,7 @@ fn main() -> Result<(), String> {
             unauthorized,
             forbidden,
             too_many_requests,
+            unprocessable_entity,
             bad_request
         ])
         .launch();

@@ -3,7 +3,8 @@ import Api from '@/services/api.js';
 const state = {
     // best effort guess on whether user is logged in
     authTimestamp: localStorage.getItem('auth-ts') || null,
-    username: localStorage.getItem('username') || null
+    username: localStorage.getItem('username') || null,
+    userId: localStorage.getItem('userId') || null
 };
 
 const getters = {
@@ -12,8 +13,8 @@ const getters = {
         const seconds = (Date.now() / 1000) - (state.authTimestamp / 1000);
         return seconds / (60 * 60);
     },
-    username: (state, getters) =>
-        getters.isAuthenticated ? state.username : "Anonymous"
+    userId: (state, getters) => getters.isAuthenticated ? parseInt(state.userId) : null,
+    username: (state, getters) => getters.isAuthenticated ? state.username : "Anonymous",
 }
 
 const actions = {
@@ -25,15 +26,19 @@ const actions = {
             vueAuth.authenticate(provider)
                 .then(resp => {
                     const username = resp.data.username;
+                    const userId = resp.data.userId;
                     localStorage.setItem('username', username);
+                    localStorage.setItem('userId', userId);
                     commit("AUTHENTICATED", {
-                        username: username
+                        username: username,
+                        userId: userId,
                     });
                     dispatch("updateAuthTimestamp");
                     resolve(resp);
                 }).catch(err => {
                     localStorage.removeItem('auth-ts');
                     localStorage.removeItem('username');
+                    localStorage.removeItem('userId');
                     reject(err);
                 });
         });
@@ -55,9 +60,20 @@ const actions = {
         }
         )
     },
-    refreshAuth({ dispatch }) {
+    refreshAuth({ dispatch, getters, commit }) {
         Api().get("/auth/me")
-            .then(() => {
+            .then(resp => {
+                if (isNaN(getters.userId)) {
+                    // temporary to automatically set the userId for users that were signed in before the userId was there
+                    const username = resp.data.username;
+                    const userId = resp.data.userId;
+                    localStorage.setItem('username', username);
+                    localStorage.setItem('userId', userId);
+                    commit("AUTHENTICATED", {
+                        username: username,
+                        userId: userId,
+                    });
+                }
                 dispatch("updateAuthTimestamp");
             })
     },
@@ -69,6 +85,7 @@ const actions = {
     unauthenticated({ commit }) {
         localStorage.removeItem('auth-ts');
         localStorage.removeItem('username');
+        localStorage.removeItem('userId');
         commit('UNAUTHENTICATED');
     }
 
@@ -77,10 +94,12 @@ const actions = {
 const mutations = {
     "AUTHENTICATED": (state, user) => {
         state.username = user.username;
+        state.userId = user.userId;
     },
     "UNAUTHENTICATED": (state) => {
         state.authTimestamp = null;
         state.username = null;
+        state.userId = NaN;
     },
     "SET_AUTH_TIMESTAMP": (state, ts) => {
         state.authTimestamp = ts;

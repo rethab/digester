@@ -5,10 +5,8 @@ const state = {
 };
 
 const getters = {
-    lists: (state) =>
-        // directly exposing the array means it is modified directly.
-        // therefore we need to deep copy it
-        JSON.parse(JSON.stringify(state.lists))
+    lists: (state) => state.lists,
+    channelsByListId: (state) => (id) => state.lists.find(l => l.id == id).channels
 }
 
 const actions = {
@@ -28,7 +26,7 @@ const actions = {
         return new Promise((resolve, reject) => {
             Api().get(`lists/${id}`)
                 .then(resp => {
-                    if (commit) { false }
+                    commit('SET_LISTS', [resp.data]);
                     resolve(resp.data);
                 })
                 .catch(err => {
@@ -85,7 +83,7 @@ const mutations = {
     },
     ADD_CHANNEL: (state, { list, channel }) => {
         const index = state.lists.findIndex(l => l.id == list.id);
-        state.lists[index].channels.unshift(channel);
+        state.lists[index].channels = [channel, ...state.lists[index].channels];
     },
     REMOVE_CHANNEL: (state, { list, channel }) => {
         const listIndex = state.lists.findIndex(l => l.id == list.id);
