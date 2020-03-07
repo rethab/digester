@@ -3,6 +3,7 @@ import VueRouter from 'vue-router'
 import store from '@/store/index.js';
 import Home from '@/views/Home.vue'
 import Subscriptions from '@/views/Subscriptions.vue'
+import Subscribe from '@/views/Subscribe.vue'
 import Lists from '@/views/Lists.vue'
 import ShowList from '@/views/ShowList.vue'
 import Updates from '@/views/Updates.vue'
@@ -25,6 +26,11 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/subscribe/:type/:id',
+    name: 'subscription-subscribe',
+    component: Subscribe
+  },
+  {
     path: '/lists',
     name: 'lists',
     component: Lists,
@@ -33,8 +39,7 @@ const routes = [
   {
     path: '/list/:id',
     name: 'list-show',
-    component: ShowList,
-    meta: { requiresAuth: false }
+    component: ShowList
   },
   {
     path: '/updates',
