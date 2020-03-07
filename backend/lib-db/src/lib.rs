@@ -56,6 +56,24 @@ pub fn channels_find_by_id(conn: &PgConnection, channel_id: i32) -> Result<Chann
         .map_err(|err| format!("Failed to fetch channel with id {}: {:?}", channel_id, err))
 }
 
+pub fn channels_find_by_id_opt(
+    conn: &PgConnection,
+    channel_id: i32,
+) -> Result<Option<Channel>, String> {
+    use schema::channels::dsl::*;
+    channels
+        .find(channel_id)
+        .load::<Channel>(conn)
+        .map(|cs| {
+            if cs.len() == 1 {
+                Some(cs[0].clone())
+            } else {
+                None
+            }
+        })
+        .map_err(|err| format!("Failed to fetch channel with id {}: {:?}", channel_id, err))
+}
+
 pub fn channels_find_by_last_fetched(
     conn: &Connection,
     fetch_frequency: Duration,
