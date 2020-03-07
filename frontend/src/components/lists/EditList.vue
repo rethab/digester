@@ -16,7 +16,7 @@
             </section>
             <v-card-actions>
               <v-spacer></v-spacer>
-              <v-btn type="submit" @click="submit" class="primary">Search</v-btn>
+              <v-btn type="submit" :loading="loading" class="primary">Search</v-btn>
             </v-card-actions>
           </v-card-text>
         </v-form>
@@ -91,19 +91,36 @@ export default {
 
       channel: new Channel("RssFeed", null),
       nameErrors: [],
-      channels: this.list.channels,
 
       searchResults: null,
-      searchError: null
+      searchError: null,
+      loading: false
     };
   },
-  computed: {},
+  computed: {
+    channels() {
+      return this.$store.getters.channelsByListId(this.list.id);
+    }
+  },
   methods: {
     submit() {
+      this.searchResults = null;
+      this.searchError = null;
+      this.nameErrors = [];
+
       let params = {
         channel_type: this.channel.type,
         query: this.channel.name
       };
+
+      let nameErrors = this.channel.validate();
+      if (nameErrors.length != 0) {
+        this.nameErrors = nameErrors;
+        return;
+      }
+
+      this.loading = true;
+
       Api()
         .get("subscriptions/search", {
           params: params,
@@ -118,32 +135,34 @@ export default {
             !this.alreadyInList(resp.data.channels[0]);
 
           if (oneNewResult) {
+            console.log("oneNewResult --> addChannel");
             this.addChannel(resp.data.channels[0]);
           } else {
             this.searchResults = resp.data.channels;
           }
+        })
+        .catch(err => {
+          this.loading = false;
+          if (err.response && err.response.data && err.response.data.error) {
+            this.searchError = err.response.data.error;
+          } else {
+            this.searchError =
+              "Something went wrong. Please make sure the input is valid. Contact us info@digester.app if you think this should be working.";
+          }
         });
     },
     addChannel(channel) {
-      this.$store
-        .dispatch("addChannel", {
-          list: this.list,
-          channel: channel
-        })
-        .then(() => {
-          this.channels.push(channel);
-        });
+      this.$store.dispatch("addChannel", {
+        list: this.list,
+        channel: channel
+      });
       // fixme handle error
     },
     removeChannel(channel) {
-      this.$store
-        .dispatch("removeChannel", {
-          list: this.list,
-          channel: channel
-        })
-        .then(() => {
-          this.channels = this.channels.filter(c => c.id != channel.id);
-        });
+      this.$store.dispatch("removeChannel", {
+        list: this.list,
+        channel: channel
+      });
       // fixme handle error
     },
     alreadyInList(channel) {

@@ -28,6 +28,7 @@ pub enum JsonResponse {
     Forbidden,
     Unauthorized,
     TooManyRequests,
+    UnprocessableEntity,
 }
 impl<'r> Responder<'r> for JsonResponse {
     fn respond_to(self, req: &Request) -> response::Result<'r> {
@@ -39,6 +40,7 @@ impl<'r> Responder<'r> for JsonResponse {
             JsonResponse::Unauthorized => (json!({}), HttpStatus::Unauthorized),
             JsonResponse::Forbidden => (json!({}), HttpStatus::Forbidden),
             JsonResponse::TooManyRequests => (json!({}), HttpStatus::TooManyRequests),
+            JsonResponse::UnprocessableEntity => (json!({}), HttpStatus::UnprocessableEntity),
         };
         Custom(status, body).respond_to(req)
     }

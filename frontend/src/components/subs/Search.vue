@@ -74,7 +74,6 @@ export default {
     submit() {
       this.clearErrors();
       if (this.validate()) {
-        console.log(`Search.search(${this.channel.show()})`);
         this.$emit("search", this.channel.type, this.channel.name);
       }
     },
