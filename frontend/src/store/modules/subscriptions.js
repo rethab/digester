@@ -8,11 +8,18 @@ const getters = {
     subscriptions: (state) =>
         // directly exposing the array means it is modified directly.
         // therefore we need to deep copy it
-        JSON.parse(JSON.stringify(state.subscriptions))
+        JSON.parse(JSON.stringify(state.subscriptions)),
+    alreadySubscribed: (state) => (channelType, channelId) =>
+        state.subscriptions.some(sub => sub.channelId == channelId && sub.channelType == channelType)
+
 }
 
 const actions = {
-    loadSubscriptions({ commit }) {
+    loadSubscriptions({ commit, getters }) {
+        // todo will be invoked multiple if loading a list of lists
+        if (getters.subscriptions.length != 0) {
+            return Promise.resolve(getters.subscriptions);
+        }
         return new Promise((resolve, reject) => {
             Api().get("subscriptions")
                 .then(resp => {

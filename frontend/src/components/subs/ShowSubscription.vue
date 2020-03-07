@@ -2,31 +2,20 @@
   <v-card color="secondary" class="lighten-4">
     <div>
       <v-card-title>
-        <span>
-          <a
-            :href="value.channelLink"
-            target="_blank"
-            class="black--text"
-            style="text-decoration:none; word-break: break-word"
-          >{{value.name}}</a>
-          <ChannelIcon :type="value.channelType" class="pl-1" small />
-        </span>
+        <ChannelLink
+          :channelId="value.channelId"
+          :channelLink="value.channelLink"
+          :text="value.name"
+        />
+        <ChannelIcon :type="value.channelType" class="pl-1" small />
       </v-card-title>
       <v-card-subtitle>
-        <a
-          v-if="value.channelLink"
-          :href="value.channelLink"
+        <ChannelLink
+          :channelId="value.channelId"
+          :channelLink="value.channelLink"
+          :text="value.channelLink ? value.channelLink : value.summary"
           class="grey--text"
-          target="_blank"
-          style="text-decoration: none"
-        >{{value.channelLink}}</a>
-        <a
-          v-else
-          :href="'/lists/' + value.channelId"
-          class="grey--text"
-          target="_blank"
-          style="text-decoration: none"
-        >{{value.summary}}</a>
+        />
       </v-card-subtitle>
       <v-card-subtitle v-if="!editing">
         <v-icon small>{{ calendarIcon }}</v-icon>
@@ -48,11 +37,13 @@
 <script>
 import FrequencySelection from "@/components/subs/FrequencySelection.vue";
 import ChannelIcon from "@/components/common/ChannelIcon.vue";
+import ChannelLink from "@/components/common/ChannelLink.vue";
 import { mdiCalendar, mdiPencilOutline } from "@mdi/js";
 export default {
   components: {
     FrequencySelection,
-    ChannelIcon
+    ChannelIcon,
+    ChannelLink
   },
   props: {
     value: {
@@ -68,8 +59,19 @@ export default {
       pencilIcon: mdiPencilOutline
     };
   },
-  computed: {},
+  computed: {
+    channelLink() {
+      if (!this.isList()) {
+        return this.value.channelLink;
+      } else {
+        return `/list/${this.value.channelId}`;
+      }
+    }
+  },
   methods: {
+    isList() {
+      return this.value.channelType == "List";
+    },
     save() {
       this.$store
         .dispatch("updateSubscription", {

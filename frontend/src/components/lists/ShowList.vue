@@ -26,10 +26,12 @@
             >{{channel.name}}</a>
           </span>
         </v-card-text>
-        <v-card-actions v-if="userId === value.creatorId">
+        <v-card-actions>
+          <v-btn v-if="isCreator" @click="remove" class="error" text>Delete</v-btn>
+          <v-btn v-if="isCreator" @click="edit" class="secondary">Edit</v-btn>
           <v-spacer></v-spacer>
-          <v-btn @click="remove" class="error" text>Delete</v-btn>
-          <v-btn @click="edit" class="primary">Edit</v-btn>
+          <v-btn v-if="alreadySubscribed" :disabled="true" class="primary">Already Subscribed</v-btn>
+          <v-btn v-else :to="`/subscribe/list/${value.id}`" class="primary">Subscribe</v-btn>
         </v-card-actions>
       </div>
     </v-card>
@@ -39,6 +41,7 @@
 <script>
 import ChannelIcon from "@/components/common/ChannelIcon.vue";
 import EditList from "@/components/lists/EditList.vue";
+import Channel from "@/models/Channel.js";
 export default {
   components: {
     ChannelIcon,
@@ -54,15 +57,32 @@ export default {
       default: false
     }
   },
-  computed: {
-    userId() {
-      return this.$store.getters.userId;
-    }
-  },
   data() {
     return {
-      showEdit: false
+      showEdit: false,
+      alreadySubscribed: false
     };
+  },
+  computed: {
+    isAuthenticated() {
+      return this.$store.getters.isAuthenticated;
+    },
+    userId() {
+      return this.$store.getters.userId;
+    },
+    isCreator() {
+      return this.isAuthenticated && this.userId == this.value.creatorId;
+    }
+  },
+  mounted() {
+    if (this.isAuthenticated) {
+      this.$store.dispatch("loadSubscriptions").then(() => {
+        this.alreadySubscribed = this.$store.getters.alreadySubscribed(
+          Channel.List,
+          this.value.id
+        );
+      });
+    }
   },
   methods: {
     remove() {
