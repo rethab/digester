@@ -20,6 +20,9 @@
       <v-card-subtitle>You will get {{formatFrequency}} via E-Mail.</v-card-subtitle>
       <v-card-text>
         <FrequencySelection v-model="frequency" />
+        <div v-if="!isAuthenticated">
+          <v-text-field v-model.trim="email" :error-messages="emailErrors" label="E-Mail"></v-text-field>
+        </div>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -59,6 +62,9 @@ export default {
     };
   },
   computed: {
+    isAuthenticated() {
+      return this.$store.getters.isAuthenticated;
+    },
     channelLink() {
       if (this.channel.type == Channel.List) {
         return `/list/${this.channel.id}`;

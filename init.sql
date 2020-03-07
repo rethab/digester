@@ -67,6 +67,7 @@ CREATE TABLE subscriptions (
   channel_id INT REFERENCES channels(id),
   list_id INT REFERENCES lists(id),
   user_id INT REFERENCES users(id),
+  timezone VARCHAR NULL, -- timezone for anonymous users, other have it in the profile
   frequency VARCHAR NOT NULL, -- daily or weekly
   day VARCHAR NULL, -- any three-letter day: set if frequency is weekly, we also have a day
   time TIME WITHOUT TIME ZONE NOT NULL, -- timezone is based on user profile
@@ -90,3 +91,22 @@ CREATE TABLE digests (
 
 -- per subscription, we can only have one unsent digest
 CREATE UNIQUE INDEX digests_only_one_unsent_idx ON digests (subscription_id) WHERE sent IS NULL;
+
+-- ANONYMOUS SUBSCRIPTIONS
+
+-- anonymous subscriptions land here. as soon as the user clicks on the
+-- confirmation link in the e-mail, the subscription is moved to the
+-- subscriptions table
+CREATE TABLE pending_subscriptions (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR NOT NULL,
+  -- only works for lists, not for individual channels
+  list_id INT NOT NULL REFERENCES lists(id),
+  -- same as regular subscriptions
+  frequency VARCHAR NOT NULL,
+  day VARCHAR NULL,
+  time TIME WITHOUT TIME ZONE NOT NULL,
+  inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(list_id, user_id) -- user can subscribe to list only once
+  
+);
