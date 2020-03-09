@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 lib-channels = { path = "../lib-channels" } 
 lib-db = { path = "../lib-db" } 
+lib-messaging = { path = "../lib-messaging" } 
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = {version = "0.5", features = ["serde"] }
 reqwest = { version = "0.10", features = ["blocking", "json"] }

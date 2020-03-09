@@ -2,12 +2,11 @@ use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Utc, Weekday};
 use chrono_tz::Tz;
 use lib_db as db;
 use lib_db::{Digest, Frequency, InsertDigest, Subscription, User};
+use lib_messaging as messaging;
+use messaging::mailjet;
+use messaging::mailjet::*;
 
-mod messaging;
-
-use messaging::*;
-
-pub use messaging::SendgridCredentials;
+pub use mailjet::SendgridCredentials;
 
 pub struct App<'a> {
     db_conn: &'a db::Connection,
@@ -15,11 +14,21 @@ pub struct App<'a> {
     env: Env,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Env {
     Dev,
     Stg,
     Prod,
+}
+
+impl Into<messaging::Env> for Env {
+    fn into(self) -> messaging::Env {
+        match self {
+            Env::Dev => messaging::Env::Dev,
+            Env::Stg => messaging::Env::Stg,
+            Env::Prod => messaging::Env::Prod,
+        }
+    }
 }
 
 impl App<'_> {
@@ -138,7 +147,7 @@ impl App<'_> {
             }
         }
 
-        messaging::send_email(&self.sendgrid, messages)
+        messaging::mailjet::send_email(&self.sendgrid, messages)
     }
 
     fn create_message_for_channels(
@@ -181,7 +190,10 @@ impl App<'_> {
                 sendgrid_subscriptions.len(),
                 user.id
             );
-            let subject = messaging::create_subject(&self.env, &sendgrid_subscriptions);
+            let subject = messaging::mailjet::create_subject(
+                &self.env.clone().into(),
+                &sendgrid_subscriptions,
+            );
             let recipient = d_and_s[0].1.email.clone();
             Ok(Some(SendgridMessage::new(
                 recipient,
@@ -240,7 +252,7 @@ impl App<'_> {
                 sendgrid_subscriptions.len(),
                 user.id
             );
-            let subject = messaging::create_subject_for_list(&self.env, &list);
+            let subject = mailjet::create_subject_for_list(&self.env.clone().into(), &list.name);
             let recipient = sub.email.clone();
             Ok(Some(SendgridMessage::new(
                 recipient,

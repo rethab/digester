@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "lib-db",
+    "lib-messaging",
     "lib-channels",
     "lib-digester",
     "lib-fetcher",

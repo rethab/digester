@@ -3,7 +3,6 @@ use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Serialize;
 
 use super::Env;
-use lib_db as db;
 
 pub struct SendgridCredentials {
     pub api_key: String,
@@ -23,7 +22,7 @@ pub fn send_email(cred: &SendgridCredentials, message: SendgridMessage) -> Resul
     }
 }
 
-pub fn create_subject_for_list(env: &Env, list: &db::List) -> String {
+pub fn create_subject_for_list(env: &Env, list_name: &str) -> String {
     let mut subject = String::new();
 
     if *env != Env::Prod {
@@ -31,7 +30,7 @@ pub fn create_subject_for_list(env: &Env, list: &db::List) -> String {
     }
 
     subject.push_str("Digests from ");
-    subject.push_str(&list.name);
+    subject.push_str(list_name);
     subject
 }
 
