@@ -62,12 +62,12 @@ CREATE TABLE lists_channels (
 CREATE TABLE subscriptions (
   id SERIAL PRIMARY KEY,
   email VARCHAR NOT NULL,
+  timezone VARCHAR NULL, -- timezone for anonymous users, other have it in the profile
   -- depending on whether the subscription is for a channel or a list,
   -- the respective attribute is set
   channel_id INT REFERENCES channels(id),
   list_id INT REFERENCES lists(id),
   user_id INT REFERENCES users(id),
-  timezone VARCHAR NULL, -- timezone for anonymous users, other have it in the profile
   frequency VARCHAR NOT NULL, -- daily or weekly
   day VARCHAR NULL, -- any three-letter day: set if frequency is weekly, we also have a day
   time TIME WITHOUT TIME ZONE NOT NULL, -- timezone is based on user profile
@@ -100,8 +100,11 @@ CREATE UNIQUE INDEX digests_only_one_unsent_idx ON digests (subscription_id) WHE
 CREATE TABLE pending_subscriptions (
   id SERIAL PRIMARY KEY,
   email VARCHAR NOT NULL,
+  timezone VARCHAR NOT NULL,
   -- only works for lists, not for individual channels
   list_id INT NOT NULL REFERENCES lists(id),
+  token VARCHAR NULL,
+  activation_email_sent TIMESTAMP WITH TIME ZONE NULL,
   -- same as regular subscriptions
   frequency VARCHAR NOT NULL,
   day VARCHAR NULL,
