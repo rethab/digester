@@ -142,13 +142,13 @@ pub struct NewSubscription {
     pub time: NaiveTime,
 }
 
-#[derive(Debug, Queryable, AsChangeset, Identifiable)]
+#[derive(Debug, Clone, Queryable, AsChangeset, Identifiable)]
 #[changeset_options(treat_none_as_null = "true")]
 pub struct PendingSubscription {
     pub id: i32,
     pub email: String,
-    pub timezone: String,
-    pub list_id: Option<i32>,
+    pub timezone: Timezone,
+    pub list_id: i32,
     pub token: Option<String>,
     pub activation_email_sent: Option<DateTime<Utc>>,
     pub frequency: Frequency,
@@ -162,7 +162,8 @@ pub struct PendingSubscription {
 pub struct NewPendingSubscription {
     pub email: String,
     pub timezone: Timezone,
-    pub list_id: Option<i32>,
+    pub list_id: i32,
+    pub token: String,
     pub frequency: Frequency,
     pub day: Option<Day>,
     pub time: NaiveTime,

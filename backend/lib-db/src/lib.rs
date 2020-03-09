@@ -414,8 +414,60 @@ pub fn subscriptions_delete_by_user_id(conn: &PgConnection, user_id: i32) -> Res
 pub fn pending_subscriptions_insert(
     conn: &PgConnection,
     sub: NewPendingSubscription,
-) -> Result<(PendingSubscription, String), InsertError> {
-    unimplemented!()
+) -> Result<PendingSubscription, InsertError> {
+    use schema::pending_subscriptions;
+    diesel::insert_into(pending_subscriptions::table)
+        .values(sub)
+        .returning(pending_subscriptions::all_columns)
+        .get_result(conn)
+        .map_err(InsertError::from_diesel)
+}
+
+pub fn pending_subscriptions_set_sent(
+    conn: &PgConnection,
+    pending_subscription: &PendingSubscription,
+    sent: DateTime<Utc>,
+) -> Result<(), String> {
+    use schema::pending_subscriptions::dsl::*;
+    diesel::update(pending_subscriptions.find(id))
+        .set(activation_email_sent.eq(sent))
+        .execute(conn)
+        .map(|_| ())
+        .map_err(|err| {
+            format!(
+                "Failed to update 'activation_email_sent' for pending_subscription {}: {:?}",
+                pending_subscription.id, err
+            )
+        })
+}
+
+pub fn pending_subscriptions_find_by_token(
+    db: &PgConnection,
+    token: &str,
+) -> Result<Option<PendingSubscription>, String> {
+    use schema::pending_subscriptions;
+    pending_subscriptions::table
+        .filter(pending_subscriptions::token.eq(token))
+        .get_results::<PendingSubscription>(db)
+        .map(|xs| {
+            if xs.len() == 1 {
+                Some(xs[0].clone())
+            } else {
+                None
+            }
+        })
+        .map_err(|err| format!("Failed to fetch pending subscription by token: {:?}", err))
+}
+
+pub fn pending_subscriptions_delete(
+    db: &PgConnection,
+    pending_sub: PendingSubscription,
+) -> Result<(), String> {
+    use schema::pending_subscriptions::dsl::*;
+    diesel::delete(pending_subscriptions.filter(id.eq(pending_sub.id)))
+        .execute(db)
+        .map(|_| ())
+        .map_err(|err| format!("Failed pending subscription {:?}", err))
 }
 
 pub fn digests_insert(conn: &Connection, digest: &InsertDigest) -> Result<(), InsertError> {

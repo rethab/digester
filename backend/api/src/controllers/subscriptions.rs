@@ -1,23 +1,27 @@
 use lib_channels as channels;
 use lib_db as db;
+use lib_messaging as messaging;
 
 use super::super::subscriptions::search;
 use super::common::*;
 use channels::github_release::GithubRelease;
 use chrono::naive::NaiveTime;
+use chrono::Utc;
 use chrono_tz::Tz;
 use db::{ChannelType, Day, Frequency, Timezone};
 use either::{Left, Right};
+use messaging::mailjet::pending_subscriptions;
 use rocket::http::RawStr;
 use rocket::request::FromFormValue;
 use rocket::{Rocket, State};
 use rocket_contrib::json::{Json, JsonValue};
 use std::str::FromStr;
+use uuid::Uuid;
 
 pub fn mount(rocket: Rocket) -> Rocket {
     rocket.mount(
         "/subscriptions",
-        routes![list, search, add, add_pending, update],
+        routes![list, search, add, update, add_pending, activate_pending],
     )
 }
 
@@ -379,22 +383,25 @@ fn add_pending(db: DigesterDbConn, new_sub: Json<NewPendingSubscription>) -> Jso
             };
 
             match validate_pending_subscription(&new_sub) {
-                Ok(pending_sub) => match db::pending_subscriptions_insert(&db, pending_sub) {
-                    Ok((_, token)) => {
-                        send_activation_email(&db, &new_sub.email, &token);
-                        JsonResponse::Ok(json!({}))
+                Ok(new_pending_sub) => {
+                    let token = new_pending_sub.token.clone();
+                    match db::pending_subscriptions_insert(&db, new_pending_sub) {
+                        Ok(pending_sub) => {
+                            send_activation_email(&db, &pending_sub, &token);
+                            JsonResponse::Ok(json!({}))
+                        }
+                        Err(db::InsertError::Unknown(err)) => {
+                            eprintln!(
+                                "Failed to insert pending subscription {:?}: {:?}",
+                                new_sub, err
+                            );
+                            JsonResponse::InternalServerError
+                        }
+                        Err(db::InsertError::Duplicate) => {
+                            JsonResponse::BadRequest("Subscription already exists".into())
+                        }
                     }
-                    Err(db::InsertError::Unknown(err)) => {
-                        eprintln!(
-                            "Failed to insert pending subscription {:?}: {:?}",
-                            new_sub, err
-                        );
-                        JsonResponse::InternalServerError
-                    }
-                    Err(db::InsertError::Duplicate) => {
-                        JsonResponse::BadRequest("Subscription already exists".into())
-                    }
-                },
+                }
                 Err(err) => JsonResponse::BadRequest(err),
             }
         }
@@ -412,14 +419,22 @@ fn validate_pending_subscription(
         validate_email(&new_sub.email),
         validate_timezone(&new_sub.timezone),
     ) {
-        (Ok(email), Ok(timezone)) => Ok(db::NewPendingSubscription {
-            email: email,
-            timezone: timezone,
-            list_id: Some(new_sub.channel_id),
-            frequency: new_sub.frequency.clone(),
-            day: new_sub.day.clone(),
-            time: new_sub.time,
-        }),
+        (Ok(email), Ok(timezone)) => {
+            let token: String = Uuid::new_v4()
+                .to_simple()
+                .encode_lower(&mut Uuid::encode_buffer())
+                .to_owned();
+
+            Ok(db::NewPendingSubscription {
+                email: email,
+                timezone: timezone,
+                list_id: new_sub.channel_id,
+                token,
+                frequency: new_sub.frequency.clone(),
+                day: new_sub.day.clone(),
+                time: new_sub.time,
+            })
+        }
         (email_err, tz_err) => {
             let mut err_str = String::new();
             if let Err(email_err) = email_err {
@@ -470,8 +485,84 @@ fn validate_timezone(timezone: &str) -> Result<Timezone, String> {
         .map_err(|_| format!("Not a valid timezone"))
 }
 
-fn send_activation_email(db: &DigesterDbConn, email: &str, token: &str) {
-    unimplemented!()
+fn send_activation_email(db: &DigesterDbConn, pending_sub: &db::PendingSubscription, token: &str) {
+    match pending_subscriptions::send_activation_email(&pending_sub.email, token) {
+        Ok(()) => match db::pending_subscriptions_set_sent(db, pending_sub, Utc::now()) {
+            Ok(()) => {
+                println!(
+                    "Successfully sent pending subscription e-mail for {}",
+                    pending_sub.id
+                );
+            }
+            Err(err) => {
+                eprintln!(
+                    "Failed to update token of pending subscription {} in database: {:?}",
+                    pending_sub.id, err
+                );
+            }
+        },
+        Err(err) => {
+            eprintln!(
+                "Failed to send activation e-mail to {}: {:?}",
+                pending_sub.email, err
+            );
+        }
+    }
+}
+
+#[get("/activate/<token>")]
+fn activate_pending(db: DigesterDbConn, token: String) -> JsonResponse {
+    let pending_sub = match db::pending_subscriptions_find_by_token(&db, &token) {
+        Ok(Some(ps)) => ps,
+        Ok(None) => return JsonResponse::NotFound,
+        Err(err) => {
+            eprintln!(
+                "Failed to fetch pending subscription with token {} from db: {:?}",
+                token, err
+            );
+            return JsonResponse::InternalServerError;
+        }
+    };
+
+    let new_sub = db::NewSubscription {
+        email: pending_sub.email.clone(),
+        timezone: Some(pending_sub.timezone.clone()),
+        channel_id: None,
+        list_id: Some(pending_sub.list_id.clone()),
+        user_id: None,
+        frequency: pending_sub.frequency.clone(),
+        day: pending_sub.day.clone(),
+        time: pending_sub.time.clone(),
+    };
+
+    match db::subscriptions_insert(&db, new_sub) {
+        Err(db::InsertError::Duplicate) => {
+            JsonResponse::BadRequest("Subscription already exists".into())
+        }
+        Err(db::InsertError::Unknown(err)) => {
+            eprintln!(
+                "Failed to insert new subscription for pending subscription {}: {:?}",
+                pending_sub.id, err
+            );
+            JsonResponse::InternalServerError
+        }
+        Ok(sub) => {
+            let id = pending_sub.id;
+            match db::pending_subscriptions_delete(&db, pending_sub) {
+                Ok(()) => {
+                    println!("Successfully activated subscription {}", sub.id);
+                    JsonResponse::Ok(json!({}))
+                }
+                Err(err) => {
+                    eprintln!(
+                        "Failed to delete pending subscription with id {}: {:?}",
+                        id, err
+                    );
+                    JsonResponse::InternalServerError
+                }
+            }
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, PartialEq)]

@@ -59,7 +59,7 @@ table! {
       id -> Integer,
       email -> Text,
       timezone -> Text,
-      list_id -> Nullable<Integer>,
+      list_id -> Integer,
       token -> Nullable<Text>,
       activation_email_sent -> Nullable<Timestamptz>,
       frequency -> Text,
