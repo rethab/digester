@@ -229,9 +229,10 @@ fn subscribe_user(db: DigesterDbConn, user_id: i32, list: &db::List) -> Result<(
     let identity = db::identities_find_by_user_id(&db, user_id)?;
     let new_sub = db::NewSubscription {
         email: identity.email,
+        timezone: None,
         channel_id: None,
         list_id: Some(list.id),
-        user_id: identity.user_id,
+        user_id: Some(identity.user_id),
         frequency: db::Frequency::Weekly,
         day: Some(db::Day::Sat),
         time: NaiveTime::from_hms(9, 0, 0),

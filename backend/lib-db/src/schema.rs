@@ -43,9 +43,25 @@ table! {
     subscriptions(id) {
       id -> Integer,
       email -> Text,
+      timezone -> Nullable<Text>,
       channel_id -> Nullable<Integer>,
       list_id -> Nullable<Integer>,
-      user_id -> Integer,
+      user_id -> Nullable<Integer>,
+      frequency -> Text,
+      day -> Nullable<Text>,
+      time -> Time,
+      inserted -> Timestamptz,
+    }
+}
+
+table! {
+    pending_subscriptions(id) {
+      id -> Integer,
+      email -> Text,
+      timezone -> Text,
+      list_id -> Nullable<Integer>,
+      token -> Nullable<Text>,
+      activation_email_sent -> Nullable<Timestamptz>,
       frequency -> Text,
       day -> Nullable<Text>,
       time -> Time,

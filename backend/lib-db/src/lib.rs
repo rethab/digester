@@ -411,6 +411,13 @@ pub fn subscriptions_delete_by_user_id(conn: &PgConnection, user_id: i32) -> Res
         .map(|_| ())
 }
 
+pub fn pending_subscriptions_insert(
+    conn: &PgConnection,
+    sub: NewPendingSubscription,
+) -> Result<(PendingSubscription, String), InsertError> {
+    unimplemented!()
+}
+
 pub fn digests_insert(conn: &Connection, digest: &InsertDigest) -> Result<(), InsertError> {
     use schema::digests;
     diesel::insert_into(digests::table)
@@ -427,7 +434,7 @@ pub fn digests_find_users_with_due(conn: &Connection) -> Result<Vec<User>, Strin
     use schema::users;
     digests::table
         .inner_join(subscriptions::table.on(digests::subscription_id.eq(subscriptions::id)))
-        .inner_join(users::table.on(subscriptions::user_id.eq(users::id)))
+        .inner_join(users::table.on(subscriptions::user_id.eq(users::id.nullable())))
         .filter(digests::due.lt(now).and(digests::sent.is_null()))
         .distinct()
         .select(users::all_columns)

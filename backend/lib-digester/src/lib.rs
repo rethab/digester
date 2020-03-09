@@ -61,8 +61,24 @@ impl App<'_> {
     }
 
     fn insert_next_digest(&self, subscription: &Subscription) -> Result<(), String> {
-        let user = db::users_find_by_id0(&self.db_conn, subscription.user_id)?;
-        let timezone = user.timezone.map(|tz| tz.0).unwrap_or(Tz::UTC);
+        let timezone = match subscription.timezone.as_ref() {
+            Some(tz) => tz.0.clone(),
+            None => match subscription.user_id {
+                None => {
+                    return Err(format!(
+                        "Subscription has neither user nor timezone: {}",
+                        subscription.id
+                    ));
+                }
+                Some(user_id) => {
+                    let user = db::users_find_by_id0(&self.db_conn, user_id)?;
+                    user.timezone.map(|tz| tz.0).unwrap_or({
+                        eprintln!("User {} has no timezone, using UTC", user.id);
+                        Tz::UTC
+                    })
+                }
+            },
+        };
 
         let now_in_tz: DateTime<Tz> = timezone.from_utc_datetime(&Utc::now().naive_utc());
         let due_in_tz = next_due_date_for_subscription(subscription, now_in_tz);
@@ -377,9 +393,10 @@ mod tests {
         Subscription {
             id: 1,
             email: "foo@bar.ch".into(),
+            timezone: None,
             channel_id: Some(1),
             list_id: None,
-            user_id: 1,
+            user_id: Some(1),
             frequency: Frequency::Daily,
             day: None,
             time: NaiveTime::from_hms(hour, minute, 0),
@@ -391,9 +408,10 @@ mod tests {
         Subscription {
             id: 1,
             email: "foo@bar.ch".into(),
+            timezone: None,
             channel_id: Some(1),
             list_id: None,
-            user_id: 1,
+            user_id: Some(1),
             frequency: Frequency::Weekly,
             day: Some(day),
             time: NaiveTime::from_hms(hour, minute, 0),

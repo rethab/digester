@@ -119,9 +119,10 @@ impl Into<chrono::Weekday> for Day {
 pub struct Subscription {
     pub id: i32,
     pub email: String,
+    pub timezone: Option<Timezone>,
     pub channel_id: Option<i32>,
     pub list_id: Option<i32>,
-    pub user_id: i32,
+    pub user_id: Option<i32>,
     pub frequency: Frequency,
     pub day: Option<Day>,
     pub time: NaiveTime,
@@ -132,9 +133,36 @@ pub struct Subscription {
 #[table_name = "subscriptions"]
 pub struct NewSubscription {
     pub email: String,
+    pub timezone: Option<Timezone>,
     pub channel_id: Option<i32>,
     pub list_id: Option<i32>,
-    pub user_id: i32,
+    pub user_id: Option<i32>,
+    pub frequency: Frequency,
+    pub day: Option<Day>,
+    pub time: NaiveTime,
+}
+
+#[derive(Debug, Queryable, AsChangeset, Identifiable)]
+#[changeset_options(treat_none_as_null = "true")]
+pub struct PendingSubscription {
+    pub id: i32,
+    pub email: String,
+    pub timezone: String,
+    pub list_id: Option<i32>,
+    pub token: Option<String>,
+    pub activation_email_sent: Option<DateTime<Utc>>,
+    pub frequency: Frequency,
+    pub day: Option<Day>,
+    pub time: NaiveTime,
+    pub inserted: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug)]
+#[table_name = "pending_subscriptions"]
+pub struct NewPendingSubscription {
+    pub email: String,
+    pub timezone: Timezone,
+    pub list_id: Option<i32>,
     pub frequency: Frequency,
     pub day: Option<Day>,
     pub time: NaiveTime,
