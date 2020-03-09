@@ -5,21 +5,39 @@ use super::super::subscriptions::search;
 use super::common::*;
 use channels::github_release::GithubRelease;
 use chrono::naive::NaiveTime;
-use db::{ChannelType, Day, Frequency};
+use chrono_tz::Tz;
+use db::{ChannelType, Day, Frequency, Timezone};
 use either::{Left, Right};
 use rocket::http::RawStr;
 use rocket::request::FromFormValue;
 use rocket::{Rocket, State};
 use rocket_contrib::json::{Json, JsonValue};
+use std::str::FromStr;
 
 pub fn mount(rocket: Rocket) -> Rocket {
-    rocket.mount("/subscriptions", routes![list, search, add, update])
+    rocket.mount(
+        "/subscriptions",
+        routes![list, search, add, add_pending, update],
+    )
 }
 
 pub struct GithubApiToken(pub String);
 
 #[derive(Deserialize, Debug, PartialEq)]
 struct NewSubscription {
+    #[serde(rename = "channelId")]
+    channel_id: i32,
+    #[serde(rename = "channelType")]
+    channel_type: SearchChannelType,
+    frequency: Frequency,
+    day: Option<Day>,
+    time: NaiveTime,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+struct NewPendingSubscription {
+    email: String,
+    timezone: String,
     #[serde(rename = "channelId")]
     channel_id: i32,
     #[serde(rename = "channelType")]
@@ -346,6 +364,116 @@ fn add(
     }
 }
 
+#[post("/add_pending", data = "<new_sub>")]
+fn add_pending(db: DigesterDbConn, new_sub: Json<NewPendingSubscription>) -> JsonResponse {
+    match new_sub.channel_type {
+        SearchChannelType::List => {
+            let list_id = new_sub.channel_id;
+            match db::lists_find_by_id(&db, list_id) {
+                Err(err) => {
+                    eprintln!("Failed to fetch list by id '{}': {:?}", list_id, err);
+                    return JsonResponse::BadRequest("list does not exist".into());
+                }
+                Ok(Some((list, _))) => list,
+                Ok(None) => return JsonResponse::BadRequest("list does not exist".into()),
+            };
+
+            match validate_pending_subscription(&new_sub) {
+                Ok(pending_sub) => match db::pending_subscriptions_insert(&db, pending_sub) {
+                    Ok((_, token)) => {
+                        send_activation_email(&db, &new_sub.email, &token);
+                        JsonResponse::Ok(json!({}))
+                    }
+                    Err(db::InsertError::Unknown(err)) => {
+                        eprintln!(
+                            "Failed to insert pending subscription {:?}: {:?}",
+                            new_sub, err
+                        );
+                        JsonResponse::InternalServerError
+                    }
+                    Err(db::InsertError::Duplicate) => {
+                        JsonResponse::BadRequest("Subscription already exists".into())
+                    }
+                },
+                Err(err) => JsonResponse::BadRequest(err),
+            }
+        }
+        _ => {
+            eprintln!("Called add anonymous for unsupported channel type");
+            JsonResponse::BadRequest("Only lists are supported".into())
+        }
+    }
+}
+
+fn validate_pending_subscription(
+    new_sub: &NewPendingSubscription,
+) -> Result<db::NewPendingSubscription, String> {
+    match (
+        validate_email(&new_sub.email),
+        validate_timezone(&new_sub.timezone),
+    ) {
+        (Ok(email), Ok(timezone)) => Ok(db::NewPendingSubscription {
+            email: email,
+            timezone: timezone,
+            list_id: Some(new_sub.channel_id),
+            frequency: new_sub.frequency.clone(),
+            day: new_sub.day.clone(),
+            time: new_sub.time,
+        }),
+        (email_err, tz_err) => {
+            let mut err_str = String::new();
+            if let Err(email_err) = email_err {
+                err_str.push_str(&email_err);
+            }
+            if let Err(tz_err) = tz_err {
+                if !err_str.is_empty() {
+                    err_str.push_str(", ".into())
+                }
+                err_str.push_str(&tz_err)
+            }
+            Err(err_str)
+        }
+    }
+}
+
+fn validate_email(email: &str) -> Result<String, String> {
+    let err = Err("Not a valid e-mail".into());
+    let mut cleaned = email.to_ascii_lowercase();
+    cleaned = cleaned.trim().to_string();
+    let parts: Vec<&str> = cleaned.split('@').collect();
+    if parts.len() != 2 {
+        return err;
+    }
+
+    let name = parts[0];
+    let domain = parts[1];
+
+    if name.is_empty() {
+        return err;
+    }
+
+    let parts: Vec<&str> = domain.split('.').collect();
+    if parts.len() < 2 {
+        return err;
+    }
+
+    if parts.iter().any(|p| p.is_empty()) {
+        return err;
+    }
+
+    Ok(cleaned)
+}
+
+fn validate_timezone(timezone: &str) -> Result<Timezone, String> {
+    Tz::from_str(timezone)
+        .map(|tz| Timezone(tz))
+        .map_err(|_| format!("Not a valid timezone"))
+}
+
+fn send_activation_email(db: &DigesterDbConn, email: &str, token: &str) {
+    unimplemented!()
+}
+
 #[derive(Deserialize, Debug, PartialEq)]
 struct UpdatedSubscription {
     frequency: Frequency,
@@ -393,9 +521,10 @@ fn insert_channel_subscription(
 ) -> Result<db::Subscription, db::InsertError> {
     let new_subscription = db::NewSubscription {
         email: identity.email.clone(),
+        timezone: None,
         channel_id: Some(chan.id),
         list_id: None,
-        user_id: identity.user_id,
+        user_id: Some(identity.user_id),
         frequency: sub.frequency.clone(),
         day: sub.day.clone(),
         time: sub.time,
@@ -411,9 +540,10 @@ fn insert_list_subscription(
 ) -> Result<db::Subscription, db::InsertError> {
     let new_subscription = db::NewSubscription {
         email: identity.email.clone(),
+        timezone: None,
         channel_id: None,
         list_id: Some(list.id),
-        user_id: identity.user_id,
+        user_id: Some(identity.user_id),
         frequency: sub.frequency.clone(),
         day: sub.day.clone(),
         time: sub.time,
@@ -468,5 +598,42 @@ mod tests {
         };
 
         assert_eq!(exp, sub);
+    }
+
+    #[test]
+    fn valid_emails() {
+        assert!(validate_email("test@test.ch").is_ok());
+        assert!(validate_email("test@test.test.ch").is_ok());
+        assert!(validate_email("TEST@TEST.TEST.CH").is_ok());
+        assert!(validate_email("a@b.c").is_ok());
+        assert!(validate_email("rh+xy@kl.mu").is_ok());
+        assert!(validate_email("mylongemail@mylongdomain.mytld").is_ok());
+    }
+
+    #[test]
+    fn invalid_emails() {
+        assert!(validate_email("localhost").is_err());
+        assert!(validate_email("me@me").is_err());
+        assert!(validate_email("me@me@me").is_err());
+        assert!(validate_email("me@me.me@me").is_err());
+        assert!(validate_email("").is_err());
+        assert!(validate_email(" @ . ").is_err());
+        assert!(validate_email("test@test").is_err());
+        assert!(validate_email("gmail.com").is_err());
+    }
+
+    #[test]
+    fn valid_timezones() {
+        assert!(validate_timezone("Europe/Amsterdam").is_ok());
+    }
+
+    #[test]
+    fn invalid_timezones() {
+        assert!(validate_timezone("Europe/Rotterdam").is_err());
+        assert!(validate_timezone("Europe/").is_err());
+        assert!(validate_timezone("Europe").is_err());
+        assert!(validate_timezone("/").is_err());
+        assert!(validate_timezone(" ").is_err());
+        assert!(validate_timezone("").is_err());
     }
 }
