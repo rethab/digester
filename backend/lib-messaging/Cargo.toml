@@ -1,0 +1,11 @@
+[package]
+name = "lib-messaging"
+version = "0.1.0"
+authors = ["Reto Habluetzel <rethab@protonmail.ch>"]
+edition = "2018"
+
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+reqwest = { version = "0.10", features = ["json", "blocking"] }
