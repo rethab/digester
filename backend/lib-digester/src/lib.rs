@@ -3,10 +3,9 @@ use chrono_tz::Tz;
 use lib_db as db;
 use lib_db::{Digest, Frequency, InsertDigest, Subscription, User};
 use lib_messaging as messaging;
-use messaging::mailjet;
 use messaging::mailjet::*;
 
-pub use mailjet::SendgridCredentials;
+pub use messaging::mailjet::SendgridCredentials;
 
 pub struct App<'a> {
     db_conn: &'a db::Connection,
@@ -190,10 +189,8 @@ impl App<'_> {
                 sendgrid_subscriptions.len(),
                 user.id
             );
-            let subject = messaging::mailjet::create_subject(
-                &self.env.clone().into(),
-                &sendgrid_subscriptions,
-            );
+            let subject =
+                digests::create_subject(&self.env.clone().into(), &sendgrid_subscriptions);
             let recipient = d_and_s[0].1.email.clone();
             Ok(Some(SendgridMessage::new(
                 recipient,
@@ -252,7 +249,7 @@ impl App<'_> {
                 sendgrid_subscriptions.len(),
                 user.id
             );
-            let subject = mailjet::create_subject_for_list(&self.env.clone().into(), &list.name);
+            let subject = digests::create_subject_for_list(&self.env.clone().into(), &list.name);
             let recipient = sub.email.clone();
             Ok(Some(SendgridMessage::new(
                 recipient,
