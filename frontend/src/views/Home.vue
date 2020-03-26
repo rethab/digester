@@ -24,38 +24,35 @@
 
     <v-row justify="center">
       <v-col class="text-center" sm="6" md="3">
-        <v-btn @click="$vuetify.goTo('#login')" class="mx-4" color="primary" large>Try now for Free</v-btn>
+        <v-btn @click="$vuetify.goTo('#howitworks')" class="mx-4" color="primary" large>how it works</v-btn>
       </v-col>
       <v-col class="text-center" sm="6" md="3">
-        <v-btn
-          @click="$vuetify.goTo('#howitworks')"
-          class="mx-4"
-          color="secondary"
-          outlined
-          large
-        >how it works</v-btn>
+        <v-btn to="/lists" class="mx-4" color="secondary" outlined large>Create your own List</v-btn>
+      </v-col>
+    </v-row>
+
+    <v-row justify="center">
+      <v-col cols="12" class="text-center">
+        <h2 class="headline">Popular Lists</h2>
+        <p class="body-1">No need to create an account. Subscribe directly with your E-Mail address.</p>
+      </v-col>
+      <v-col cols="12">
+        <PopularLists />
       </v-col>
     </v-row>
 
     <LandingPageCard
-      :img-src="require('@/assets/focus_working.svg')"
-      :img-left="true"
-      title="Focus on What Matters"
-      content="Digester allows you to get updates when you want them. Saying no to constant interruptions lets you focus on work during work time."
-    />
-
-    <LandingPageCard
-      :img-src="require('@/assets/family_3.svg')"
-      :img-left="false"
-      title="Spend More Time With Your Family"
-      content="Say no to FOMO. Digester's ability to bundle updates allows you to spend time with your family while knowing you'll get your updates eventually."
-    />
-
-    <LandingPageCard
       :img-src="require('@/assets/following_the_idea.svg')"
       :img-left="true"
-      title="Supported Features"
-      content="You can currently subscribe to Github releases via E-Mail. This means you'll get digests for new versions of your favourite projects.<br /> <br />More features are coming soon: We plan to support digests via Slack instead of E-Mail and many more sources such as YouTube, Blogs/RSS and many more."
+      title="What is Digester?"
+      content="With digester, you'll get weekly (or daily) e-mails with a summary of what happened.<br /><br /> Like a blog? Add a subscription and get all posts directly to your inbox.<br /><br />Want to stay on top of Open Source software? Get weekly updates on what new versions were released by your favorite Github projects."
+    />
+
+    <LandingPageCard
+      :img-src="require('@/assets/focus_working.svg')"
+      :img-left="false"
+      title="What are Lists?"
+      content="Lists are collections of Blogs and Github projects.<br /><br />Say you are intersted in mobile development. By subscribing to the mobile development list, you'll receive a weekly digest on what happened in the world of mobile. A new blog post about flutter? A new release of Swift? All part of your digest!<br /><br />You can even create your own lists and share them with your friends."
     />
 
     <section id="howitworks">
@@ -85,6 +82,7 @@
 import AuthLogin from "@/components/auth/AuthLogin.vue";
 import LandingPageCard from "@/components/landing/LandingPageCard.vue";
 import HowItWorksCard from "@/components/landing/HowItWorksCard.vue";
+import PopularLists from "@/components/landing/PopularLists.vue";
 export default {
   data() {
     return {
@@ -94,7 +92,8 @@ export default {
   components: {
     AuthLogin,
     LandingPageCard,
-    HowItWorksCard
+    HowItWorksCard,
+    PopularLists
   },
   computed: {
     isAuthenticated() {
