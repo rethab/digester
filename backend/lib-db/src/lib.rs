@@ -3,10 +3,12 @@ extern crate diesel;
 
 use chrono::{DateTime, Duration, Utc};
 use chrono_tz::Tz;
+use diesel::dsl::sql;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::result;
 use diesel::result::Error;
+use diesel::sql_types::BigInt;
 use either::{Either, Left, Right};
 use std::env;
 
@@ -816,6 +818,29 @@ pub fn lists_find_by_id(
             list_id, list_and_identity
         ))
     }
+}
+
+pub fn lists_find_order_by_popularity(
+    conn: &PgConnection,
+    limit: i32,
+) -> Result<Vec<(List, Identity)>, String> {
+    use schema::lists;
+    use schema::subscriptions;
+
+    // see diesel issue: https://github.com/diesel-rs/diesel/issues/210
+    let query = lists::table
+        .select((lists::all_columns, sql::<BigInt>("sum(1) as cnt")))
+        .left_join(subscriptions::table.on(subscriptions::list_id.eq(lists::id.nullable())))
+        .limit(limit as i64)
+        .group_by(lists::id)
+        .order_by(sql::<BigInt>("cnt").desc());
+
+    let ls: Vec<List> = query
+        .load::<(List, i64)>(conn)
+        .map(|pairs| pairs.into_iter().map(|(l, _)| l).collect::<Vec<List>>())
+        .map_err(|err| format!("Failed to load lists ordered by popularity: {:?}", err))?;
+
+    lists_zip_with_identities(conn, ls)
 }
 
 pub fn lists_delete_by_id(conn: &PgConnection, list_id: i32) -> Result<(), String> {

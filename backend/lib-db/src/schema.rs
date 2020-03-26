@@ -98,6 +98,7 @@ table! {
 allow_tables_to_appear_in_same_query!(subscriptions, digests);
 allow_tables_to_appear_in_same_query!(subscriptions, users);
 allow_tables_to_appear_in_same_query!(subscriptions, channels);
+allow_tables_to_appear_in_same_query!(subscriptions, lists);
 allow_tables_to_appear_in_same_query!(subscriptions, updates);
 allow_tables_to_appear_in_same_query!(digests, users);
 allow_tables_to_appear_in_same_query!(updates, channels);
