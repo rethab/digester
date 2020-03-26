@@ -193,8 +193,15 @@ impl<'v> FromFormValue<'v> for SearchChannelType {
 
 #[get("/")]
 fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
-    match db::subscriptions_find_by_user_id(&db, session.0.user_id) {
-        Err(_) => JsonResponse::InternalServerError,
+    let user_id = session.0.user_id;
+    match db::subscriptions_find_by_user_id(&db, user_id) {
+        Err(err) => {
+            eprintln!(
+                "Failed to load subscriptions for user {}: {:?}",
+                user_id, err
+            );
+            JsonResponse::InternalServerError
+        }
         Ok(subs) => {
             let mut collected = Vec::new();
             for (sub, chan_or_list) in subs {
