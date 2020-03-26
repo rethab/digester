@@ -12,6 +12,7 @@ pub fn mount(rocket: Rocket) -> Rocket {
         "/lists",
         routes![
             list,
+            popular,
             show,
             search,
             add,
@@ -127,6 +128,18 @@ fn list(session: Option<Protected>, db: DigesterDbConn, own: Option<bool>) -> Js
         }
     };
 
+    lists_to_resp(&db, lists).into()
+}
+
+#[get("/popular")]
+fn popular(db: DigesterDbConn) -> JsonResponse {
+    let lists = match db::lists_find_order_by_popularity(&db, 10) {
+        Ok(lists) => lists,
+        Err(err) => {
+            eprintln!("Failed to fetch lists from db {:?}", err);
+            return JsonResponse::InternalServerError;
+        }
+    };
     lists_to_resp(&db, lists).into()
 }
 
