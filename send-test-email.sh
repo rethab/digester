@@ -6,33 +6,26 @@ source .env.local
 
 curl -s \
 -X POST \
---user "$MAILJET_USER:$MAILJET_PASSWORD" \
-https://api.mailjet.com/v3.1/send \
+-H "Authorization: Bearer $SENDGRID_API_KEY" \
 -H 'Content-Type: application/json' \
+https://api.sendgrid.com/v3/mail/send \
 -d '{
-  "Messages":[
+  "from": {
+    "email": "digests@digester.app",
+    "name": "Digester"
+  },
+  "template_id": "d-f83856fe31b94f05bff5b81679e56ef0",
+  "personalizations": [
     {
-      "From": {
-        "Email": "digests@digester.app",
-        "Name": "Digester"
-      },
-      "To": [
+      "to": [
         {
-          "Email": "rethab@pm.me",
-          "Name": "Anonymous Panter"
+          "email": "rethab@pm.me",
+          "name": "Anonymous Panter"
         }
       ],
-      "Subject": "Your digest is ready",
-      "TemplateErrorReporting": {
-        "Email": "rethab@rethab.ch",
-        "Name": "Reto"
-      },
-      "TemplateErrorDeliver": false,
-      "TemplateID": 1153883,
-      "TemplateLanguage": true,
-      "Variables": {
-        "update_subscriptions_url": "https://google.com",
-        "add_subscription_url": "https://google.com",
+
+      "dynamic_template_data": {
+        "subject": "Test digest",
         "subscriptions": [
 	        {"title": "kubernetes/kubernetes", "updates": [
             {"url": "https://google.nl", "title": "v1.18.0-alpha.1"},
@@ -44,6 +37,7 @@ https://api.mailjet.com/v3.1/send \
           ]}
         ]
       }
+
     }
   ]
-}'
+  }'

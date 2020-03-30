@@ -10,4 +10,4 @@ RUN apt-get update && \
 
 COPY --from=build /tmp/digester-build/target/release/worker /
 
-CMD /worker --github-api-token $GITHUB_API_TOKEN --database-uri $DATABASE_URI --mailjet-user $MAILJET_USER --mailjet-password $MAILJET_PASSWORD
+CMD /worker --github-api-token $GITHUB_API_TOKEN --database-uri $DATABASE_URI --sendgrid-api-key $SENDGRID_API_KEY

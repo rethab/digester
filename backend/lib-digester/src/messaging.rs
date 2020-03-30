@@ -1,30 +1,28 @@
 use reqwest::blocking::Client;
-use reqwest::header::CONTENT_TYPE;
+use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Serialize;
 
 use super::Env;
 
-pub struct MailjetCredentials {
-    pub username: String,
-    pub password: String,
+pub struct SendgridCredentials {
+    pub api_key: String,
 }
 
-pub fn send_email(cred: &MailjetCredentials, message: MailjetMessage) -> Result<(), String> {
-    let messages = MailjetMessages::new(message);
+pub fn send_email(cred: &SendgridCredentials, message: SendgridMessage) -> Result<(), String> {
     let result = Client::new()
-        .post("https://api.mailjet.com/v3.1/send")
-        .basic_auth(cred.username.clone(), Some(cred.password.clone()))
+        .post("https://api.sendgrid.com/v3/mail/send")
+        .header(AUTHORIZATION, format!("Bearer {}", cred.api_key))
         .header(CONTENT_TYPE, "application/json")
-        .json(&messages)
+        .json(&message)
         .send();
     match result {
         Ok(resp) if resp.status().is_success() => Ok(()),
-        Ok(resp) => Err(format!("Mailjet returned error: {:?}", resp)),
+        Ok(resp) => Err(format!("Sendgrid returned error: {:?}", resp)),
         Err(err) => Err(format!("Failed to send email: {:?}", err)),
     }
 }
 
-pub fn create_subject(env: &Env, subs: &[MailjetSubscription]) -> String {
+pub fn create_subject(env: &Env, subs: &[SendgridSubscription]) -> String {
     let mut subject = String::new();
 
     if *env != Env::Prod {
@@ -61,98 +59,71 @@ pub fn create_subject(env: &Env, subs: &[MailjetSubscription]) -> String {
 }
 
 #[derive(Serialize)]
-struct MailjetMessages {
-    #[serde(rename = "Messages")]
-    messages: Vec<MailjetMessage>,
+pub struct SendgridMessage {
+    from: SendgridFrom,
+    template_id: String,
+    personalizations: Vec<SendgridPersonalization>,
 }
 
-impl MailjetMessages {
-    fn new(message: MailjetMessage) -> MailjetMessages {
-        MailjetMessages {
-            messages: vec![message],
-        }
-    }
-}
-
-#[derive(Serialize)]
-pub struct MailjetMessage {
-    #[serde(rename = "To")]
-    to: Vec<MailjetTo>,
-    #[serde(rename = "Subject")]
-    subject: String,
-    #[serde(rename = "TemplateID")]
-    template_id: i32,
-    #[serde(rename = "TemplateLanguage")]
-    template_language: bool,
-    #[serde(rename = "TemplateErrorReporting")]
-    template_error_reporting: MailjetTemplateErrorReporting,
-    #[serde(rename = "TemplateErrorDeliver")]
-    template_error_deliver: bool,
-    #[serde(rename = "Variables")]
-    variables: MailjetVariables,
-}
-
-impl MailjetMessage {
+impl SendgridMessage {
     pub fn new(
         email: String,
         subject: String,
-        subscriptions: Vec<MailjetSubscription>,
-    ) -> MailjetMessage {
-        MailjetMessage {
-            to: vec![MailjetTo {
-                email: email.clone(),
-                name: email,
+        subscriptions: Vec<SendgridSubscription>,
+    ) -> SendgridMessage {
+        SendgridMessage {
+            from: SendgridFrom {
+                email: "info@digester.app".into(),
+                name: "Digester".into(),
+            },
+            template_id: "d-f83856fe31b94f05bff5b81679e56ef0".into(),
+            personalizations: vec![SendgridPersonalization {
+                to: vec![SendgridTo {
+                    email: email.clone(),
+                    name: email,
+                }],
+                dynamic_template_data: SendgridTemplateData {
+                    subject,
+                    subscriptions,
+                },
             }],
-            subject,
-            template_id: 1_153_883, // todo make flexible
-            template_language: true,
-            template_error_reporting: MailjetTemplateErrorReporting {
-                email: "rethab@pm.me".into(),
-                name: "Ret".into(),
-            },
-            template_error_deliver: true,
-            // todo make flexible
-            variables: MailjetVariables {
-                update_subscriptions_url: "https://digester.app/subs".into(),
-                add_subscription_url: "https://digester.app/subs".into(),
-                subscriptions,
-            },
         }
     }
 }
 
 #[derive(Serialize)]
-struct MailjetTo {
-    #[serde(rename = "Email")]
+struct SendgridFrom {
     email: String,
-    #[serde(rename = "Name")]
     name: String,
 }
 
 #[derive(Serialize)]
-struct MailjetTemplateErrorReporting {
-    #[serde(rename = "Email")]
+struct SendgridTo {
     email: String,
-    #[serde(rename = "Name")]
     name: String,
 }
 
 #[derive(Serialize)]
-struct MailjetVariables {
-    update_subscriptions_url: String,
-    add_subscription_url: String,
-    subscriptions: Vec<MailjetSubscription>,
+struct SendgridPersonalization {
+    to: Vec<SendgridTo>,
+    dynamic_template_data: SendgridTemplateData,
 }
 
 #[derive(Serialize)]
-pub struct MailjetSubscription {
+struct SendgridTemplateData {
+    subject: String,
+    subscriptions: Vec<SendgridSubscription>,
+}
+
+#[derive(Serialize)]
+pub struct SendgridSubscription {
     title: String,
-    updates: Vec<MailjetUpdate>,
+    updates: Vec<SendgridUpdate>,
 }
 
-impl MailjetSubscription {
-    pub fn new(title: &str, updates: Vec<MailjetUpdate>) -> MailjetSubscription {
-        MailjetSubscription {
+impl SendgridSubscription {
+    pub fn new(title: &str, updates: Vec<SendgridUpdate>) -> SendgridSubscription {
+        SendgridSubscription {
             title: title.into(),
             updates,
         }
@@ -160,7 +131,7 @@ impl MailjetSubscription {
 }
 
 #[derive(Serialize)]
-pub struct MailjetUpdate {
+pub struct SendgridUpdate {
     pub title: String,
     pub url: String,
 }
@@ -171,13 +142,13 @@ mod tests {
 
     #[test]
     fn limit_subject_length_by_not_adding_very_long() {
-        let sub1 = MailjetSubscription::new("kubernetes/kubernetes", Vec::new());
-        let sub2 = MailjetSubscription::new("golang/tools", Vec::new());
-        let sub3 = MailjetSubscription::new(
+        let sub1 = SendgridSubscription::new("kubernetes/kubernetes", Vec::new());
+        let sub2 = SendgridSubscription::new("golang/tools", Vec::new());
+        let sub3 = SendgridSubscription::new(
             "ohmylongorganisationname/ohmylongrepositoryname",
             Vec::new(),
         );
-        let sub4 = MailjetSubscription::new("node/node", Vec::new());
+        let sub4 = SendgridSubscription::new("node/node", Vec::new());
 
         let actual = create_subject(&Env::Prod, &[sub1, sub2, sub3, sub4]);
         let expected = "Digests from kubernetes/kubernetes, golang/tools and more".to_owned();
@@ -186,7 +157,7 @@ mod tests {
 
     #[test]
     fn show_long_subject_if_only_one() {
-        let sub1 = MailjetSubscription::new(
+        let sub1 = SendgridSubscription::new(
             "ohmyverylongorganisationname/ohmyverylongrepositoryname",
             Vec::new(),
         );
@@ -199,8 +170,8 @@ mod tests {
 
     #[test]
     fn dont_show_and_more() {
-        let sub1 = MailjetSubscription::new("kubernetes/kubernetes", Vec::new());
-        let sub2 = MailjetSubscription::new("golang/tools", Vec::new());
+        let sub1 = SendgridSubscription::new("kubernetes/kubernetes", Vec::new());
+        let sub2 = SendgridSubscription::new("golang/tools", Vec::new());
         let actual = create_subject(&Env::Prod, &[sub1, sub2]);
         let expected = "Digests from kubernetes/kubernetes, golang/tools".to_owned();
         assert_eq!(expected, actual)
@@ -209,12 +180,12 @@ mod tests {
     #[test]
     fn prepend_env_to_subject_in_dev_and_stg() {
         // dev
-        let sub1 = MailjetSubscription::new("kubernetes/kubernetes", Vec::new());
+        let sub1 = SendgridSubscription::new("kubernetes/kubernetes", Vec::new());
         let actual = create_subject(&Env::Dev, &[sub1]);
         let expected = "[Dev] Digests from kubernetes/kubernetes".to_owned();
         assert_eq!(expected, actual);
 
-        let sub1 = MailjetSubscription::new("kubernetes/kubernetes", Vec::new());
+        let sub1 = SendgridSubscription::new("kubernetes/kubernetes", Vec::new());
         let actual = create_subject(&Env::Stg, &[sub1]);
         let expected = "[Stg] Digests from kubernetes/kubernetes".to_owned();
         assert_eq!(expected, actual)

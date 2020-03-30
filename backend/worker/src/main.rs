@@ -14,9 +14,7 @@ struct Opt {
     #[structopt(long)]
     database_uri: String,
     #[structopt(long)]
-    mailjet_user: String,
-    #[structopt(long)]
-    mailjet_password: String,
+    sendgrid_api_key: String,
     #[structopt(long = "app-env", default_value = "prod")]
     app_env: AppEnv,
 }
@@ -32,13 +30,12 @@ fn main() -> Result<(), String> {
     let opt = Opt::from_args();
     let db_conn = db::connection_from_str(&opt.database_uri)?;
     let github = GithubRelease::new(&opt.github_api_token)?;
-    let mailjet = digester::MailjetCredentials {
-        username: opt.mailjet_user,
-        password: opt.mailjet_password,
+    let sendgrid = digester::SendgridCredentials {
+        api_key: opt.sendgrid_api_key,
     };
     println!("Running worker in {:?} mode", opt.app_env);
     fetcher::App::new(&db_conn, github).run()?;
-    digester::App::new(&db_conn, mailjet, opt.app_env.into()).run()
+    digester::App::new(&db_conn, sendgrid, opt.app_env.into()).run()
 }
 
 impl FromStr for AppEnv {

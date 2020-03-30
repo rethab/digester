@@ -7,11 +7,11 @@ mod messaging;
 
 use messaging::*;
 
-pub use messaging::MailjetCredentials;
+pub use messaging::SendgridCredentials;
 
 pub struct App<'a> {
     db_conn: &'a db::Connection,
-    mailjet: MailjetCredentials,
+    sendgrid: SendgridCredentials,
     env: Env,
 }
 
@@ -23,10 +23,10 @@ pub enum Env {
 }
 
 impl App<'_> {
-    pub fn new(db_conn: &db::Connection, mailjet: MailjetCredentials, env: Env) -> App {
+    pub fn new(db_conn: &db::Connection, sendgrid: SendgridCredentials, env: Env) -> App {
         App {
             db_conn,
-            mailjet,
+            sendgrid,
             env,
         }
     }
@@ -88,7 +88,7 @@ impl App<'_> {
     }
 
     fn send_digest(&self, user: &User, d_and_s: &[(Digest, Subscription)]) -> Result<(), String> {
-        let mut mailjet_subscriptions = Vec::with_capacity(d_and_s.len());
+        let mut sendgrid_subscriptions = Vec::with_capacity(d_and_s.len());
         for (digest, subscription) in d_and_s {
             // we send new updates since the last digest or since
             // when the subscription was created if this is the first digest
@@ -99,19 +99,19 @@ impl App<'_> {
 
             if !updates.is_empty() {
                 let channel = db::channels_find_by_id(&self.db_conn.0, subscription.channel_id)?;
-                let mailjet_updates = updates
+                let sendgrid_updates = updates
                     .into_iter()
-                    .map(|u| MailjetUpdate {
+                    .map(|u| SendgridUpdate {
                         title: u.title,
                         url: u.url,
                     })
                     .collect();
-                mailjet_subscriptions
-                    .push(MailjetSubscription::new(&channel.name, mailjet_updates));
+                sendgrid_subscriptions
+                    .push(SendgridSubscription::new(&channel.name, sendgrid_updates));
             }
         }
 
-        if mailjet_subscriptions.is_empty() {
+        if sendgrid_subscriptions.is_empty() {
             // happens if user has a due digest, but we have no updates..
             println!(
                 "No updates to send for User {} in any of their digests",
@@ -121,13 +121,13 @@ impl App<'_> {
         } else {
             println!(
                 "{} updates to send for user {}",
-                mailjet_subscriptions.len(),
+                sendgrid_subscriptions.len(),
                 user.id
             );
-            let subject = messaging::create_subject(&self.env, &mailjet_subscriptions);
+            let subject = messaging::create_subject(&self.env, &sendgrid_subscriptions);
             let recipient = d_and_s[0].1.email.clone();
-            let message = MailjetMessage::new(recipient, subject, mailjet_subscriptions);
-            messaging::send_email(&self.mailjet, message)
+            let message = SendgridMessage::new(recipient, subject, sendgrid_subscriptions);
+            messaging::send_email(&self.sendgrid, message)
         }
     }
 }
