@@ -33,6 +33,7 @@
 </template>
 
 <script>
+import Api from "@/services/api.js";
 import ChannelIcon from "@/components/common/ChannelIcon.vue";
 import FrequencySelection from "@/components/subs/FrequencySelection.vue";
 import Channel from "@/models/Channel.js";
@@ -58,7 +59,10 @@ export default {
       loading: false,
       successSnackbar: false,
       errorSnackbar: false,
-      errorMessage: null
+      errorMessage: null,
+
+      email: null,
+      emailErrors: null
     };
   },
   computed: {
@@ -85,16 +89,17 @@ export default {
   },
   methods: {
     subscribe() {
-      this.loading = true;
-      let payload = {
-        channel: this.channel,
-        frequency: this.frequency.frequency,
-        day: this.frequency.day,
-        time: this.frequency.time
-      };
+      if (!this.validate()) {
+        return;
+      }
 
-      this.$store
-        .dispatch("subscribe", payload)
+      this.loading = true;
+
+      let subPromise = this.isAuthenticated
+        ? this.subscribeUser()
+        : this.subscribePending();
+
+      subPromise
         .then(() => {
           this.successSnackbar = true;
           this.loading = false;
@@ -108,6 +113,87 @@ export default {
             this.errorMessage = "Something went wrong. Please try again.";
           }
         });
+    },
+    subscribePending() {
+      let payload = {
+        email: this.email,
+        // todo resolve via moment-timezone
+        timezone: "Europe/Berlin",
+        channelId: this.channel.id,
+        channelType: this.channel.type,
+        frequency: this.frequency.frequency,
+        day: this.frequency.day,
+        time: this.frequency.time
+      };
+
+      return new Promise((resolve, reject) => {
+        Api()
+          .post("subscriptions/add_pending", payload)
+          .then(() => {
+            resolve();
+          })
+          .catch(err => {
+            reject(err);
+          });
+      });
+    },
+    subscribeUser() {
+      let payload = {
+        channelId: this.channel.id,
+        channelType: this.channel.type,
+        frequency: this.frequency.frequency,
+        day: this.frequency.day,
+        time: this.frequency.time
+      };
+
+      return new Promise((resolve, reject) => {
+        this.$store
+          .dispatch("subscribe", payload)
+          .then(() => {
+            resolve();
+          })
+          .catch(err => {
+            reject(err);
+          });
+      });
+    },
+    validate() {
+      if (!this.isAuthenticated) {
+        if (!this.validateEmail()) {
+          this.emailErrors = ["Please provide a valid e-mail address"];
+          return false;
+        }
+      }
+      return true;
+    },
+    validateEmail() {
+      const blacklist = "`^*;,(){}[]";
+      if (!blacklist.split("").every(b => !this.email.includes(b))) {
+        return false;
+      }
+
+      let parts = this.email.split("@");
+      if (parts.length != 2) {
+        return false;
+      }
+
+      let name = parts[0],
+        domain = parts[1];
+
+      if (name.length == 0) {
+        return false;
+      }
+
+      parts = domain.split(".");
+      if (parts.length < 2) {
+        return false;
+      }
+
+      if (!parts.every(p => p.length > 0)) {
+        return false;
+      }
+
+      return true;
     },
     longDay(day) {
       let longDay = "";

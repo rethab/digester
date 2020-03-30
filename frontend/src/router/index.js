@@ -2,6 +2,7 @@ import Vue from 'vue'
 import VueRouter from 'vue-router'
 import store from '@/store/index.js';
 import Home from '@/views/Home.vue'
+import ActivateSubscription from '@/views/ActivateSubscription.vue'
 import Subscriptions from '@/views/Subscriptions.vue'
 import Subscribe from '@/views/Subscribe.vue'
 import Lists from '@/views/Lists.vue'
@@ -18,6 +19,11 @@ const routes = [
     path: '/',
     name: 'home',
     component: Home
+  },
+  {
+    path: '/subs/activate/:token',
+    name: 'activate-subscription',
+    component: ActivateSubscription
   },
   {
     path: '/subs',

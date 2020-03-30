@@ -110,6 +110,5 @@ CREATE TABLE pending_subscriptions (
   day VARCHAR NULL,
   time TIME WITHOUT TIME ZONE NOT NULL,
   inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(list_id, user_id) -- user can subscribe to list only once
-  
+  UNIQUE(list_id, email) -- user can subscribe to list only once
 );
