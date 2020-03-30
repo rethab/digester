@@ -125,6 +125,10 @@ function run_prod_backup() {
   rm -r $tempdirs
 }
 
+function run_psql_container() {
+  docker run -it postgres:12.1 /bin/bash
+}
+
 function run_sanity_check() {
 
   # check licenses
@@ -155,6 +159,7 @@ case $CMD in
   kill-db)       kill_db ;;
   build-db)      build_db ;;
   psql)          run_psql ;;
+  psql-cont)     run_psql_container ;;
   psql-stg)      run_psql_stg ;;
   redis)         run_redis ;;
   install-redli) install_redli ;;
