@@ -13,7 +13,7 @@ pub fn create_subject_for_list(env: &Env, list_name: &str) -> String {
     subject
 }
 
-pub fn create_subject(env: &Env, subs: &[MailjetSubscription]) -> String {
+pub fn create_subject(env: &Env, subs: &[SendgridSubscription]) -> String {
     let mut subject = String::new();
 
     if *env != Env::Prod {
@@ -55,13 +55,13 @@ mod tests {
 
     #[test]
     fn limit_subject_length_by_not_adding_very_long() {
-        let sub1 = MailjetSubscription::new("kubernetes/kubernetes", Vec::new());
-        let sub2 = MailjetSubscription::new("golang/tools", Vec::new());
-        let sub3 = MailjetSubscription::new(
+        let sub1 = SendgridSubscription::new("kubernetes/kubernetes", Vec::new());
+        let sub2 = SendgridSubscription::new("golang/tools", Vec::new());
+        let sub3 = SendgridSubscription::new(
             "ohmylongorganisationname/ohmylongrepositoryname",
             Vec::new(),
         );
-        let sub4 = MailjetSubscription::new("node/node", Vec::new());
+        let sub4 = SendgridSubscription::new("node/node", Vec::new());
 
         let actual = create_subject(&Env::Prod, &[sub1, sub2, sub3, sub4]);
         let expected = "Digests from kubernetes/kubernetes, golang/tools and more".to_owned();
@@ -70,7 +70,7 @@ mod tests {
 
     #[test]
     fn show_long_subject_if_only_one() {
-        let sub1 = MailjetSubscription::new(
+        let sub1 = SendgridSubscription::new(
             "ohmyverylongorganisationname/ohmyverylongrepositoryname",
             Vec::new(),
         );
@@ -83,8 +83,8 @@ mod tests {
 
     #[test]
     fn dont_show_and_more() {
-        let sub1 = MailjetSubscription::new("kubernetes/kubernetes", Vec::new());
-        let sub2 = MailjetSubscription::new("golang/tools", Vec::new());
+        let sub1 = SendgridSubscription::new("kubernetes/kubernetes", Vec::new());
+        let sub2 = SendgridSubscription::new("golang/tools", Vec::new());
         let actual = create_subject(&Env::Prod, &[sub1, sub2]);
         let expected = "Digests from kubernetes/kubernetes, golang/tools".to_owned();
         assert_eq!(expected, actual)
@@ -93,12 +93,12 @@ mod tests {
     #[test]
     fn prepend_env_to_subject_in_dev_and_stg() {
         // dev
-        let sub1 = MailjetSubscription::new("kubernetes/kubernetes", Vec::new());
+        let sub1 = SendgridSubscription::new("kubernetes/kubernetes", Vec::new());
         let actual = create_subject(&Env::Dev, &[sub1]);
         let expected = "[Dev] Digests from kubernetes/kubernetes".to_owned();
         assert_eq!(expected, actual);
 
-        let sub1 = MailjetSubscription::new("kubernetes/kubernetes", Vec::new());
+        let sub1 = SendgridSubscription::new("kubernetes/kubernetes", Vec::new());
         let actual = create_subject(&Env::Stg, &[sub1]);
         let expected = "[Stg] Digests from kubernetes/kubernetes".to_owned();
         assert_eq!(expected, actual)

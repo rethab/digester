@@ -9,12 +9,16 @@ pub struct SendgridCredentials {
     pub api_key: String,
 }
 
-pub fn send_email(cred: &SendgridCredentials, message: SendgridMessage) -> Result<(), String> {
+pub fn send_email(
+    cred: &SendgridCredentials,
+    messages: Vec<SendgridMessage>,
+) -> Result<(), String> {
+    let request = SendgridRequest::new(messages);
     let result = Client::new()
         .post("https://api.sendgrid.com/v3/mail/send")
         .header(AUTHORIZATION, format!("Bearer {}", cred.api_key))
         .header(CONTENT_TYPE, "application/json")
-        .json(&message)
+        .json(&request)
         .send();
     match result {
         Ok(resp) if resp.status().is_success() => Ok(()),
@@ -24,34 +28,21 @@ pub fn send_email(cred: &SendgridCredentials, message: SendgridMessage) -> Resul
 }
 
 #[derive(Serialize)]
-pub struct SendgridMessage {
+pub struct SendgridRequest {
     from: SendgridFrom,
     template_id: String,
-    personalizations: Vec<SendgridPersonalization>,
+    personalizations: Vec<SendgridMessage>,
 }
 
-impl SendgridMessage {
-    pub fn new(
-        email: String,
-        subject: String,
-        subscriptions: Vec<SendgridSubscription>,
-    ) -> SendgridMessage {
-        SendgridMessage {
+impl SendgridRequest {
+    pub fn new(messages: Vec<SendgridMessage>) -> SendgridRequest {
+        SendgridRequest {
             from: SendgridFrom {
                 email: "info@digester.app".into(),
                 name: "Digester".into(),
             },
             template_id: "d-f83856fe31b94f05bff5b81679e56ef0".into(),
-            personalizations: vec![SendgridPersonalization {
-                to: vec![SendgridTo {
-                    email: email.clone(),
-                    name: email,
-                }],
-                dynamic_template_data: SendgridTemplateData {
-                    subject,
-                    subscriptions,
-                },
-            }],
+            personalizations: messages,
         }
     }
 }
@@ -69,9 +60,28 @@ struct SendgridTo {
 }
 
 #[derive(Serialize)]
-struct SendgridPersonalization {
+pub struct SendgridMessage {
     to: Vec<SendgridTo>,
     dynamic_template_data: SendgridTemplateData,
+}
+
+impl SendgridMessage {
+    pub fn new(
+        recipient_email: String,
+        subject: String,
+        subscriptions: Vec<SendgridSubscription>,
+    ) -> SendgridMessage {
+        SendgridMessage {
+            to: vec![SendgridTo {
+                email: recipient_email.clone(),
+                name: recipient_email,
+            }],
+            dynamic_template_data: SendgridTemplateData {
+                subject,
+                subscriptions,
+            },
+        }
+    }
 }
 
 #[derive(Serialize)]
