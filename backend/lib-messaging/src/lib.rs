@@ -5,4 +5,4 @@ pub enum Env {
     Dev,
 }
 
-pub mod mailjet;
+pub mod sendgrid;

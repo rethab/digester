@@ -10,7 +10,7 @@ use chrono::Utc;
 use chrono_tz::Tz;
 use db::{ChannelType, Day, Frequency, Timezone};
 use either::{Left, Right};
-use messaging::mailjet::pending_subscriptions;
+use messaging::sendgrid::pending_subscriptions;
 use rocket::http::RawStr;
 use rocket::request::FromFormValue;
 use rocket::{Rocket, State};
@@ -433,8 +433,8 @@ fn validate_pending_subscription(
                 .to_owned();
 
             Ok(db::NewPendingSubscription {
-                email: email,
-                timezone: timezone,
+                email,
+                timezone,
                 list_id: new_sub.channel_id,
                 token,
                 frequency: new_sub.frequency.clone(),
@@ -449,7 +449,7 @@ fn validate_pending_subscription(
             }
             if let Err(tz_err) = tz_err {
                 if !err_str.is_empty() {
-                    err_str.push_str(", ".into())
+                    err_str.push_str(", ")
                 }
                 err_str.push_str(&tz_err)
             }
@@ -488,8 +488,8 @@ fn validate_email(email: &str) -> Result<String, String> {
 
 fn validate_timezone(timezone: &str) -> Result<Timezone, String> {
     Tz::from_str(timezone)
-        .map(|tz| Timezone(tz))
-        .map_err(|_| format!("Not a valid timezone"))
+        .map(Timezone)
+        .map_err(|_| format!("Not a valid timezone: {}", timezone))
 }
 
 fn send_activation_email(db: &DigesterDbConn, pending_sub: &db::PendingSubscription, token: &str) {
@@ -535,11 +535,11 @@ fn activate_pending(db: DigesterDbConn, token: String) -> JsonResponse {
         email: pending_sub.email.clone(),
         timezone: Some(pending_sub.timezone.clone()),
         channel_id: None,
-        list_id: Some(pending_sub.list_id.clone()),
+        list_id: Some(pending_sub.list_id),
         user_id: None,
         frequency: pending_sub.frequency.clone(),
         day: pending_sub.day.clone(),
-        time: pending_sub.time.clone(),
+        time: pending_sub.time,
     };
 
     match db::subscriptions_insert(&db, new_sub) {

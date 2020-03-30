@@ -3,9 +3,9 @@ use chrono_tz::Tz;
 use lib_db as db;
 use lib_db::{Digest, Frequency, InsertDigest, Subscription, User};
 use lib_messaging as messaging;
-use messaging::mailjet::*;
+use messaging::sendgrid::*;
 
-pub use messaging::mailjet::SendgridCredentials;
+pub use messaging::sendgrid::SendgridCredentials;
 
 pub struct App<'a> {
     db_conn: &'a db::Connection,
@@ -70,7 +70,7 @@ impl App<'_> {
 
     fn insert_next_digest(&self, subscription: &Subscription) -> Result<(), String> {
         let timezone = match subscription.timezone.as_ref() {
-            Some(tz) => tz.0.clone(),
+            Some(tz) => tz.0,
             None => match subscription.user_id {
                 None => {
                     return Err(format!(
@@ -146,7 +146,7 @@ impl App<'_> {
             }
         }
 
-        messaging::mailjet::send_email(&self.sendgrid, messages)
+        messaging::sendgrid::send_email(&self.sendgrid, messages)
     }
 
     fn create_message_for_channels(
@@ -203,7 +203,7 @@ impl App<'_> {
     fn create_message_for_lists(
         &self,
         user: &User,
-        digest: Digest,
+        digest: &Digest,
         sub: &Subscription,
         list_id: i32,
     ) -> Result<Option<SendgridMessage>, String> {
@@ -214,7 +214,7 @@ impl App<'_> {
 
         // we send new updates since the last digest or since
         // when the subscription was created if this is the first digest
-        let updates_since = db::digests_find_previous(&self.db_conn, &digest)?
+        let updates_since = db::digests_find_previous(&self.db_conn, digest)?
             .and_then(|d| d.sent)
             .unwrap_or(sub.inserted);
 
