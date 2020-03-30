@@ -517,7 +517,7 @@ fn send_activation_email(db: &DigesterDbConn, pending_sub: &db::PendingSubscript
     }
 }
 
-#[get("/activate/<token>")]
+#[post("/activate/<token>")]
 fn activate_pending(db: DigesterDbConn, token: String) -> JsonResponse {
     let pending_sub = match db::pending_subscriptions_find_by_token(&db, &token) {
         Ok(Some(ps)) => ps,
