@@ -146,7 +146,11 @@ impl App<'_> {
             }
         }
 
-        messaging::sendgrid::send_email(&self.sendgrid, messages)
+        if let Some(ne_messages) = NEVec::from_vec(messages) {
+            messaging::sendgrid::send_email(&self.sendgrid, ne_messages)
+        } else {
+            Ok(())
+        }
     }
 
     fn create_message_for_channels(
