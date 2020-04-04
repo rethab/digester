@@ -5,13 +5,40 @@ use serde::Serialize;
 pub mod digests;
 pub mod pending_subscriptions;
 
+pub struct NEVec<T> {
+    head: T,
+    tail: Vec<T>,
+}
+
+impl<T> NEVec<T> {
+    pub fn from_vec(mut vs: Vec<T>) -> Option<NEVec<T>> {
+        if vs.is_empty() {
+            None
+        } else {
+            Some(NEVec {
+                head: vs.remove(0),
+                tail: vs,
+            })
+        }
+    }
+}
+
+impl<T> Into<Vec<T>> for NEVec<T> {
+    fn into(mut self) -> Vec<T> {
+        let mut tmp = Vec::with_capacity(self.tail.len() + 1);
+        tmp.push(self.head);
+        tmp.append(&mut self.tail);
+        tmp
+    }
+}
+
 pub struct SendgridCredentials {
     pub api_key: String,
 }
 
 pub fn send_email(
     cred: &SendgridCredentials,
-    messages: Vec<SendgridMessage>,
+    messages: NEVec<SendgridMessage>,
 ) -> Result<(), String> {
     let request = SendgridRequest::new(messages);
     let result = Client::new()
@@ -22,7 +49,11 @@ pub fn send_email(
         .send();
     match result {
         Ok(resp) if resp.status().is_success() => Ok(()),
-        Ok(resp) => Err(format!("Sendgrid returned error: {:?}", resp)),
+        Ok(resp) => Err(format!(
+            "Sendgrid returned status {}: {:?}",
+            resp.status(),
+            resp.text().unwrap_or("".to_owned())
+        )),
         Err(err) => Err(format!("Failed to send email: {:?}", err)),
     }
 }
@@ -35,14 +66,14 @@ pub struct SendgridRequest {
 }
 
 impl SendgridRequest {
-    pub fn new(messages: Vec<SendgridMessage>) -> SendgridRequest {
+    pub fn new(messages: NEVec<SendgridMessage>) -> SendgridRequest {
         SendgridRequest {
             from: SendgridFrom {
                 email: "info@digester.app".into(),
                 name: "Digester".into(),
             },
             template_id: "d-f83856fe31b94f05bff5b81679e56ef0".into(),
-            personalizations: messages,
+            personalizations: messages.into(),
         }
     }
 }
