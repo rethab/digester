@@ -1,5 +1,5 @@
 <template>
-  <v-row cols="12">
+  <v-row cols="12" dense>
     <v-col cols="5">
       <v-select
         v-model="value.frequency"

@@ -1,9 +1,5 @@
 <template>
   <v-container>
-    <v-snackbar v-model="successSnackbar" :top="true">
-      Subscription added
-      <v-btn text @click="successSnackbar = false">Close</v-btn>
-    </v-snackbar>
     <v-snackbar v-model="errorSnackbar" :top="true">
       {{errorMessage}}
       <v-btn text @click="errorSnackbar = false">Close</v-btn>
@@ -15,7 +11,7 @@
       <ChannelSearchResults
         class="mt-6"
         v-if="searchResults"
-        v-on:channelSelected="openDialog"
+        v-on:channelSelected="redirectToFrequencySubscriptionForm"
         :channels="searchResults"
         :channelType="searchChannelType"
         :searchError="searchError"
@@ -23,26 +19,18 @@
         alreadyThereMessage="Already Subscribed"
       />
     </section>
-    <FrequencyDialog
-      v-on:closeDialog="closeDialog"
-      v-on:subscribe="subscribe"
-      v-if="selectedChannel"
-      :channel="selectedChannel"
-    />
   </v-container>
 </template>
 
 <script>
 import Search from "@/components/subs/Search.vue";
 import ChannelSearchResults from "@/components/channels/ChannelSearchResults.vue";
-import FrequencyDialog from "@/components/subs/FrequencyDialog.vue";
 import Api from "@/services/api.js";
 import { mapGetters } from "vuex";
 export default {
   components: {
     Search,
-    ChannelSearchResults,
-    FrequencyDialog
+    ChannelSearchResults
   },
   data() {
     return {
@@ -54,19 +42,15 @@ export default {
       searchInput: "",
       searchChannelType: null,
       searchResults: null,
-      searchError: null,
-      selectedChannel: null
+      searchError: null
     };
   },
   computed: {
     ...mapGetters(["subscriptions"])
   },
   methods: {
-    openDialog(channel) {
-      this.selectedChannel = channel;
-    },
-    closeDialog() {
-      this.selectedChannel = null;
+    redirectToFrequencySubscriptionForm(channel) {
+      this.$router.replace(`/subscribe/${channel.type}/${channel.id}`);
     },
     alreadySubscribed(channel) {
       return this.subscriptions.some(
@@ -104,7 +88,7 @@ export default {
             this.searchResults.length == 1 &&
             !this.alreadySubscribed(this.searchResults[0])
           ) {
-            this.openDialog(this.searchResults[0]);
+            this.redirectToFrequencySubscriptionForm(this.searchResults[0]);
           } else {
             this.$vuetify.goTo("#searchResults");
           }
@@ -117,38 +101,6 @@ export default {
           } else {
             this.searchError =
               "Something went wrong. Please make sure the input is valid. Contact us info@digester.app if you think this should be working.";
-          }
-        });
-    },
-    subscribe(channel, frequency) {
-      let payload = {
-        channel: channel,
-        frequency: frequency.frequency,
-        day: frequency.day,
-        time: frequency.time
-      };
-
-      this.$store
-        .dispatch("subscribe", payload)
-        .then(() => {
-          this.successSnackbar = true;
-          this.selectedChannel = null;
-
-          const allSubscribed = !this.searchResults.some(
-            channel => !this.alreadySubscribed(channel)
-          );
-
-          if (allSubscribed) {
-            this.searchResults = null;
-            this.searchInput = "";
-          }
-        })
-        .catch(err => {
-          this.errorSnackbar = true;
-          if (err.response.data.error) {
-            this.errorMessage = err.response.data.error;
-          } else {
-            this.errorMessage = "Something went wrong. Please try again.";
           }
         });
     }

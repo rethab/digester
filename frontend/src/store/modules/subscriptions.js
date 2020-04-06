@@ -41,8 +41,8 @@ const actions = {
     subscribe({ commit }, subscription) {
 
         let payload = {
-            channelId: subscription.channel.id,
-            channelType: subscription.channel.type,
+            channelId: subscription.channelId,
+            channelType: subscription.channelType,
             frequency: subscription.frequency,
             day: subscription.day,
             time: subscription.time,
@@ -54,6 +54,7 @@ const actions = {
                     commit('ADD_SUBSCRIPTION', resp.data);
                     resolve(subscription);
                 }).catch(err => {
+                    console.log("err", err)
                     reject(err)
                 });
         })

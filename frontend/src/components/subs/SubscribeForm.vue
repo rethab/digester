@@ -1,16 +1,12 @@
 <template>
   <v-container>
-    <v-snackbar v-model="successSnackbar" :top="true">
-      Subscription added
-      <v-btn text @click="successSnackbar = false">Close</v-btn>
-    </v-snackbar>
     <v-snackbar v-model="errorSnackbar" :top="true">
       {{errorMessage}}
       <v-btn text @click="errorSnackbar = false">Close</v-btn>
     </v-snackbar>
     <v-card>
       <v-card-title>
-        <ChannelIcon :type="channel.type" class="mr-1" />Subscribe to
+        <ChannelIcon :type="channel.type" class="mr-1" />
         <router-link
           style="text-decoration:none; color:inherit"
           class="ml-1"
@@ -18,7 +14,7 @@
         >{{channel.name}}</router-link>
       </v-card-title>
       <v-card-subtitle>You will get {{formatFrequency}} via E-Mail.</v-card-subtitle>
-      <v-card-text>
+      <v-card-text class="pb-0">
         <FrequencySelection v-model="frequency" />
         <div v-if="!isAuthenticated">
           <v-text-field v-model.trim="email" :error-messages="emailErrors" label="E-Mail"></v-text-field>
@@ -26,7 +22,8 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn :loading="loading" @click="subscribe" class="primary">Subscribe</v-btn>
+        <v-btn to="/subs" color="secondary" outlined>Cancel</v-btn>
+        <v-btn :loading="loading" @click="subscribe" color="primary">Subscribe</v-btn>
       </v-card-actions>
     </v-card>
   </v-container>
@@ -57,7 +54,6 @@ export default {
       },
 
       loading: false,
-      successSnackbar: false,
       errorSnackbar: false,
       errorMessage: null,
 
@@ -101,8 +97,8 @@ export default {
 
       subPromise
         .then(() => {
-          this.successSnackbar = true;
           this.loading = false;
+          this.$router.replace("/subs");
         })
         .catch(err => {
           this.errorSnackbar = true;
