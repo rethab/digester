@@ -10,5 +10,6 @@ extern crate serde_derive;
 pub mod cache;
 pub mod controllers;
 pub mod iam;
+pub mod lists;
 pub mod ratelimiting;
 pub mod subscriptions;

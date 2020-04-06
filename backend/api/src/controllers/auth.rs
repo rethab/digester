@@ -97,7 +97,7 @@ fn oauth_exchange<P: IdentityProvider + Sync + Send>(
             cookies.add(cookie);
             JsonResponse::Ok(json!({
                 "username": session.username,
-                "userId": session.user_id,
+                "userId": session.user_id.0,
                 // on the first login, we're trying to automatically set the timezone.
                 "first_login": user.first_login,
                 // we need to pass an access token back, because vue-authenticate looks at the
@@ -127,7 +127,7 @@ fn oauth_exchange<P: IdentityProvider + Sync + Send>(
 fn me(session: Protected) -> JsonResponse {
     JsonResponse::Ok(json! ({
         "username": session.0.username,
-        "userId": session.0.user_id,
+        "userId": session.0.user_id.0,
     }))
 }
 

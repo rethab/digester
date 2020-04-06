@@ -1,6 +1,7 @@
 use lib_db as db;
 
-use super::super::subscriptions;
+use super::super::iam::UserId;
+use super::super::lists;
 use super::common::*;
 use chrono::naive::NaiveTime;
 use db::ChannelType;
@@ -121,7 +122,7 @@ fn list(session: Option<Protected>, db: DigesterDbConn, own: Option<bool>) -> Js
         },
         _ => None,
     };
-    let lists = match db::lists_find(&db, maybe_creator_id) {
+    let lists = match db::lists_find(&db, maybe_creator_id.map(|c| c.0)) {
         Ok(lists) => lists,
         Err(err) => {
             eprintln!("Failed to fetch lists from db {:?}", err);
@@ -190,36 +191,19 @@ fn lists_to_resp(db: &DigesterDbConn, lists: Vec<(db::List, db::Identity)>) -> V
 
 #[delete("/<list_id>")]
 fn delete(session: Protected, db: DigesterDbConn, list_id: i32) -> JsonResponse {
-    // ensure list exists and is owned by active user
-    if let Err(err) = get_own_list(&db, &session, list_id) {
-        return err;
-    };
-
-    println!(
-        "Deleting list with id {} for user_id {}",
-        list_id, session.0.user_id
-    );
-    if let Ok(subscriptions) = db::subscriptions_find_by_list_id(&db, list_id) {
-        if subscriptions
-            .iter()
-            .any(|s| s.user_id != Some(session.0.user_id))
-        {
-            return JsonResponse::BadRequest(
-                "This list has subscriptions from other people.".into(),
-            );
-        } else {
-            for sub in subscriptions {
-                if let Err(err) = subscriptions::delete(&db, sub.id) {
-                    eprintln!("Failed to delete subscriptions {}: {}", sub.id, err);
-                    return JsonResponse::InternalServerError;
-                }
-            }
+    use lists::DeleteError::*;
+    match lists::delete(&db, list_id, session.0.user_id) {
+        Ok(()) => JsonResponse::Ok(json!({})),
+        Err(OtherSubscriptions) => {
+            JsonResponse::BadRequest("This list has other subscribers besides you".into())
         }
-    }
-    match db::lists_delete_by_id(&db, list_id) {
-        Ok(()) => JsonResponse::Ok(json!("")),
-        Err(err) => {
-            eprintln!("Failed to delete list by id: {}", err);
+        Err(NotFound) => JsonResponse::NotFound,
+        Err(Authorization) => JsonResponse::Forbidden,
+        Err(Unknown(err)) => {
+            eprintln!(
+                "Failed to delete list {} for user {}: {}",
+                list_id, session.0.user_id, err
+            );
             JsonResponse::InternalServerError
         }
     }
@@ -235,7 +219,7 @@ fn add(session: Protected, db: DigesterDbConn, new_list: Json<NewList>) -> JsonR
 
     let new_list = db::NewList {
         name: list_name,
-        creator: session.0.user_id,
+        creator: session.0.user_id.0,
     };
     match db::lists_insert(&db, &new_list) {
         Ok(list) => {
@@ -268,9 +252,9 @@ fn add(session: Protected, db: DigesterDbConn, new_list: Json<NewList>) -> JsonR
     }
 }
 
-fn subscribe_user(db: &DigesterDbConn, user_id: i32, list: &db::List) -> Result<(), String> {
+fn subscribe_user(db: &DigesterDbConn, user_id: UserId, list: &db::List) -> Result<(), String> {
     use db::InsertError::*;
-    let identity = db::identities_find_by_user_id(&db, user_id)?;
+    let identity = db::identities_find_by_user_id(&db, user_id.0)?;
     let new_sub = db::NewSubscription {
         email: identity.email,
         timezone: None,
@@ -295,7 +279,7 @@ fn update(
     list_id: i32,
     updated_list: Json<NewList>,
 ) -> JsonResponse {
-    let list = match get_own_list(&db, &session, list_id) {
+    let list = match get_own_list(&db, session.0.user_id, list_id) {
         Ok(list) => list,
         Err(err) => return err,
     };
@@ -327,7 +311,7 @@ fn add_channel(
     list_id: i32,
     add_channel: Json<AddChannel>,
 ) -> JsonResponse {
-    let list = match get_own_list(&db, &session, list_id) {
+    let list = match get_own_list(&db, session.0.user_id, list_id) {
         Ok(list) => list,
         Err(err) => return err,
     };
@@ -351,7 +335,7 @@ fn remove_channel(
     list_id: i32,
     remove_channel: Json<RemoveChannel>,
 ) -> JsonResponse {
-    let list = match get_own_list(&db, &session, list_id) {
+    let list = match get_own_list(&db, session.0.user_id, list_id) {
         Ok(list) => list,
         Err(err) => return err,
     };
@@ -370,21 +354,19 @@ fn remove_channel(
 
 fn get_own_list(
     db: &DigesterDbConn,
-    session: &Protected,
+    user_id: UserId,
     list_id: i32,
 ) -> Result<db::List, JsonResponse> {
-    let list = match db::lists_find_by_id(&db, list_id) {
-        Ok(Some((list, _))) => list,
-        Ok(None) => return Err(JsonResponse::NotFound),
-        Err(err) => {
-            eprintln!("Failed to fetch list with id {}: {}", list_id, err);
-            return Err(JsonResponse::InternalServerError);
+    use lists::Error::*;
+    lists::get_own_list(&db, user_id, list_id).map_err(|err| match err {
+        NotFound => JsonResponse::NotFound,
+        Authorization => JsonResponse::Forbidden,
+        Unknown(err) => {
+            eprintln!(
+                "Failed to load list {} for user {}: {}",
+                list_id, user_id, err
+            );
+            JsonResponse::InternalServerError
         }
-    };
-
-    if list.creator != session.0.user_id {
-        Err(JsonResponse::Forbidden)
-    } else {
-        Ok(list)
-    }
+    })
 }

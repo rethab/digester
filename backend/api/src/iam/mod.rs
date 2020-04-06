@@ -34,10 +34,19 @@ pub struct ProviderUserInfo {
     username: String,
 }
 
+#[derive(Clone, Copy)]
+pub struct UserId(pub i32);
+
+impl std::fmt::Display for UserId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[derive(Clone)]
 pub struct Session {
     pub id: Uuid,
-    pub user_id: i32,
+    pub user_id: UserId,
     pub username: String,
 }
 
@@ -48,7 +57,7 @@ impl Session {
     pub fn generate(user_id: i32, username: String) -> Session {
         Session {
             id: Uuid::new_v4(),
-            user_id,
+            user_id: UserId(user_id),
             username,
         }
     }
@@ -56,7 +65,7 @@ impl Session {
     fn from_data(id: Uuid, data: cache::SessionData) -> Session {
         Session {
             id,
-            user_id: data.user_id,
+            user_id: UserId(data.user_id),
             username: data.username,
         }
     }
@@ -186,10 +195,10 @@ fn create_session(c: &mut RedisConnection, user: &User) -> Result<Session, Strin
     Ok(session)
 }
 
-pub fn create_delete_challenge(c: &mut RedisConnection, user_id: i32) -> Result<String, String> {
+pub fn create_delete_challenge(c: &mut RedisConnection, user_id: UserId) -> Result<String, String> {
     let challenge = Uuid::new_v4().to_string().split_at(6).0.to_owned();
     let duration = Duration::minutes(3);
-    cache::delete_challenge_store(c, user_id, &challenge, duration).map(|_| challenge)
+    cache::delete_challenge_store(c, user_id.0, &challenge, duration).map(|_| challenge)
 }
 
 pub enum DeleteError {
@@ -200,10 +209,10 @@ pub enum DeleteError {
 pub fn delete_account(
     c: &mut RedisConnection,
     db: &PgConnection,
-    user_id: i32,
+    user_id: UserId,
     challenge_response: &str,
 ) -> Result<(), DeleteError> {
-    let challenge = match cache::delete_challenge_get_and_delete(c, user_id) {
+    let challenge = match cache::delete_challenge_get_and_delete(c, user_id.0) {
         Err(err) => {
             return Err(DeleteError::Unknown(format!(
                 "Failed to get delete challenge: {:?}",
@@ -222,8 +231,8 @@ pub fn delete_account(
 
     db.build_transaction()
         .run(|| {
-            db::subscriptions_delete_by_user_id(db, user_id)?;
-            db::users_delete_by_id(db, user_id)
+            db::subscriptions_delete_by_user_id(db, user_id.0)?;
+            db::users_delete_by_id(db, user_id.0)
         })
         .map_err(|err| {
             DeleteError::Unknown(format!(
