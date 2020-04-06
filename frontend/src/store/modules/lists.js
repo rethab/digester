@@ -39,10 +39,9 @@ const actions = {
             Api().put("lists", {
                 name: list.name
             }).then(resp => {
-                list.id = resp.data.id;
-                list.channels = [];
-                commit('ADD_LIST', list);
-                resolve(list);
+                const newList = resp.data;
+                commit('ADD_LIST', newList);
+                resolve(newList);
             }).catch(err => {
                 reject(err)
             });
