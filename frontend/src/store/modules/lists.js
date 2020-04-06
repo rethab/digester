@@ -24,6 +24,7 @@ const actions = {
     },
     loadList({ commit }, id) {
         return new Promise((resolve, reject) => {
+            console.log(`Load list ${id}`);
             Api().get(`lists/${id}`)
                 .then(resp => {
                     commit('SET_LISTS', [resp.data]);

@@ -1,6 +1,5 @@
 <template>
   <div>
-    <EditList v-if="showEdit" :list="value" v-on:closeDialog="showEdit = false" />
     <v-card color="secondary" class="lighten-4">
       <div>
         <v-card-title>
@@ -28,7 +27,7 @@
         </v-card-text>
         <v-card-actions>
           <v-btn v-if="isCreator" @click="remove" class="error" text>Delete</v-btn>
-          <v-btn v-if="isCreator" @click="edit" class="secondary">Edit</v-btn>
+          <v-btn v-if="isCreator" :to="`/list/${value.id}/edit`" class="secondary">Edit</v-btn>
           <v-spacer></v-spacer>
           <v-btn v-if="alreadySubscribed" :disabled="true" class="primary">Already Subscribed</v-btn>
           <v-btn v-else :to="`/subscribe/list/${value.id}`" class="primary">Subscribe</v-btn>
@@ -40,12 +39,10 @@
 
 <script>
 import ChannelIcon from "@/components/common/ChannelIcon.vue";
-import EditList from "@/components/lists/EditList.vue";
 import Channel from "@/models/Channel.js";
 export default {
   components: {
-    ChannelIcon,
-    EditList
+    ChannelIcon
   },
   props: {
     value: {
@@ -59,7 +56,6 @@ export default {
   },
   data() {
     return {
-      showEdit: false,
       alreadySubscribed: false
     };
   },
@@ -87,9 +83,6 @@ export default {
   methods: {
     remove() {
       throw "Implement me";
-    },
-    edit() {
-      this.showEdit = true;
     }
   }
 };
