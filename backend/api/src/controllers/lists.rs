@@ -222,13 +222,26 @@ fn add(session: Protected, db: DigesterDbConn, new_list: Json<NewList>) -> JsonR
     match db::lists_insert(&db, &new_list) {
         Ok(list) => {
             let user_id = session.0.user_id;
-            if let Err(err) = subscribe_user(db, user_id, &list) {
+            if let Err(err) = subscribe_user(&db, user_id, &list) {
                 eprintln!(
                     "Failed to subscribe user {} after creating list {}: {}",
                     user_id, list.id, err
                 )
             }
-            JsonResponse::Ok(json!({"id": list.id}))
+            let identity = match db::identities_find_by_user_id(&db, list.creator) {
+                Err(err) => {
+                    eprintln!(
+                        "Creator {} for list {} not found in DB: {}",
+                        list.creator, list.id, err
+                    );
+                    return JsonResponse::InternalServerError;
+                }
+                Ok(id) => id,
+            };
+
+            let mut lists = Vec::with_capacity(1);
+            lists.push((list, identity));
+            lists_to_resp(&db, lists)[0].clone().into()
         }
         Err(err) => {
             eprintln!("Failed to insert new list {:?}: {:?}", new_list, err);
@@ -237,7 +250,7 @@ fn add(session: Protected, db: DigesterDbConn, new_list: Json<NewList>) -> JsonR
     }
 }
 
-fn subscribe_user(db: DigesterDbConn, user_id: i32, list: &db::List) -> Result<(), String> {
+fn subscribe_user(db: &DigesterDbConn, user_id: i32, list: &db::List) -> Result<(), String> {
     use db::InsertError::*;
     let identity = db::identities_find_by_user_id(&db, user_id)?;
     let new_sub = db::NewSubscription {
