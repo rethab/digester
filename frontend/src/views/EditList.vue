@@ -1,7 +1,7 @@
 <template>
-  <v-container>
+  <div>
     <EditList v-if="list !== null" :list="list" />
-  </v-container>
+  </div>
 </template>
 
 <script>

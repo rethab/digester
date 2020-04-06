@@ -1,6 +1,6 @@
 <template>
-  <v-container>
-    <v-card>
+  <div>
+    <v-card flat>
       <v-card-title>{{list.name}}</v-card-title>
       <v-card-subtitle>Add Channels to Your List</v-card-subtitle>
       <v-form @submit.prevent="submit">
@@ -30,35 +30,37 @@
           alreadyThereMessage="Already in List"
         />
       </section>
-      <div v-if="channels.length > 0">
-        <v-card-title>Channels in this List ({{channels.length}})</v-card-title>
-        <v-card-text>
-          <v-list>
-            <v-list-item v-for="(channel, idx) in channels" :key="idx" class="pl-0" color="red">
-              <v-list-item-avatar>
-                <ChannelIcon :type="channel.type" />
-              </v-list-item-avatar>
-              <v-list-item-content>
-                <v-list-item-title>{{channel.name}}</v-list-item-title>
-                <v-list-item-subtitle>
-                  <a
-                    :href="channel.link"
-                    target="_blank"
-                    style="text-decoration: none"
-                  >{{channel.link}}</a>
-                </v-list-item-subtitle>
-              </v-list-item-content>
-              <v-list-item-action>
-                <v-btn @click="removeChannel(channel)" text icon>
-                  <v-icon color="error lighten-1">{{removeIcon}}</v-icon>
-                </v-btn>
-              </v-list-item-action>
-            </v-list-item>
-          </v-list>
-        </v-card-text>
-      </div>
+      <v-card-title>
+        <span v-if="channels.length == 0">No channels in this List</span>
+        <span v-else-if="channels.length == 1">One channel in this List</span>
+        <span v-else>{{channels.length}} channels in this List</span>
+      </v-card-title>
+      <v-card-text v-if="channels.length > 0">
+        <v-list>
+          <v-list-item v-for="(channel, idx) in channels" :key="idx" class="pl-0" color="red">
+            <v-list-item-avatar>
+              <ChannelIcon :type="channel.type" />
+            </v-list-item-avatar>
+            <v-list-item-content>
+              <v-list-item-title>{{channel.name}}</v-list-item-title>
+              <v-list-item-subtitle>
+                <a
+                  :href="channel.link"
+                  target="_blank"
+                  style="text-decoration: none"
+                >{{channel.link}}</a>
+              </v-list-item-subtitle>
+            </v-list-item-content>
+            <v-list-item-action>
+              <v-btn @click="removeChannel(channel)" text icon>
+                <v-icon color="error lighten-1">{{removeIcon}}</v-icon>
+              </v-btn>
+            </v-list-item-action>
+          </v-list-item>
+        </v-list>
+      </v-card-text>
     </v-card>
-  </v-container>
+  </div>
 </template>
 
 <script>

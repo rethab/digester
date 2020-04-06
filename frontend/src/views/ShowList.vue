@@ -1,7 +1,5 @@
 <template>
-  <v-container>
-    <ShowList v-if="list !== null" v-model="list" :dense="false" :checkSubscription="true" />
-  </v-container>
+  <ShowList v-if="list !== null" v-model="list" :dense="false" :checkSubscription="true" />
 </template>
 
 <script>

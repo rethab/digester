@@ -1,6 +1,6 @@
 <template>
-  <v-container>
-    <v-card>
+  <div>
+    <v-card flat>
       <div>
         <v-card-title>
           <ChannelLink
@@ -28,7 +28,7 @@
         </v-card-text>
       </div>
     </v-card>
-  </v-container>
+  </div>
 </template>
 
 <script>

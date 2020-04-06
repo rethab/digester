@@ -1,10 +1,10 @@
 <template>
-  <v-container>
+  <div>
     <v-snackbar v-model="errorSnackbar" :top="true">
       {{errorMessage}}
       <v-btn text @click="errorSnackbar = false">Close</v-btn>
     </v-snackbar>
-    <v-card>
+    <v-card flat>
       <v-card-title>
         <ChannelIcon :type="channel.type" class="mr-1" />
         <router-link
@@ -26,7 +26,7 @@
         <v-btn :loading="loading" @click="subscribe" color="primary">Subscribe</v-btn>
       </v-card-actions>
     </v-card>
-  </v-container>
+  </div>
 </template>
 
 <script>

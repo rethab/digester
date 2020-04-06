@@ -1,8 +1,8 @@
 <template>
-  <v-container>
+  <div>
     <AddList v-on:listAdded="showEdit" />
     <ListLists />
-  </v-container>
+  </div>
 </template>
 
 <script>

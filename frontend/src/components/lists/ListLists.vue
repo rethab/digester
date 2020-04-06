@@ -3,13 +3,13 @@
     <div class="text-center">
       <h1 class="title mt-2" v-if="lists.length > 0">My Lists</h1>
     </div>
-    <v-container fluid>
+    <v-container fluid class="px-0">
       <v-overlay absolute opacity="0.1" :value="loading">
         <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
       </v-overlay>
-      <v-row dense>
+      <v-row>
         <v-col v-for="(list, idx) in lists" :key="idx" cols="12">
-          <ShowList :value="list" :dense="true" :checkSubscription="false" />
+          <ShowList :value="list" :dedicated="false" :checkSubscription="false" />
         </v-col>
       </v-row>
     </v-container>

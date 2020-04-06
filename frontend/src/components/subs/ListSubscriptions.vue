@@ -3,11 +3,11 @@
     <div class="text-center">
       <h1 class="title mt-2" v-if="subscriptions.length > 0">Existing Subscriptions</h1>
     </div>
-    <v-container fluid>
+    <v-container class="px-0" fluid>
       <v-overlay absolute opacity="0.1" :value="loading">
         <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
       </v-overlay>
-      <v-row dense>
+      <v-row>
         <v-col
           v-for="subscription in subscriptions"
           :key="subscription.name"
