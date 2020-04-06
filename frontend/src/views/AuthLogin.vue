@@ -46,8 +46,7 @@ export default {
           "Do you have an e-mail address in your Facebook/Github account? If not, please add one. ";
         msg +=
           "These are the instructions for Facebook: <a style='color: black' href='https://www.facebook.com/help/162801153783275' target='_blank'>Facebook Help</a>.<br/> ";
-        msg +=
-          "Did you grant Digester access to your e-mail address? ";
+        msg += "Did you grant Digester access to your e-mail address? ";
         msg +=
           "If not, please review your settings here: <a style='color: black' href='https://www.facebook.com/help/218345114850283' target='_blank'>Facebook Privacy Settings</a>.<br />";
         msg += "<br />If nothing helps, please contact us at info@digester.app";
@@ -64,7 +63,7 @@ export default {
   mounted() {
     const isAuthenticated = this.$store.getters.isAuthenticated;
     if (isAuthenticated) {
-      // this.$router.push({ name: "home" });
+      this.$router.push("/cockpit");
     }
   }
 };

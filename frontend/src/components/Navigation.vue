@@ -3,7 +3,11 @@
     <v-list-item>
       <v-list-item-content>
         <v-list-item-title class="title">
-          <router-link to="/" style="text-decoration:none" class="black--text">Digester</router-link>
+          <router-link
+            :to="isAuthenticated ? '/cockpit' : '/'"
+            style="text-decoration:none"
+            class="black--text"
+          >Digester</router-link>
         </v-list-item-title>
         <v-list-item-subtitle>End constant interruptions</v-list-item-subtitle>
       </v-list-item-content>

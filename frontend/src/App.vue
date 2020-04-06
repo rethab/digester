@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <v-navigation-drawer v-model="drawer" app temporary>
+    <v-navigation-drawer v-model="drawer" app>
       <Navigation />
       <template v-if="isAuthenticated" v-slot:append>
         <div class="pa-2">
@@ -12,7 +12,11 @@
     <v-app-bar app color="primary" dark>
       <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
       <v-toolbar-title>
-        <router-link to="/" class="white--text" style="text-decoration:none">Digester</router-link>
+        <router-link
+          :to="isAuthenticated ? '/cockpit' : '/'"
+          class="white--text"
+          style="text-decoration:none"
+        >Digester</router-link>
       </v-toolbar-title>
       <v-spacer></v-spacer>
       <div>
