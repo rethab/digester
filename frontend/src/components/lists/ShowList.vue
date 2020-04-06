@@ -29,8 +29,10 @@
           <v-btn v-if="isCreator" @click="remove" class="error" text>Delete</v-btn>
           <v-btn v-if="isCreator" :to="`/list/${value.id}/edit`" class="secondary">Edit</v-btn>
           <v-spacer></v-spacer>
-          <v-btn v-if="alreadySubscribed" :disabled="true" class="primary">Already Subscribed</v-btn>
-          <v-btn v-else :to="`/subscribe/list/${value.id}`" class="primary">Subscribe</v-btn>
+          <div v-if="checkSubscription">
+            <v-btn v-if="alreadySubscribed" :disabled="true" class="primary">Already Subscribed</v-btn>
+            <v-btn v-else :to="`/subscribe/list/${value.id}`" class="primary">Subscribe</v-btn>
+          </div>
         </v-card-actions>
       </div>
     </v-card>
@@ -52,6 +54,10 @@ export default {
     dense: {
       type: Boolean,
       default: false
+    },
+    checkSubscription: {
+      type: Boolean,
+      require: true
     }
   },
   data() {
@@ -71,7 +77,7 @@ export default {
     }
   },
   mounted() {
-    if (this.isAuthenticated) {
+    if (this.isAuthenticated && this.checkSubscription) {
       this.$store.dispatch("loadSubscriptions").then(() => {
         this.alreadySubscribed = this.$store.getters.alreadySubscribed(
           Channel.List,
