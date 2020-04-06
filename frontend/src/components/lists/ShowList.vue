@@ -9,7 +9,7 @@
           >{{value.name}}</router-link>
         </v-card-title>
         <v-card-text>
-          <p v-if="value.channels.length == 0">This list contains no channels</p>
+          <span v-if="value.channels.length == 0">This list contains no channels</span>
           <span v-for="(channel, i) in value.channels" :key="i">
             <span v-if="i > 0">
               <span v-if="dense">&nbsp;|&nbsp;</span>
@@ -25,13 +25,32 @@
             >{{channel.name}}</a>
           </span>
         </v-card-text>
+        <v-divider light class="mx-2"></v-divider>
         <v-card-actions>
-          <v-btn v-if="isCreator" @click="remove" :loading="deleteLoading" class="error" text>Delete</v-btn>
-          <v-btn v-if="isCreator" :to="`/list/${value.id}/edit`" class="secondary">Edit</v-btn>
-          <v-spacer></v-spacer>
           <div v-if="checkSubscription">
             <v-btn v-if="alreadySubscribed" :disabled="true" class="primary">Already Subscribed</v-btn>
             <v-btn v-else :to="`/subscribe/list/${value.id}`" class="primary">Subscribe</v-btn>
+          </div>
+          <v-spacer></v-spacer>
+          <div v-if="isCreator">
+            <router-link :to="`/list/${value.id}/edit`" text>
+              <v-icon>{{ pencilIcon }}</v-icon>
+            </router-link>
+            <v-dialog v-model="deleteDialog" width="500">
+              <template v-slot:activator="{ on }">
+                <v-icon class="mr-1 ml-2" v-on="on" color="error lighten-1">{{ removeIcon }}</v-icon>
+              </template>
+              <v-card>
+                <v-card-title>Are you sure?</v-card-title>
+                <v-card-text>Please confirm that you want to delete this list.</v-card-text>
+                <v-divider></v-divider>
+                <v-card-actions>
+                  <v-btn text @click="deleteDialog = false">Cancel</v-btn>
+                  <v-spacer></v-spacer>
+                  <v-btn @click="remove" :loading="deleteLoading" color="error" text>Confirm</v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
           </div>
         </v-card-actions>
       </div>
@@ -42,6 +61,7 @@
 <script>
 import ChannelIcon from "@/components/common/ChannelIcon.vue";
 import Channel from "@/models/Channel.js";
+import { mdiPencilOutline, mdiDelete } from "@mdi/js";
 export default {
   components: {
     ChannelIcon
@@ -62,8 +82,12 @@ export default {
   },
   data() {
     return {
+      pencilIcon: mdiPencilOutline,
+      removeIcon: mdiDelete,
+
       alreadySubscribed: false,
-      deleteLoading: false
+      deleteLoading: false,
+      deleteDialog: null
     };
   },
   computed: {
@@ -94,7 +118,7 @@ export default {
         .dispatch("deleteList", this.value)
         .then(() => {
           this.deleteLoading = false;
-          this.$router.push({ path: "/lists", query: { listDeleted: true } });
+          this.deleteDialog = false;
         })
         .catch(() => {
           this.deleteLoading = false;

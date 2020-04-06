@@ -49,8 +49,8 @@
                 </v-list-item-subtitle>
               </v-list-item-content>
               <v-list-item-action>
-                <v-btn @click="removeChannel(channel)" text icon color="error">
-                  <v-icon>{{removeIcon}}</v-icon>
+                <v-btn @click="removeChannel(channel)" text icon>
+                  <v-icon color="error lighten-1">{{removeIcon}}</v-icon>
                 </v-btn>
               </v-list-item-action>
             </v-list-item>
@@ -67,7 +67,7 @@ import ChannelInput from "@/components/channels/ChannelInput.vue";
 import ChannelSearchResults from "@/components/channels/ChannelSearchResults.vue";
 import Channel from "@/models/Channel.js";
 import Api from "@/services/api.js";
-import { mdiMinusCircle } from "@mdi/js";
+import { mdiDelete } from "@mdi/js";
 export default {
   components: {
     ChannelInput,
@@ -82,7 +82,7 @@ export default {
   },
   data() {
     return {
-      removeIcon: mdiMinusCircle,
+      removeIcon: mdiDelete,
 
       channel: new Channel("RssFeed", null),
       nameErrors: [],
