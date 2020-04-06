@@ -15,11 +15,7 @@ const getters = {
 }
 
 const actions = {
-    loadSubscriptions({ commit, getters }) {
-        // todo will be invoked multiple if loading a list of lists
-        if (getters.subscriptions.length != 0) {
-            return Promise.resolve(getters.subscriptions);
-        }
+    loadSubscriptions({ commit }) {
         return new Promise((resolve, reject) => {
             Api().get("subscriptions")
                 .then(resp => {
