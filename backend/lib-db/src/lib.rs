@@ -14,6 +14,8 @@ use std::env;
 
 pub struct Connection(pub PgConnection);
 
+pub type RichSubscription = (Subscription, Either<Channel, List>);
+
 pub mod model;
 mod schema;
 
@@ -269,11 +271,11 @@ pub fn updates_find_by_user_id(
         .map_err(|err| format!("Failed to load updates by id: {:?}", err))
 }
 
-pub fn subscriptions_find_by_id(
+pub fn subscriptions_find_by_id_user_id(
     conn: &PgConnection,
     id: i32,
     user_id: i32,
-) -> Result<Option<(Subscription, Either<Channel, List>)>, String> {
+) -> Result<Option<RichSubscription>, String> {
     use schema::subscriptions;
 
     let mb_sub = subscriptions::table
@@ -331,7 +333,7 @@ pub fn subscriptions_find_without_due_digest(
 pub fn subscriptions_find_by_user_id(
     conn: &PgConnection,
     user_id: i32,
-) -> Result<Vec<(Subscription, Either<Channel, List>)>, String> {
+) -> Result<Vec<RichSubscription>, String> {
     use schema::subscriptions;
 
     let subscriptions = subscriptions::table
@@ -350,6 +352,23 @@ pub fn subscriptions_find_by_user_id(
         results.push(subscriptions_zip_with_channel_or_list(conn, sub)?);
     }
     Ok(results)
+}
+
+pub fn subscriptions_find_by_list_id(
+    conn: &PgConnection,
+    list_id: i32,
+) -> Result<Vec<Subscription>, String> {
+    use schema::subscriptions;
+    subscriptions::table
+        .filter(subscriptions::list_id.eq(list_id))
+        .select(subscriptions::all_columns)
+        .load::<Subscription>(conn)
+        .map_err(|err| {
+            format!(
+                "Failed to fetch subscriptions for list_id {}: {:?}",
+                list_id, err
+            )
+        })
 }
 
 fn subscriptions_zip_with_channel_or_list(
@@ -409,6 +428,13 @@ pub fn subscriptions_delete_by_user_id(conn: &PgConnection, user_id: i32) -> Res
         .execute(conn)?;
 
     diesel::delete(subscriptions::table.filter(subscriptions::user_id.eq(user_id)))
+        .execute(conn)
+        .map(|_| ())
+}
+
+pub fn subscriptions_delete_by_id(conn: &PgConnection, sub_id: i32) -> Result<(), Error> {
+    use schema::subscriptions;
+    diesel::delete(subscriptions::table.filter(subscriptions::id.eq(sub_id)))
         .execute(conn)
         .map(|_| ())
 }
@@ -557,6 +583,13 @@ pub fn digests_remove_unsent_for_user(conn: &PgConnection, user: &User) -> Resul
         digests_remove_unsent_for_subscription(conn, &sub)?;
     }
     Ok(())
+}
+
+pub fn digests_delete_by_subscription_id(conn: &PgConnection, sub_id: i32) -> Result<(), Error> {
+    use schema::digests::dsl::*;
+    diesel::delete(digests.filter(subscription_id.eq(sub_id)))
+        .execute(conn)
+        .map(|_| ())
 }
 
 pub fn users_find_by_provider(

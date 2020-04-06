@@ -1,5 +1,6 @@
 use lib_db as db;
 
+use super::super::subscriptions;
 use super::common::*;
 use chrono::naive::NaiveTime;
 use db::ChannelType;
@@ -198,6 +199,23 @@ fn delete(session: Protected, db: DigesterDbConn, list_id: i32) -> JsonResponse 
         "Deleting list with id {} for user_id {}",
         list_id, session.0.user_id
     );
+    if let Ok(subscriptions) = db::subscriptions_find_by_list_id(&db, list_id) {
+        if subscriptions
+            .iter()
+            .any(|s| s.user_id != Some(session.0.user_id))
+        {
+            return JsonResponse::BadRequest(
+                "This list has subscriptions from other people.".into(),
+            );
+        } else {
+            for sub in subscriptions {
+                if let Err(err) = subscriptions::delete(&db, sub.id) {
+                    eprintln!("Failed to delete subscriptions {}: {}", sub.id, err);
+                    return JsonResponse::InternalServerError;
+                }
+            }
+        }
+    }
     match db::lists_delete_by_id(&db, list_id) {
         Ok(()) => JsonResponse::Ok(json!("")),
         Err(err) => {

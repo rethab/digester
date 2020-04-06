@@ -2,7 +2,7 @@ use lib_channels as channels;
 use lib_db as db;
 use lib_messaging as messaging;
 
-use super::super::subscriptions::search;
+use super::super::subscriptions;
 use super::common::*;
 use channels::github_release::GithubRelease;
 use chrono::naive::NaiveTime;
@@ -16,12 +16,21 @@ use rocket::request::FromFormValue;
 use rocket::{Rocket, State};
 use rocket_contrib::json::{Json, JsonValue};
 use std::str::FromStr;
+use subscriptions::search;
 use uuid::Uuid;
 
 pub fn mount(rocket: Rocket) -> Rocket {
     rocket.mount(
         "/subscriptions",
-        routes![list, search, add, update, add_pending, activate_pending],
+        routes![
+            list,
+            search,
+            add,
+            update,
+            delete,
+            add_pending,
+            activate_pending
+        ],
     )
 }
 
@@ -587,7 +596,7 @@ fn update(
     updated_subscription: Json<UpdatedSubscription>,
 ) -> JsonResponse {
     let (original, channel_or_list) =
-        match db::subscriptions_find_by_id(&db.0, id, session.0.user_id) {
+        match db::subscriptions_find_by_id_user_id(&db.0, id, session.0.user_id) {
             Ok(Some((sub, channel_or_list))) => (sub, channel_or_list),
             Ok(None) => return JsonResponse::NotFound,
             Err(_) => return JsonResponse::InternalServerError,
@@ -608,6 +617,25 @@ fn update(
             }
         },
         Err(_) => JsonResponse::InternalServerError,
+    }
+}
+
+#[delete("/<id>")]
+fn delete(session: Protected, db: DigesterDbConn, id: i32) -> JsonResponse {
+    let sub = match db::subscriptions_find_by_id_user_id(&db.0, id, session.0.user_id) {
+        Ok(Some((sub, _))) => sub,
+        Ok(None) => return JsonResponse::NotFound,
+        Err(_) => return JsonResponse::InternalServerError,
+    };
+    match subscriptions::delete(&db, sub.id) {
+        Ok(()) => JsonResponse::Ok(json!({})),
+        Err(err) => {
+            eprintln!(
+                "Failed to delete subscription {} for user {}: {}",
+                id, session.0.user_id, err
+            );
+            JsonResponse::InternalServerError
+        }
     }
 }
 
