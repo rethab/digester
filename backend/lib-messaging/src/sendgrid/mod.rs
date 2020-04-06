@@ -52,7 +52,7 @@ pub fn send_email(
         Ok(resp) => Err(format!(
             "Sendgrid returned status {}: {:?}",
             resp.status(),
-            resp.text().unwrap_or("".to_owned())
+            resp.text().unwrap_or_else(|_| "".to_owned())
         )),
         Err(err) => Err(format!("Failed to send email: {:?}", err)),
     }
