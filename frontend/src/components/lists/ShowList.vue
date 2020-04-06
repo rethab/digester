@@ -1,6 +1,6 @@
 <template>
   <div>
-    <v-card color="secondary" class="lighten-4">
+    <v-card :flat="dedicated" :color="dedicated ? null : 'secondary'" class="lighten-4">
       <div>
         <v-card-title>
           <router-link
@@ -12,10 +12,10 @@
           <span v-if="value.channels.length == 0">This list contains no channels</span>
           <span v-for="(channel, i) in value.channels" :key="i">
             <span v-if="i > 0">
-              <span v-if="dense">&nbsp;|&nbsp;</span>
-              <span v-else>
+              <span v-if="dedicated">
                 <br />
               </span>
+              <span v-else>&nbsp;|&nbsp;</span>
             </span>
             <ChannelIcon :type="channel.type" :small="true" class="mr-1" />
             <a
@@ -25,7 +25,7 @@
             >{{channel.name}}</a>
           </span>
         </v-card-text>
-        <v-divider light class="mx-2"></v-divider>
+        <v-divider light class="mx-2" v-if="checkSubscription || isCreator"></v-divider>
         <v-card-actions>
           <div v-if="checkSubscription">
             <v-btn v-if="alreadySubscribed" :disabled="true" class="primary">Subscribed</v-btn>
@@ -71,9 +71,9 @@ export default {
       type: Object,
       required: true
     },
-    dense: {
+    dedicated: {
       type: Boolean,
-      default: false
+      default: true
     },
     checkSubscription: {
       type: Boolean,

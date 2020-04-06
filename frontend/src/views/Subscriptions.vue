@@ -1,10 +1,10 @@
 <template>
-  <v-container>
+  <div>
     <InitializeTimezone v-if="firstLogin" />
     <TimezoneCheck v-else />
-    <AddSubscription />
+    <AddSubscription class="py-2" />
     <ListSubscriptions />
-  </v-container>
+  </div>
 </template>
 
 <script>

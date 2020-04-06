@@ -1,7 +1,5 @@
 <template>
-  <v-container>
-    <ListOverview />
-  </v-container>
+  <ListOverview class="py-2" />
 </template>
 
 <script>

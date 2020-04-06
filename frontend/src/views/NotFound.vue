@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <div>
     <v-row justify="center" align="center">
       <v-col class="text-center">
         <h1 class="display-2 font-weight-medium">This does not exist :(</h1>
@@ -16,5 +16,5 @@
         </p>
       </v-col>
     </v-row>
-  </v-container>
+  </div>
 </template>

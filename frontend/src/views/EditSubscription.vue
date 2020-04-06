@@ -1,7 +1,7 @@
 <template>
-  <v-container>
+  <div>
     <EditSubscription v-if="subscription !== null" v-model="subscription" />
-  </v-container>
+  </div>
 </template>
 
 <script>

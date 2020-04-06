@@ -1,7 +1,7 @@
 <template>
-  <v-container>
+  <div>
     <SubscribeForm v-if="channel" :channel="channel" />
-  </v-container>
+  </div>
 </template>
 
 <script>

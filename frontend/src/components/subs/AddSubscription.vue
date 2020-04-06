@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <div>
     <v-snackbar v-model="errorSnackbar" :top="true">
       {{errorMessage}}
       <v-btn text @click="errorSnackbar = false">Close</v-btn>
@@ -19,7 +19,7 @@
         alreadyThereMessage="Already Subscribed"
       />
     </section>
-  </v-container>
+  </div>
 </template>
 
 <script>
