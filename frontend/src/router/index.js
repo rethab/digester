@@ -7,9 +7,11 @@ import Subscriptions from '@/views/Subscriptions.vue'
 import Subscribe from '@/views/Subscribe.vue'
 import Lists from '@/views/Lists.vue'
 import ShowList from '@/views/ShowList.vue'
+import EditList from '@/views/EditList.vue'
 import Updates from '@/views/Updates.vue'
 import Settings from '@/views/Settings.vue'
 import AuthLogin from '@/views/AuthLogin.vue'
+import NotFound from '@/views/NotFound.vue'
 
 
 Vue.use(VueRouter)
@@ -44,8 +46,17 @@ const routes = [
   },
   {
     path: '/list/:id',
-    name: 'list-show',
-    component: ShowList
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        component: ShowList,
+      },
+      {
+        path: 'edit',
+        component: EditList
+      }
+    ]
   },
   {
     path: '/updates',
@@ -63,6 +74,10 @@ const routes = [
     path: '/auth/login',
     name: 'auth-login',
     component: AuthLogin
+  },
+  {
+    path: '*',
+    component: NotFound
   }
 ]
 
