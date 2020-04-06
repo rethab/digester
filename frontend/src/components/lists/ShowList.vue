@@ -28,7 +28,7 @@
         <v-divider light class="mx-2"></v-divider>
         <v-card-actions>
           <div v-if="checkSubscription">
-            <v-btn v-if="alreadySubscribed" :disabled="true" class="primary">Already Subscribed</v-btn>
+            <v-btn v-if="alreadySubscribed" :disabled="true" class="primary">Subscribed</v-btn>
             <v-btn v-else :to="`/subscribe/list/${value.id}`" class="primary">Subscribe</v-btn>
           </div>
           <v-spacer></v-spacer>
