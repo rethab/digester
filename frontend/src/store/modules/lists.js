@@ -47,6 +47,14 @@ const actions = {
             });
         })
     },
+    deleteList({ commit }, list) {
+        return new Promise((resolve, reject) => {
+            Api().delete(`lists/${list.id}`).then(() => {
+                commit('REMOVE_LIST', list);
+                resolve();
+            }).catch(err => reject(err))
+        })
+    },
     addChannel({ commit }, { list, channel }) {
         return new Promise((resolve, reject) => {
             Api().post(`lists/${list.id}/add_channel`, {
@@ -79,6 +87,9 @@ const mutations = {
     },
     ADD_LIST: (state, list) => {
         state.lists.unshift(list);
+    },
+    REMOVE_LIST: (state, list) => {
+        state.lists = state.lists.filter(l => l.id != list.id);
     },
     ADD_CHANNEL: (state, { list, channel }) => {
         const index = state.lists.findIndex(l => l.id == list.id);
