@@ -11,16 +11,14 @@ export default {
     let token = this.$route.params.token.trim();
     if (this.validate(token)) {
       this.activate(token)
-        .then(() => {
-          console.log("Activated :)");
-        })
+        .then(() => {})
         .catch(err => {
           if (err.response.status == 404) {
-            console.log("Not found. Already activated?");
+            this.todo = 1;
           }
         });
     } else {
-      console.log("Invalid token");
+      this.alsoTodo = 2;
     }
   },
   methods: {

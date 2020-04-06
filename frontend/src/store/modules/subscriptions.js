@@ -54,7 +54,6 @@ const actions = {
                     commit('ADD_SUBSCRIPTION', resp.data);
                     resolve(subscription);
                 }).catch(err => {
-                    console.log("err", err)
                     reject(err)
                 });
         })
