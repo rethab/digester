@@ -71,7 +71,7 @@ fn utc_to_tz(datetime: DateTime<Utc>, tz: Tz) -> DateTime<Tz> {
 
 #[get("/?<offset>&<limit>")]
 fn list(session: Protected, db: DigesterDbConn, offset: u32, limit: u32) -> JsonResponse {
-    let user = match db::users_find_by_id(&db, session.0.user_id) {
+    let user = match db::users_find_by_id(&db, session.0.user_id.0) {
         Err(err) => {
             eprintln!(
                 "Failed to fetch user by id {}: {:?}",

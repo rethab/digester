@@ -878,6 +878,20 @@ pub fn lists_find_order_by_popularity(
 
 pub fn lists_delete_by_id(conn: &PgConnection, list_id: i32) -> Result<(), String> {
     use schema::lists;
+    use schema::lists_channels;
+
+    // delete all links to channels
+    diesel::delete(lists_channels::table.filter(lists_channels::list_id.eq(list_id)))
+        .execute(conn)
+        .map(|_| ())
+        .map_err(|err| {
+            format!(
+                "Failed to delete list/channel mappings for list {}: {:?}",
+                list_id, err
+            )
+        })?;
+
+    // delete list itself
     diesel::delete(lists::table.filter(lists::id.eq(list_id)))
         .execute(conn)
         .map(|_| ())

@@ -33,7 +33,7 @@ impl Into<JsonResponse> for Settings {
 #[get("/")]
 fn get(session: Protected, db: DigesterDbConn) -> JsonResponse {
     let user_id = session.0.user_id;
-    match db::users_find_by_id(&db.0, user_id) {
+    match db::users_find_by_id(&db.0, user_id.0) {
         Ok(user) => {
             let settings = Settings {
                 timezone: user.timezone.map(|tz| tz.0),
@@ -41,7 +41,7 @@ fn get(session: Protected, db: DigesterDbConn) -> JsonResponse {
             settings.into()
         }
         Err(err) => {
-            eprintln!("Failed to fetch timezone for user {}: {:?}", user_id, err);
+            eprintln!("Failed to fetch timezone for user {}: {:?}", user_id.0, err);
             JsonResponse::InternalServerError
         }
     }
@@ -55,7 +55,7 @@ fn update(
 ) -> JsonResponse {
     let user_id = session.0.user_id;
     let new_tz = updated_settings.0.timezone;
-    let user = match db::users_find_by_id(&db.0, user_id) {
+    let user = match db::users_find_by_id(&db.0, user_id.0) {
         Ok(user) => user,
         Err(err) => {
             eprintln!("Failed to load user with id {}: {:?}", user_id, err);
@@ -68,7 +68,7 @@ fn update(
         return JsonResponse::Ok(json!({}));
     }
 
-    match db::users_update_timezone(&db.0, user_id, new_tz) {
+    match db::users_update_timezone(&db.0, user_id.0, new_tz) {
         Ok(()) => {
             println!("Updated timezone of user {} to {:?}", user_id, new_tz);
             if let Err(err) = db::digests_remove_unsent_for_user(&db.0, &user) {
