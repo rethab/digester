@@ -8,7 +8,7 @@
       />
       <v-card-title>
         <span>
-          <ChannelIcon :type="channel.channel_type" />
+          <ChannelIcon :type="channel.type" />
           {{channel.name}}
         </span>
       </v-card-title>

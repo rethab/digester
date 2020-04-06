@@ -27,6 +27,17 @@ const actions = {
                 })
         })
     },
+    loadSubscription(_, id) {
+        return new Promise((resolve, reject) => {
+            Api().get(`subscriptions/${id}`)
+                .then(resp => {
+                    resolve(resp.data);
+                })
+                .catch(err => {
+                    reject(err)
+                })
+        })
+    },
     subscribe({ commit }, subscription) {
 
         let payload = {
@@ -49,7 +60,7 @@ const actions = {
     },
     updateSubscription({ commit }, subscription) {
         return new Promise((resolve, reject) => {
-            Api().put("subscriptions/" + subscription.id, {
+            Api().put(`subscriptions/${subscription.id}`, {
                 frequency: subscription.frequency,
                 day: subscription.day,
                 time: subscription.time
@@ -60,6 +71,15 @@ const actions = {
                 reject(err);
             })
         });
+    },
+    deleteSubscription({ commit }, id) {
+        return new Promise((resolve, reject) => {
+            Api().delete(`subscriptions/${id}`).then(() => {
+                commit('DELETE_SUBSCRIPTION', id);
+                resolve();
+            }
+            ).catch(err => reject(err));
+        });
     }
 }
 
@@ -69,6 +89,9 @@ const mutations = {
     },
     ADD_SUBSCRIPTION: (state, subscription) => {
         state.subscriptions.unshift(subscription);
+    },
+    DELETE_SUBSCRIPTION: (state, id) => {
+        state.subscriptions = state.subscriptions.filter(s => s.id != id);
     },
     UPDATE_SUBSCRIPTION: (state, subscription) => {
         state.subscriptions.forEach(sub => {

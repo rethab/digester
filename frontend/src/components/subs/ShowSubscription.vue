@@ -1,47 +1,60 @@
 <template>
-  <v-card color="secondary" class="lighten-4">
-    <div>
-      <v-card-title>
-        <ChannelLink
-          :channelId="value.channelId"
-          :channelLink="value.channelLink"
-          :text="value.name"
-        />
-        <ChannelIcon :type="value.channelType" class="pl-1" small />
-      </v-card-title>
-      <v-card-subtitle>
-        <ChannelLink
-          :channelId="value.channelId"
-          :channelLink="value.channelLink"
-          :text="value.channelLink ? value.channelLink : value.summary"
-          class="grey--text"
-        />
-      </v-card-subtitle>
-      <v-card-subtitle v-if="!editing">
-        <v-icon small>{{ calendarIcon }}</v-icon>
-        {{value | showFrequency}}
-        <v-icon @click="editing = true" small class="ml-3">{{ pencilIcon }}</v-icon>
-      </v-card-subtitle>
-      <v-card-subtitle v-else>
-        <FrequencySelection v-model="value" />
+  <div>
+    <v-card color="secondary" class="lighten-4">
+      <div>
+        <v-card-title>
+          <ChannelLink
+            :channelId="value.channelId"
+            :channelLink="value.channelLink"
+            :text="value.name"
+          />
+          <ChannelIcon :type="value.channelType" class="pl-1" small />
+        </v-card-title>
+        <v-card-subtitle>
+          <ChannelLink
+            :channelId="value.channelId"
+            :channelLink="value.channelLink"
+            :text="value.channelLink ? value.channelLink : value.summary"
+            class="grey--text"
+          />
+        </v-card-subtitle>
+        <v-card-text>
+          <v-icon small>{{ calendarIcon }}</v-icon>
+          {{value | showFrequency}}
+        </v-card-text>
+        <v-divider light class="mx-2"></v-divider>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="editing = false" color="secondary" outlined>Cancel</v-btn>
-          <v-btn @click.stop="save" class="primary">Save</v-btn>
+          <router-link :to="`/sub/${value.id}/edit`" text>
+            <v-icon>{{ pencilIcon }}</v-icon>
+          </router-link>
+          <v-dialog v-model="deleteDialog" width="500">
+            <template v-slot:activator="{ on }">
+              <v-icon class="mr-1 ml-2" v-on="on" color="error lighten-1">{{ removeIcon }}</v-icon>
+            </template>
+            <v-card>
+              <v-card-title>Are you sure?</v-card-title>
+              <v-card-text>Please confirm that you want to delete this subscription.</v-card-text>
+              <v-divider></v-divider>
+              <v-card-actions>
+                <v-btn text @click="deleteDialog = false">Cancel</v-btn>
+                <v-spacer></v-spacer>
+                <v-btn @click="remove" :loading="deleteLoading" color="error" text>Confirm</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
         </v-card-actions>
-      </v-card-subtitle>
-    </div>
-  </v-card>
+      </div>
+    </v-card>
+  </div>
 </template>
 
 <script>
-import FrequencySelection from "@/components/subs/FrequencySelection.vue";
 import ChannelIcon from "@/components/common/ChannelIcon.vue";
 import ChannelLink from "@/components/common/ChannelLink.vue";
-import { mdiCalendar, mdiPencilOutline } from "@mdi/js";
+import { mdiCalendar, mdiPencilOutline, mdiDelete } from "@mdi/js";
 export default {
   components: {
-    FrequencySelection,
     ChannelIcon,
     ChannelLink
   },
@@ -53,36 +66,22 @@ export default {
   },
   data() {
     return {
-      editing: false,
-
       calendarIcon: mdiCalendar,
-      pencilIcon: mdiPencilOutline
+      pencilIcon: mdiPencilOutline,
+      removeIcon: mdiDelete,
+
+      deleteLoading: false,
+      deleteDialog: null
     };
   },
-  computed: {
-    channelLink() {
-      if (!this.isList()) {
-        return this.value.channelLink;
-      } else {
-        return `/list/${this.value.channelId}`;
-      }
-    }
-  },
   methods: {
-    isList() {
-      return this.value.channelType == "List";
-    },
-    save() {
-      this.$store
-        .dispatch("updateSubscription", {
-          id: this.value.id,
-          frequency: this.value.frequency,
-          day: this.value.day,
-          time: this.value.time
-        })
-        .then(() => {
-          this.editing = false;
-        });
+    remove() {
+      this.deleteLoading = true;
+      this.$store.dispatch("deleteSubscription", this.value.id).then(() => {
+        this.deleteLoading = false;
+        this.deleteDialog = false;
+      });
+      // todo error handling
     }
   },
   filters: {

@@ -5,6 +5,7 @@ import Home from '@/views/Home.vue'
 import ActivateSubscription from '@/views/ActivateSubscription.vue'
 import Subscriptions from '@/views/Subscriptions.vue'
 import Subscribe from '@/views/Subscribe.vue'
+import EditSubscription from '@/views/EditSubscription.vue'
 import Lists from '@/views/Lists.vue'
 import ShowList from '@/views/ShowList.vue'
 import EditList from '@/views/EditList.vue'
@@ -31,6 +32,12 @@ const routes = [
     path: '/subs',
     name: 'subscriptions',
     component: Subscriptions,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/sub/:id/edit',
+    name: 'subscriptions-edit',
+    component: EditSubscription,
     meta: { requiresAuth: true }
   },
   {

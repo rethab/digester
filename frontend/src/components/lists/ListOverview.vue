@@ -1,9 +1,5 @@
 <template>
   <v-container>
-    <v-snackbar v-model="listDeletedSnackbar" :timeout="5000" :top="true">
-      List successfully deleted
-      <v-btn text @click="listDeletedSnackbar = false" color="error">Close</v-btn>
-    </v-snackbar>
     <AddList v-on:listAdded="showEdit" />
     <ListLists />
   </v-container>
@@ -19,14 +15,8 @@ export default {
   },
   data() {
     return {
-      list: null,
-      listDeletedSnackbar: null
+      list: null
     };
-  },
-  mounted() {
-    if (this.$route.query.listDeleted) {
-      this.listDeletedSnackbar = true;
-    }
   },
   methods: {
     showEdit(list) {

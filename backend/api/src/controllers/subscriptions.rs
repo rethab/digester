@@ -26,6 +26,7 @@ pub fn mount(rocket: Rocket) -> Rocket {
             list,
             search,
             add,
+            show,
             update,
             delete,
             add_pending,
@@ -586,6 +587,30 @@ struct UpdatedSubscription {
     frequency: Frequency,
     day: Option<Day>,
     time: NaiveTime,
+}
+
+#[get("/<id>")]
+fn show(session: Protected, db: DigesterDbConn, id: i32) -> JsonResponse {
+    let (sub, channel_or_list) =
+        match db::subscriptions_find_by_id_user_id(&db.0, id, session.0.user_id.0) {
+            Ok(Some((sub, channel_or_list))) => (sub, channel_or_list),
+            Ok(None) => return JsonResponse::NotFound,
+            Err(_) => return JsonResponse::InternalServerError,
+        };
+
+    match channel_or_list {
+        Left(channel) => Subscription::from_db_channel(sub, channel).into(),
+        Right(list) => {
+            let channels = match db::channels_find_by_list_id(&db, list.id) {
+                Ok(channels) => channels,
+                Err(err) => {
+                    eprintln!("Failed to find channels by list id {}: {:?}", list.id, err);
+                    return JsonResponse::InternalServerError;
+                }
+            };
+            Subscription::from_db_list(sub, list, channels).into()
+        }
+    }
 }
 
 #[put("/<id>", data = "<updated_subscription>")]
