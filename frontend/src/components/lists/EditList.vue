@@ -130,7 +130,6 @@ export default {
             !this.alreadyInList(resp.data.channels[0]);
 
           if (oneNewResult) {
-            console.log("oneNewResult --> addChannel");
             this.addChannel(resp.data.channels[0]);
           } else {
             this.searchResults = resp.data.channels;

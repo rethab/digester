@@ -17,17 +17,12 @@ export default {
     };
   },
   beforeRouteEnter(to, from, next) {
-    console.log(`Load list ${to.params.id}`);
     Vuex.dispatch("loadList", to.params.id).then(list => {
-      next(vm => {
-        console.log("Setting list on vm");
-        vm.setList(list);
-      });
+      next(vm => vm.setList(list));
     });
     // todo error handling
   },
   beforeRouteUpdate(to, from, next) {
-    console.log(`Load list ${to.params.id}`);
     this.list = null;
     Vuex.dispatch("loadList", to.params.id).then(list => {
       this.setList(list);
