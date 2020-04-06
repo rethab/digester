@@ -22,25 +22,6 @@
       </v-col>
     </v-row>
 
-    <v-row justify="center">
-      <v-col class="text-center" sm="6" md="3">
-        <v-btn @click="$vuetify.goTo('#howitworks')" class="mx-4" color="primary" large>how it works</v-btn>
-      </v-col>
-      <v-col class="text-center" sm="6" md="3">
-        <v-btn to="/lists" class="mx-4" color="secondary" outlined large>Create your own List</v-btn>
-      </v-col>
-    </v-row>
-
-    <v-row justify="center">
-      <v-col cols="12" class="text-center">
-        <h2 class="headline">Popular Lists</h2>
-        <p class="body-1">No need to create an account. Subscribe directly with your E-Mail address.</p>
-      </v-col>
-      <v-col cols="12">
-        <PopularLists />
-      </v-col>
-    </v-row>
-
     <LandingPageCard
       :img-src="require('@/assets/following_the_idea.svg')"
       :img-left="true"
@@ -69,7 +50,7 @@
           <div v-else>
             <p class="mt-5">
               Hooray! You are already logged in. Head over to
-              <v-btn to="/subs" text outlined small class="mr-1" color="secondary">subscriptions</v-btn>and start profiting.
+              <v-btn to="/cockpit" text outlined small class="mr-1" color="secondary">cockpit</v-btn>and start profiting.
             </p>
           </div>
         </v-col>
@@ -82,7 +63,6 @@
 import AuthLogin from "@/components/auth/AuthLogin.vue";
 import LandingPageCard from "@/components/landing/LandingPageCard.vue";
 import HowItWorksCard from "@/components/landing/HowItWorksCard.vue";
-import PopularLists from "@/components/landing/PopularLists.vue";
 export default {
   data() {
     return {
@@ -92,8 +72,7 @@ export default {
   components: {
     AuthLogin,
     LandingPageCard,
-    HowItWorksCard,
-    PopularLists
+    HowItWorksCard
   },
   computed: {
     isAuthenticated() {
