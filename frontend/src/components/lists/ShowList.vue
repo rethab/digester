@@ -26,7 +26,7 @@
           </span>
         </v-card-text>
         <v-card-actions>
-          <v-btn v-if="isCreator" @click="remove" class="error" text>Delete</v-btn>
+          <v-btn v-if="isCreator" @click="remove" :loading="deleteLoading" class="error" text>Delete</v-btn>
           <v-btn v-if="isCreator" :to="`/list/${value.id}/edit`" class="secondary">Edit</v-btn>
           <v-spacer></v-spacer>
           <div v-if="checkSubscription">
@@ -62,7 +62,8 @@ export default {
   },
   data() {
     return {
-      alreadySubscribed: false
+      alreadySubscribed: false,
+      deleteLoading: false
     };
   },
   computed: {
@@ -88,7 +89,17 @@ export default {
   },
   methods: {
     remove() {
-      throw "Implement me";
+      this.deleteLoading = true;
+      this.$store
+        .dispatch("deleteList", this.value)
+        .then(() => {
+          this.deleteLoading = false;
+          this.$router.push({ path: "/lists", query: { listDeleted: true } });
+        })
+        .catch(() => {
+          this.deleteLoading = false;
+        });
+      // todo error
     }
   }
 };
