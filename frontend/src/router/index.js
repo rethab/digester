@@ -47,16 +47,13 @@ const routes = [
   {
     path: '/list/:id',
     meta: { requiresAuth: true },
-    children: [
-      {
-        path: '',
-        component: ShowList,
-      },
-      {
-        path: 'edit',
-        component: EditList
-      }
-    ]
+    component: ShowList,
+  },
+  {
+
+    path: '/list/:id/edit',
+    meta: { requiresAuth: true },
+    component: EditList,
   },
   {
     path: '/updates',
