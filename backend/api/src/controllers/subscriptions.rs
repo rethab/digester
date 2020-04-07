@@ -324,64 +324,34 @@ fn add(
     db: DigesterDbConn,
     new_subscription: Json<NewSubscription>,
 ) -> JsonResponse {
-    let identity = match db::identities_find_by_user_id(&db, session.0.user_id.0) {
-        Ok(identity) => identity,
-        Err(_) => return JsonResponse::InternalServerError,
-    };
+    use subscriptions::AddError::*;
 
-    match new_subscription.channel_type {
+    let channel_type = match new_subscription.channel_type {
         SearchChannelType::List => {
-            let list_id = new_subscription.channel_id;
-            let list = match db::lists_find_by_id(&db, list_id) {
-                Err(err) => {
-                    eprintln!("Failed to fetch list by id '{}': {:?}", list_id, err);
-                    return JsonResponse::BadRequest("list does not exist".into());
-                }
-                Ok(Some((list, _))) => list,
-                Ok(None) => return JsonResponse::BadRequest("list does not exist".into()),
-            };
-
-            match insert_list_subscription(&db, &new_subscription, &list, &identity) {
-                Ok(sub) => {
-                    let channels = match db::channels_find_by_list_id(&db, list.id) {
-                        Ok(channels) => channels,
-                        Err(err) => {
-                            eprintln!("Failed to find channels by list id {}: {:?}", list.id, err);
-                            return JsonResponse::InternalServerError;
-                        }
-                    };
-                    Subscription::from_db_list(sub, list, channels).into()
-                }
-                Err(db::InsertError::Duplicate) => {
-                    JsonResponse::BadRequest("Subscription already exists".to_owned())
-                }
-                Err(db::InsertError::Unknown(err)) => {
-                    eprintln!("Failed to list channel subscription: {:?}", err);
-                    JsonResponse::InternalServerError
-                }
-            }
+            subscriptions::SearchChannelType::List(new_subscription.channel_id)
         }
-        _ => {
-            let chan_id = new_subscription.channel_id;
-            let channel = match db::channels_find_by_id(&db, chan_id) {
-                Err(err) => {
-                    eprintln!("Failed to fetch channel by id '{}': {:?}", chan_id, err);
-                    return JsonResponse::BadRequest("channel does not exist".into());
-                }
-                Ok(channel) => channel,
-            };
-
-            match insert_channel_subscription(&db, &new_subscription, &channel, &identity) {
-                Ok(sub) => Subscription::from_db_channel(sub, channel).into(),
-                Err(db::InsertError::Duplicate) => {
-                    JsonResponse::BadRequest("Subscription already exists".to_owned())
-                }
-                Err(db::InsertError::Unknown(err)) => {
-                    eprintln!("Failed to insert channel subscription: {:?}", err);
-                    JsonResponse::InternalServerError
-                }
-            }
+        SearchChannelType::GithubRelease | SearchChannelType::RssFeed => {
+            subscriptions::SearchChannelType::Channel(new_subscription.channel_id)
         }
+    };
+    match subscriptions::add(
+        session.0.user_id,
+        &db,
+        channel_type,
+        new_subscription.frequency.clone(),
+        new_subscription.day.clone(),
+        new_subscription.time,
+    ) {
+        Err(Unknown(msg)) => {
+            eprintln!("Failed to add subscription: {}", msg);
+            JsonResponse::InternalServerError
+        }
+        Err(NotFound(msg)) => JsonResponse::BadRequest(msg),
+        Err(AlreadyExists) => JsonResponse::BadRequest("Subscription already exists".into()),
+        Ok((sub, c_or_l)) => match c_or_l {
+            Left(channel) => Subscription::from_db_channel(sub, channel).into(),
+            Right((list, channels)) => Subscription::from_db_list(sub, list, channels).into(),
+        },
     }
 }
 
@@ -662,44 +632,6 @@ fn delete(session: Protected, db: DigesterDbConn, id: i32) -> JsonResponse {
             JsonResponse::InternalServerError
         }
     }
-}
-
-fn insert_channel_subscription(
-    conn: &DigesterDbConn,
-    sub: &NewSubscription,
-    chan: &db::Channel,
-    identity: &db::Identity,
-) -> Result<db::Subscription, db::InsertError> {
-    let new_subscription = db::NewSubscription {
-        email: identity.email.clone(),
-        timezone: None,
-        channel_id: Some(chan.id),
-        list_id: None,
-        user_id: Some(identity.user_id),
-        frequency: sub.frequency.clone(),
-        day: sub.day.clone(),
-        time: sub.time,
-    };
-    db::subscriptions_insert(&conn.0, new_subscription)
-}
-
-fn insert_list_subscription(
-    conn: &DigesterDbConn,
-    sub: &NewSubscription,
-    list: &db::List,
-    identity: &db::Identity,
-) -> Result<db::Subscription, db::InsertError> {
-    let new_subscription = db::NewSubscription {
-        email: identity.email.clone(),
-        timezone: None,
-        channel_id: None,
-        list_id: Some(list.id),
-        user_id: Some(identity.user_id),
-        frequency: sub.frequency.clone(),
-        day: sub.day.clone(),
-        time: sub.time,
-    };
-    db::subscriptions_insert(&conn.0, new_subscription)
 }
 
 fn update_subscription(
