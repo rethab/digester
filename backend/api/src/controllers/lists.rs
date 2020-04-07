@@ -3,7 +3,6 @@ use lib_db as db;
 use super::super::iam::UserId;
 use super::super::lists;
 use super::common::*;
-use chrono::naive::NaiveTime;
 use db::ChannelType;
 use rocket::http::RawStr;
 use rocket::Rocket;
@@ -211,65 +210,19 @@ fn delete(session: Protected, db: DigesterDbConn, list_id: i32) -> JsonResponse 
 
 #[put("/", data = "<new_list>")]
 fn add(session: Protected, db: DigesterDbConn, new_list: Json<NewList>) -> JsonResponse {
-    let mut list_name = new_list.name.clone();
-    list_name = list_name.trim().into();
-    if list_name.len() < 5 || list_name.len() > 30 {
-        return JsonResponse::BadRequest("Name must be between 5 and 30 characters".into());
-    }
-
-    let new_list = db::NewList {
-        name: list_name,
-        creator: session.0.user_id.0,
-    };
-    match db::lists_insert(&db, &new_list) {
-        Ok(list) => {
-            let user_id = session.0.user_id;
-            if let Err(err) = subscribe_user(&db, user_id, &list) {
-                eprintln!(
-                    "Failed to subscribe user {} after creating list {}: {}",
-                    user_id, list.id, err
-                )
-            }
-            let identity = match db::identities_find_by_user_id(&db, list.creator) {
-                Err(err) => {
-                    eprintln!(
-                        "Creator {} for list {} not found in DB: {}",
-                        list.creator, list.id, err
-                    );
-                    return JsonResponse::InternalServerError;
-                }
-                Ok(id) => id,
-            };
-
+    use lists::AddError::*;
+    match lists::add(&db, session.0.user_id, new_list.name.clone()) {
+        Err(InvalidName(msg)) => JsonResponse::BadRequest(msg),
+        Err(UnknownError(msg)) => {
+            eprintln!("Failed to add list: {}", msg);
+            JsonResponse::InternalServerError
+        }
+        Ok((list, identity)) => {
             let mut lists = Vec::with_capacity(1);
             lists.push((list, identity));
             lists_to_resp(&db, lists)[0].clone().into()
         }
-        Err(err) => {
-            eprintln!("Failed to insert new list {:?}: {:?}", new_list, err);
-            JsonResponse::InternalServerError
-        }
     }
-}
-
-fn subscribe_user(db: &DigesterDbConn, user_id: UserId, list: &db::List) -> Result<(), String> {
-    use db::InsertError::*;
-    let identity = db::identities_find_by_user_id(&db, user_id.0)?;
-    let new_sub = db::NewSubscription {
-        email: identity.email,
-        timezone: None,
-        channel_id: None,
-        list_id: Some(list.id),
-        user_id: Some(identity.user_id),
-        frequency: db::Frequency::Weekly,
-        day: Some(db::Day::Sat),
-        time: NaiveTime::from_hms(9, 0, 0),
-    };
-    db::subscriptions_insert(&db, new_sub).map_err(|err| match err {
-        Unknown(err) => format!("{:?}", err),
-        Duplicate => "Duplicate".to_owned(),
-    })?;
-    Ok(())
 }
 
 #[post("/<list_id>", data = "<updated_list>")]
