@@ -1,5 +1,6 @@
 <template>
   <div>
+    <TopSnackbar :message="snackbarMessage" v-model="topSnackbar" />
     <v-card flat>
       <v-card-title>{{list.name}}</v-card-title>
       <v-card-subtitle>Add Channels to Your List</v-card-subtitle>
@@ -31,9 +32,9 @@
         />
       </section>
       <v-card-title>
-        <span v-if="channels.length == 0">No channels in this List</span>
-        <span v-else-if="channels.length == 1">One channel in this List</span>
-        <span v-else>{{channels.length}} channels in this List</span>
+        <span v-if="channels.length == 0">No Channels in this List</span>
+        <span v-else-if="channels.length == 1">One Channel in this List</span>
+        <span v-else>{{channels.length}} Channels in this List</span>
       </v-card-title>
       <v-card-text v-if="channels.length > 0">
         <v-list>
@@ -65,6 +66,7 @@
 
 <script>
 import ChannelIcon from "@/components/common/ChannelIcon.vue";
+import TopSnackbar from "@/components/common/TopSnackbar.vue";
 import ChannelInput from "@/components/channels/ChannelInput.vue";
 import ChannelSearchResults from "@/components/channels/ChannelSearchResults.vue";
 import Channel from "@/models/Channel.js";
@@ -73,6 +75,7 @@ import { mdiDelete } from "@mdi/js";
 export default {
   components: {
     ChannelInput,
+    TopSnackbar,
     ChannelIcon,
     ChannelSearchResults
   },
@@ -85,6 +88,9 @@ export default {
   data() {
     return {
       removeIcon: mdiDelete,
+
+      topSnackbar: null,
+      snackbarMessage: null,
 
       channel: new Channel("RssFeed", null),
       nameErrors: [],
@@ -148,17 +154,27 @@ export default {
         });
     },
     addChannel(channel) {
-      this.$store.dispatch("addChannel", {
-        list: this.list,
-        channel: channel
-      });
+      this.$store
+        .dispatch("addChannel", {
+          list: this.list,
+          channel: channel
+        })
+        .then(() => {
+          this.snackbarMessage = "Channel added";
+          this.topSnackbar = true;
+        });
       // fixme handle error
     },
     removeChannel(channel) {
-      this.$store.dispatch("removeChannel", {
-        list: this.list,
-        channel: channel
-      });
+      this.$store
+        .dispatch("removeChannel", {
+          list: this.list,
+          channel: channel
+        })
+        .then(() => {
+          this.snackbarMessage = "Channel removed";
+          this.topSnackbar = true;
+        });
       // fixme handle error
     },
     alreadyInList(channel) {
