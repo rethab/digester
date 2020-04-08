@@ -90,7 +90,7 @@ export default {
       removeIcon: mdiDelete,
 
       topSnackbar: null,
-      snackbarMessage: null,
+      snackbarMessage: "",
 
       channel: new Channel("RssFeed", null),
       nameErrors: [],

@@ -1,5 +1,5 @@
 <template>
-  <v-snackbar v-model="value" :top="true">
+  <v-snackbar v-bind:value="value" :top="true">
     {{message}}
     <v-btn text color="error" @click="$emit('input', false)">Close</v-btn>
   </v-snackbar>
