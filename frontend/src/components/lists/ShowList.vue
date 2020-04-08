@@ -1,5 +1,6 @@
 <template>
   <div>
+    <TopSnackbar :message="snackbarMessage" v-model="topSnackbar" />
     <v-card :flat="dedicated" :color="dedicated ? null : 'secondary'" class="lighten-4">
       <div>
         <v-card-title>
@@ -59,11 +60,13 @@
 </template>
 
 <script>
+import TopSnackbar from "@/components/common/TopSnackbar.vue";
 import ChannelIcon from "@/components/common/ChannelIcon.vue";
 import Channel from "@/models/Channel.js";
 import { mdiPencilOutline, mdiDelete } from "@mdi/js";
 export default {
   components: {
+    TopSnackbar,
     ChannelIcon
   },
   props: {
@@ -84,6 +87,9 @@ export default {
     return {
       pencilIcon: mdiPencilOutline,
       removeIcon: mdiDelete,
+
+      topSnackbar: null,
+      snackbarMessage: "",
 
       alreadySubscribed: false,
       deleteLoading: false,
@@ -119,11 +125,17 @@ export default {
         .then(() => {
           this.deleteLoading = false;
           this.deleteDialog = false;
+
+          // this value must be distinct in order for
+          // the snackbar to be shown each time
+          this.topSnackbar = `list-${this.value.id}-deleted`;
+          this.snackbarMessage = "List deleted";
         })
         .catch(() => {
           this.deleteLoading = false;
+          this.topSnackbar = `list-${this.value.id}-not-deleted`;
+          this.snackbarMessage = "Failed to delete the list";
         });
-      // todo error
     }
   }
 };
