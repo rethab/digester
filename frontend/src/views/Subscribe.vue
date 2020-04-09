@@ -1,14 +1,17 @@
 <template>
   <div>
     <SubscribeForm v-if="channel" :channel="channel" />
+    <NotFound v-else thing="Channel" link="/subs" />
   </div>
 </template>
 
 <script>
+import NotFound from "@/components/common/NotFound.vue";
 import SubscribeForm from "@/components/subs/SubscribeForm.vue";
 import Api from "@/services/api.js";
 export default {
   components: {
+    NotFound,
     SubscribeForm
   },
   data() {
@@ -21,8 +24,8 @@ export default {
       .get(`/channels/${to.params.type}/${to.params.id}`)
       .then(resp => {
         next(vm => vm.setChannel(resp.data));
-      });
-    // todo error handling
+      })
+      .catch(() => next());
   },
   beforeRouteUpdate(to, from, next) {
     this.channel = null;
@@ -31,8 +34,8 @@ export default {
       .then(resp => {
         this.setChannel(resp.data.channel);
         next();
-      });
-    // todo error handling
+      })
+      .catch(() => next());
   },
   methods: {
     setChannel(channel) {
