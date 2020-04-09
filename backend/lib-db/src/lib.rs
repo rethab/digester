@@ -622,6 +622,18 @@ pub fn users_find_by_provider(
         })
 }
 
+pub fn users_find_by_username(conn: &PgConnection, username: &str) -> Result<User, String> {
+    use schema::identities;
+    use schema::users;
+
+    users::table
+        .inner_join(identities::table.on(identities::user_id.eq(users::id)))
+        .filter(identities::username.eq(username))
+        .select(users::all_columns)
+        .get_result::<User>(conn)
+        .map_err(|err| format!("Failed to fetch user username {}: {}", username, err))
+}
+
 pub fn users_update_timezone(conn: &PgConnection, user_id: i32, new_tz: Tz) -> Result<(), String> {
     use schema::users::dsl::*;
     diesel::update(users.find(user_id))
@@ -853,6 +865,28 @@ pub fn lists_find_by_id(
     }
 }
 
+pub fn lists_find_by_user_id(conn: &PgConnection, user_id: i32) -> Result<Vec<List>, Error> {
+    use schema::lists::dsl::*;
+    lists.filter(creator.eq(user_id)).get_results(conn)
+}
+
+pub fn lists_find_with_other_subscribers(
+    conn: &PgConnection,
+    user_id: i32,
+) -> Result<Vec<List>, Error> {
+    use schema::lists;
+    use schema::subscriptions;
+    lists::table
+        .inner_join(subscriptions::table.on(subscriptions::list_id.eq(lists::id.nullable())))
+        .filter(
+            lists::creator
+                .eq(user_id)
+                .and(subscriptions::user_id.ne(user_id)),
+        )
+        .select(lists::all_columns)
+        .load::<List>(conn)
+}
+
 pub fn lists_find_order_by_popularity(
     conn: &PgConnection,
     limit: i32,
@@ -876,26 +910,19 @@ pub fn lists_find_order_by_popularity(
     lists_zip_with_identities(conn, ls)
 }
 
-pub fn lists_delete_by_id(conn: &PgConnection, list_id: i32) -> Result<(), String> {
+pub fn lists_delete_by_id(conn: &PgConnection, list_id: i32) -> Result<(), Error> {
     use schema::lists;
     use schema::lists_channels;
 
     // delete all links to channels
     diesel::delete(lists_channels::table.filter(lists_channels::list_id.eq(list_id)))
         .execute(conn)
-        .map(|_| ())
-        .map_err(|err| {
-            format!(
-                "Failed to delete list/channel mappings for list {}: {:?}",
-                list_id, err
-            )
-        })?;
+        .map(|_| ())?;
 
     // delete list itself
     diesel::delete(lists::table.filter(lists::id.eq(list_id)))
         .execute(conn)
         .map(|_| ())
-        .map_err(|err| format!("Failed to delete list with id {}: {:?}", list_id, err))
 }
 
 pub fn lists_insert(conn: &PgConnection, new_list: &NewList) -> Result<List, String> {
@@ -910,6 +937,18 @@ pub fn lists_insert(conn: &PgConnection, new_list: &NewList) -> Result<List, Str
 pub fn lists_update_name(conn: &PgConnection, list: List) -> Result<List, String> {
     list.save_changes(conn)
         .map_err(|err| format!("Failed to update list: {:?}", err))
+}
+
+pub fn lists_move_creator(
+    conn: &PgConnection,
+    list_ids: &[i32],
+    new_creator: i32,
+) -> Result<(), Error> {
+    use schema::lists::dsl::*;
+    diesel::update(lists.filter(id.eq_any(list_ids)))
+        .set(creator.eq(new_creator))
+        .execute(conn)
+        .map(|_| ())
 }
 
 pub fn lists_add_channel(conn: &PgConnection, list: List, channel_id: i32) -> Result<(), String> {
