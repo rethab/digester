@@ -9,6 +9,15 @@
           <i>actually</i> gone. We will delete all your subscriptions.
         </p>
         <p>
+          Lists, which have subscribers other than yourself, are going to be moved to
+          digester as a new owner while your subscription is removed. If you want those
+          lists to be deleted as well, please get in touch at
+          <a
+            class="black--text"
+            href="mailto:info@digester.app"
+          >info@digester.app</a>
+        </p>
+        <p>
           Is there anything we can do to make you change your decision? Is something not working for you? Are you missing a feature? Please contact us at
           <a
             class="black--text"
@@ -112,7 +121,7 @@ export default {
         })
         .catch(() => {
           this.deleteErrors.push(
-            "Failed to delete account. Please try again or contact support if the problem persists."
+            "Failed to delete account. Please refresh the page and try again. Contact support if the problem persists."
           );
           this.deletionInProgress = false;
         });

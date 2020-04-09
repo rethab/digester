@@ -229,9 +229,40 @@ pub fn delete_account(
 
     println!("Going to delete user with id {}", user_id);
 
+    delete_account_with_dependencies(db, user_id)
+}
+
+fn delete_account_with_dependencies(db: &PgConnection, user_id: UserId) -> Result<(), DeleteError> {
+    // lists that have other subscribers are moved to me
+    // everything else can be deleted
+
+    let me: db::User = db::users_find_by_username(db, "rethab")
+        .map_err(|err| DeleteError::Unknown(format!("Failed to fetch 'rethab': {}", err)))?;
+
     db.build_transaction()
         .run(|| {
+            // move lists
+            let lists = db::lists_find_with_other_subscribers(db, user_id.0)?;
+            if lists.iter().any(|l| l.creator != user_id.0) {
+                eprintln!("At least one list does not actually belong to {}", user_id);
+                return Err(diesel::result::Error::NotFound);
+            }
+            let list_ids: Vec<i32> = lists.into_iter().map(|l| l.id).collect();
+            db::lists_move_creator(db, &list_ids, me.id)?;
+            println!(
+                "Moved creator from {} to {} for lists: {:?}",
+                user_id, me.id, list_ids
+            );
+
+            // delete subscriptions
             db::subscriptions_delete_by_user_id(db, user_id.0)?;
+
+            // delete lists
+            for list in db::lists_find_by_user_id(db, user_id.0)? {
+                db::lists_delete_by_id(db, list.id)?;
+            }
+
+            // delete user
             db::users_delete_by_id(db, user_id.0)
         })
         .map_err(|err| {
