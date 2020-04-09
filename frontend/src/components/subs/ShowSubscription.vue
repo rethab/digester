@@ -39,7 +39,12 @@
               <v-card-actions>
                 <v-btn text @click="deleteDialog = false">Cancel</v-btn>
                 <v-spacer></v-spacer>
-                <v-btn @click="remove" :loading="deleteLoading" color="error" text>Confirm</v-btn>
+                <v-btn
+                  @click="$emit('remove', value)"
+                  :loading="deleteLoading"
+                  color="error"
+                  text
+                >Confirm</v-btn>
               </v-card-actions>
             </v-card>
           </v-dialog>
@@ -73,16 +78,6 @@ export default {
       deleteLoading: false,
       deleteDialog: null
     };
-  },
-  methods: {
-    remove() {
-      this.deleteLoading = true;
-      this.$store.dispatch("deleteSubscription", this.value.id).then(() => {
-        this.deleteLoading = false;
-        this.deleteDialog = false;
-      });
-      // todo error handling
-    }
   },
   filters: {
     showFrequency: function(sub) {
