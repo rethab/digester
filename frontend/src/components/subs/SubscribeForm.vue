@@ -1,9 +1,6 @@
 <template>
   <div>
-    <v-snackbar v-model="errorSnackbar" :top="true">
-      {{errorMessage}}
-      <v-btn text @click="errorSnackbar = false">Close</v-btn>
-    </v-snackbar>
+    <TopSnackbar :message="snackbarMessage" v-model="topSnackbar" />
     <v-card flat>
       <v-card-title>
         <ChannelIcon :type="channel.type" class="mr-1" />
@@ -32,11 +29,13 @@
 <script>
 import Api from "@/services/api.js";
 import ChannelIcon from "@/components/common/ChannelIcon.vue";
+import TopSnackbar from "@/components/common/TopSnackbar.vue";
 import FrequencySelection from "@/components/subs/FrequencySelection.vue";
 import Channel from "@/models/Channel.js";
 export default {
   components: {
     ChannelIcon,
+    TopSnackbar,
     FrequencySelection
   },
   props: {
@@ -52,6 +51,9 @@ export default {
         day: "Sat",
         time: "09:00:00"
       },
+
+      topSnackbar: null,
+      snackbarMessage: "",
 
       loading: false,
       errorSnackbar: false,
@@ -101,12 +103,13 @@ export default {
           this.$router.replace("/subs");
         })
         .catch(err => {
-          this.errorSnackbar = true;
           this.loading = false;
+
+          this.topSnackbar = `subscription-add-fail-${this.channel.id}`;
           if (err.response.data.error) {
-            this.errorMessage = err.response.data.error;
+            this.snackbarMessage = err.response.data.error;
           } else {
-            this.errorMessage = "Something went wrong. Please try again.";
+            this.snackbarMessage = "Something went wrong. Please try again.";
           }
         });
     },
