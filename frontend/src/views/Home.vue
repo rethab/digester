@@ -32,7 +32,7 @@
     <LandingPageCard
       :img-src="require('@/assets/focus_working.svg')"
       :img-left="false"
-      title="What are Lists?"
+      title="Bundle Topics with Lists"
       content="Lists are collections of Blogs and Github projects.<br /><br />Say you are intersted in mobile development. By subscribing to the mobile development list, you'll receive a weekly digest on what happened in the world of mobile. A new blog post about flutter? A new release of Swift? All part of your digest!<br /><br />You can even create your own lists and share them with your friends."
     />
 
