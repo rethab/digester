@@ -11,7 +11,12 @@
       </v-card-actions>
     </v-card>
     <v-list v-else>
-      <v-list-item v-for="(channel, i) in channels" :key="i" class="px-0">
+      <v-list-item
+        v-for="(channel, i) in channels"
+        :key="i"
+        :disabled="alreadyThere(channel)"
+        @click="$emit('channelSelected', channel)"
+      >
         <v-list-item-content>
           <v-list-item-title style="word-break: break-word">
             {{channel.name}}
@@ -31,8 +36,6 @@
         </v-list-item-content>
         <v-list-item-action>
           <v-btn
-            :disabled="alreadyThere(channel)"
-            @click="$emit('channelSelected', channel)"
             icon
             :dark="!alreadyThere(channel)"
             small
