@@ -74,11 +74,11 @@ const actions = {
     },
     deleteSubscription({ commit }, id) {
         return new Promise((resolve, reject) => {
-            Api().delete(`subscriptions/${id}`).then(() => {
-                commit('DELETE_SUBSCRIPTION', id);
-                resolve();
-            }
-            ).catch(err => reject(err));
+            Api().delete(`subscriptions/${id}`)
+                .then(() => {
+                    commit('DELETE_SUBSCRIPTION', id);
+                    resolve();
+                }).catch(err => reject(err));
         });
     }
 }
