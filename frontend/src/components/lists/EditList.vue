@@ -162,9 +162,12 @@ export default {
         })
         .then(() => {
           this.snackbarMessage = "Channel added";
-          this.topSnackbar = true;
+          this.topSnackbar = `channel-added-${channel.id}`;
+        })
+        .catch(() => {
+          this.snackbarMessage = "Failed to add channel";
+          this.topSnackbar = `channel-add-${channel.id}-fail`;
         });
-      // fixme handle error
     },
     removeChannel(channel) {
       this.$store
@@ -174,9 +177,12 @@ export default {
         })
         .then(() => {
           this.snackbarMessage = "Channel removed";
-          this.topSnackbar = true;
+          this.topSnackbar = `channel-removed-${channel.id}`;
+        })
+        .catch(() => {
+          this.snackbarMessage = "Failed to remove channel";
+          this.topSnackbar = `channel-removed-${channel.id}-fail`;
         });
-      // fixme handle error
     },
     alreadyInList(channel) {
       return this.channels.some(chan => chan.id == channel.id);
