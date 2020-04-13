@@ -1,9 +1,5 @@
 <template>
   <div>
-    <v-snackbar v-model="errorSnackbar" :top="true">
-      {{errorMessage}}
-      <v-btn text @click="errorSnackbar = false">Close</v-btn>
-    </v-snackbar>
     <section id="searchInput">
       <Search :initialValue="searchInput" :loading="loading" v-on:search="search" />
     </section>
@@ -35,9 +31,6 @@ export default {
   data() {
     return {
       loading: false,
-      successSnackbar: false,
-      errorSnackbar: false,
-      errorMessage: null,
 
       searchInput: "",
       searchChannelType: null,
