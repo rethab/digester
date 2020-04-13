@@ -1,5 +1,6 @@
 <template>
   <v-container>
+    <TopSnackbar message="Settings Updated" v-model="topSnackbar" />
     <v-card>
       <v-card-title>Timezone</v-card-title>
       <v-card-subtitle>We need to know your timezone in order to send the digests at the correct time relative to your location.</v-card-subtitle>
@@ -19,22 +20,22 @@
         <v-spacer></v-spacer>
         <v-btn @click.stop="save" class="primary">Save</v-btn>
       </v-card-actions>
-      <v-snackbar v-model="snackbar" :timeout="2000" :top="true">
-        Settings updated
-        <v-btn dark text @click="snackbar = false">Close</v-btn>
-      </v-snackbar>
     </v-card>
   </v-container>
 </template>
 
 <script>
+import TopSnackbar from "@/components/common/TopSnackbar.vue";
 import momentTZ from "moment-timezone";
 export default {
-  components: {},
+  components: {
+    TopSnackbar
+  },
   data() {
     return {
       loading: true,
-      snackbar: false,
+
+      topSnackbar: null,
 
       condensedView: this.$vuetify.breakpoint.smAndDown,
 
@@ -86,7 +87,7 @@ export default {
         this.$store
           .dispatch("setTimezone", this.timezone)
           .then(() => {
-            this.snackbar = true;
+            this.topSnackbar = true;
           })
           .catch(err => {
             if (err.response.data.error) {
