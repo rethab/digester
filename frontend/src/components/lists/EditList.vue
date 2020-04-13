@@ -144,6 +144,7 @@ export default {
           }
         })
         .catch(err => {
+          this.searchResults = [];
           this.loading = false;
           if (err.response && err.response.data && err.response.data.error) {
             this.searchError = err.response.data.error;
