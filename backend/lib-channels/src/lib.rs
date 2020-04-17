@@ -8,3 +8,4 @@ pub mod channel;
 pub use channel::*;
 pub mod github_release;
 pub mod rss;
+pub mod twitter;

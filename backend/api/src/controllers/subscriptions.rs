@@ -5,6 +5,7 @@ use lib_messaging as messaging;
 use super::super::subscriptions;
 use super::common::*;
 use channels::github_release::GithubRelease;
+use channels::twitter::Twitter;
 use chrono::naive::NaiveTime;
 use chrono::Utc;
 use chrono_tz::Tz;
@@ -177,6 +178,7 @@ impl Channel {
 enum SearchChannelType {
     GithubRelease,
     RssFeed,
+    Twitter,
     List,
 }
 
@@ -185,6 +187,7 @@ impl SearchChannelType {
         match channel_type {
             ChannelType::GithubRelease => SearchChannelType::GithubRelease,
             ChannelType::RssFeed => SearchChannelType::RssFeed,
+            ChannelType::Twitter => SearchChannelType::Twitter,
         }
     }
 }
@@ -195,6 +198,7 @@ impl<'v> FromFormValue<'v> for SearchChannelType {
         match form_value.as_str() {
             "GithubRelease" => Ok(SearchChannelType::GithubRelease),
             "RssFeed" => Ok(SearchChannelType::RssFeed),
+            "Twitter" => Ok(SearchChannelType::Twitter),
             "List" => Ok(SearchChannelType::List),
             other => Err(format!("Invalid channel type: {}", other)),
         }
@@ -234,7 +238,6 @@ fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
 
 #[get("/search?<channel_type>&<query>")]
 fn search(
-    _session: Protected,
     _r: RateLimited,
     db: DigesterDbConn,
     channel_type: SearchChannelType,
@@ -258,9 +261,18 @@ fn search(
         }
     };
 
+    let twitter: Twitter = match Twitter::new("") {
+        Ok(twitter) => twitter,
+        Err(err) => {
+            eprintln!("Failed to resolve twitter client: {:?}", err);
+            return JsonResponse::InternalServerError;
+        }
+    };
+
     let channel_or_list = match channel_type {
         SearchChannelType::List => Left(()),
         SearchChannelType::GithubRelease => Right(ChannelType::GithubRelease),
+        SearchChannelType::Twitter => Right(ChannelType::Twitter),
         SearchChannelType::RssFeed => Right(ChannelType::RssFeed),
     };
 
@@ -291,8 +303,9 @@ fn search(
             let channel_type = match db_channel_type {
                 db::ChannelType::GithubRelease => channels::ChannelType::GithubRelease,
                 db::ChannelType::RssFeed => channels::ChannelType::RssFeed,
+                db::ChannelType::Twitter => channels::ChannelType::Twitter,
             };
-            let channel = channels::factory(channel_type, &github);
+            let channel = channels::factory(channel_type, &github, &twitter);
 
             use search::SearchError::*;
             match search::search(&db.0, db_channel_type, channel, &query) {
@@ -330,7 +343,9 @@ fn add(
         SearchChannelType::List => {
             subscriptions::SearchChannelType::List(new_subscription.channel_id)
         }
-        SearchChannelType::GithubRelease | SearchChannelType::RssFeed => {
+        SearchChannelType::GithubRelease
+        | SearchChannelType::RssFeed
+        | SearchChannelType::Twitter => {
             subscriptions::SearchChannelType::Channel(new_subscription.channel_id)
         }
     };

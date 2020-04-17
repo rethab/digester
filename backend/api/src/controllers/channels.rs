@@ -12,6 +12,7 @@ pub fn mount(rocket: Rocket) -> Rocket {
 enum ChannelType {
     RssFeed,
     GithubRelease,
+    Twitter,
     List,
 }
 
@@ -20,6 +21,7 @@ impl ChannelType {
         match ct {
             db::ChannelType::GithubRelease => ChannelType::GithubRelease,
             db::ChannelType::RssFeed => ChannelType::RssFeed,
+            db::ChannelType::Twitter => ChannelType::Twitter,
         }
     }
 
@@ -100,7 +102,7 @@ fn show(db: DigesterDbConn, channel: String, id: i32) -> JsonResponse {
                 return JsonResponse::InternalServerError;
             }
         },
-        ChannelType::GithubRelease | ChannelType::RssFeed => {
+        ChannelType::GithubRelease | ChannelType::RssFeed | ChannelType::Twitter => {
             match db::channels_find_by_id_opt(&db, id) {
                 Ok(v) => v.map(Channel::from_db_channel),
                 Err(err) => {

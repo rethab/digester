@@ -79,6 +79,7 @@ pub struct Update {
 pub enum ChannelType {
     GithubRelease,
     RssFeed,
+    Twitter,
 }
 
 #[derive(Debug, Clone, PartialEq, FromSqlRow, AsExpression, Serialize, Deserialize)]
@@ -254,6 +255,7 @@ impl ToSql<Text, Pg> for ChannelType {
         match *self {
             ChannelType::GithubRelease => out.write_all(b"github_release")?,
             ChannelType::RssFeed => out.write_all(b"rss_feed")?,
+            ChannelType::Twitter => out.write_all(b"twitter")?,
         }
         Ok(IsNull::No)
     }

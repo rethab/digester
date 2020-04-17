@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 
 use super::github_release::GithubRelease;
 use super::rss::Rss;
+use super::twitter::Twitter;
 
 /// A channel type is a certain source that we can pull updates
 /// from
@@ -12,6 +13,8 @@ pub enum ChannelType {
     GithubRelease,
     /// Fetch new items from an rss feed
     RssFeed,
+    /// Fetch tweets
+    Twitter,
 }
 
 /// An update is a new thing from a channel. In RSS terminology, this
@@ -111,10 +114,15 @@ pub trait Channel {
 }
 
 /// Factory function to create the channel based on the channel type.
-pub fn factory(channel_type: ChannelType, github_release: &GithubRelease) -> &dyn Channel {
+pub fn factory<'a>(
+    channel_type: ChannelType,
+    github_release: &'a GithubRelease,
+    twitter: &'a Twitter,
+) -> &'a dyn Channel {
     match channel_type {
         ChannelType::GithubRelease => github_release,
         ChannelType::RssFeed => &Rss {},
+        ChannelType::Twitter => twitter,
     }
 }
 
