@@ -87,6 +87,8 @@ export default {
         return this.searchError;
       } else if (this.channelType == "RssFeed") {
         return "We could not find a blog with this URL.<br /><br />Are you sure this points to a blog? (We need an RSS or Atom feed). If you think this should be working, please contact us at info@digester.app and we'll take a look.";
+      } else if (this.channelType == "Twitter") {
+        return "We could not find a Twitter account with this name.";
       } else if (this.channelType == "GithubRelease") {
         return "We could not find a repository with this name.<br /><br />Are you sure it exists and is public?";
       } else {

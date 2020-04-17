@@ -4,11 +4,7 @@
     <v-card flat>
       <v-card-title>
         <ChannelIcon :type="channel.type" class="mr-1" />
-        <router-link
-          style="text-decoration:none; color:inherit"
-          class="ml-1"
-          :to="channelLink"
-        >{{channel.name}}</router-link>
+        <ChannelLink :channelLink="channelLink" :text="channel.name" />
       </v-card-title>
       <v-card-subtitle>You will get {{formatFrequency}} via E-Mail.</v-card-subtitle>
       <v-card-text class="pb-0">
@@ -29,12 +25,14 @@
 <script>
 import Api from "@/services/api.js";
 import ChannelIcon from "@/components/common/ChannelIcon.vue";
+import ChannelLink from "@/components/common/ChannelLink.vue";
 import TopSnackbar from "@/components/common/TopSnackbar.vue";
 import FrequencySelection from "@/components/subs/FrequencySelection.vue";
 import Channel from "@/models/Channel.js";
 export default {
   components: {
     ChannelIcon,
+    ChannelLink,
     TopSnackbar,
     FrequencySelection
   },

@@ -14,6 +14,10 @@ export default class Channel {
         return "GithubRelease";
     }
 
+    static get Twitter() {
+        return "Twitter";
+    }
+
     static get List() {
         return "List";
     }
@@ -26,6 +30,10 @@ export default class Channel {
         return this.type === Channel.GithubRelease;
     }
 
+    isTwitter() {
+        return this.type === Channel.Twitter;
+    }
+
     isList() {
         return this.type === Channel.List;
     }
@@ -35,6 +43,8 @@ export default class Channel {
             return "Repository";
         } else if (this.isRss()) {
             return "Url";
+        } else if (this.isTwitter()) {
+            return "Twitter User";
         } else if (this.isList()) {
             return "Name of the List";
         } else {
@@ -61,6 +71,10 @@ export default class Channel {
         } else if (this.isList()) {
             if (!this.name || this.name < 3) {
                 errors.push("Enter the name of a List")
+            }
+        } else if (this.isTwitter()) {
+            if (!this.name || this.name > 20) {
+                errors.push("Twitter names are not that long")
             }
         } else {
             throw `Unknwon channel type: ${this.type}`;

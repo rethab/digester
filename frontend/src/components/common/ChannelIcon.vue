@@ -4,6 +4,7 @@
 <script>
 import {
   mdiRss,
+  mdiTwitter,
   mdiGithubCircle,
   mdiFormatListBulletedTriangle
 } from "@mdi/js";
@@ -22,6 +23,7 @@ export default {
     return {
       githubIcon: mdiGithubCircle,
       rssIcon: mdiRss,
+      twitterIcon: mdiTwitter,
       listIcon: mdiFormatListBulletedTriangle
     };
   },
@@ -32,6 +34,8 @@ export default {
           return this.githubIcon;
         case "RssFeed":
           return this.rssIcon;
+        case "Twitter":
+          return this.twitterIcon;
         case "List":
           return this.listIcon;
         default:

@@ -28,6 +28,7 @@ impl ChannelType {
     fn from_request(s: &str) -> Result<ChannelType, String> {
         match s.to_ascii_lowercase().as_str() {
             "rssfeed" => Ok(ChannelType::RssFeed),
+            "twitter" => Ok(ChannelType::Twitter),
             "githubrelease" => Ok(ChannelType::GithubRelease),
             "list" => Ok(ChannelType::List),
             other => Err(format!("Invalid channel type: {}", other)),
