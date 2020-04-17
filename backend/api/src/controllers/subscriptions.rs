@@ -238,6 +238,7 @@ fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
 
 #[get("/search?<channel_type>&<query>")]
 fn search(
+    _session: Protected,
     _r: RateLimited,
     db: DigesterDbConn,
     channel_type: SearchChannelType,

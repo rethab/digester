@@ -182,6 +182,10 @@ pub fn channels_insert_if_not_exists(
         Ok(Some(channel)) => Ok(channel),
         Ok(None) => {
             use schema::channels;
+            println!(
+                "Didn't find url={}, type={:?}",
+                new_channel.url, new_channel.channel_type
+            );
             match diesel::insert_into(channels::table)
                 .values(&new_channel)
                 .returning(channels::all_columns)
@@ -192,7 +196,10 @@ pub fn channels_insert_if_not_exists(
                 Err(InsertError::Duplicate) => {
                     find().and_then(|maybe_channel| match maybe_channel {
                         Some(channel) => Ok(channel),
-                        None => Err("Found no channel after duplicate insert error".to_owned()),
+                        None => Err(format!(
+                            "Not found again after duplicate insert error: {:?}",
+                            new_channel
+                        )),
                     })
                 }
                 Err(InsertError::Unknown(err)) => {
