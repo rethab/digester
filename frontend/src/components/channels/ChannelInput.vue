@@ -45,6 +45,7 @@ export default {
   data() {
     let types = [
       { text: "Blog / News", value: Channel.Rss },
+      { text: "Twitter", value: Channel.Twitter },
       { text: "Github", value: Channel.GithubRelease }
     ];
 

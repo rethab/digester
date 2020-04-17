@@ -9,6 +9,10 @@
       Into tech news? Try
       <span class="font-italic">theverge.com</span>
     </v-card-subtitle>
+    <v-card-subtitle v-if="channel.isTwitter()">
+      Into music? Try
+      <span class="font-italic">Lady Gaga</span>
+    </v-card-subtitle>
     <v-card-subtitle v-if="channel.isList()">
       Into Android? Try
       <span class="font-italic">Kotlin</span>
