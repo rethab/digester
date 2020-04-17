@@ -266,6 +266,7 @@ impl FromSql<Text, Pg> for ChannelType {
         match not_none!(bytes) {
             b"github_release" => Ok(ChannelType::GithubRelease),
             b"rss_feed" => Ok(ChannelType::RssFeed),
+            b"twitter" => Ok(ChannelType::Twitter),
             unrecognized => {
                 Err(format!("Unrecognized channel type enum variant: {:?}", unrecognized).into())
             }

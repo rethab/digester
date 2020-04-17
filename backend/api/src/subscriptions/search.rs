@@ -37,7 +37,7 @@ pub fn search(
     };
 
     println!(
-        "Found {} channels in search '{}'",
+        "Found {} channels in db search '{}'",
         channels.len(),
         db_query.0
     );

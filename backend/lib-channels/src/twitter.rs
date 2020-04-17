@@ -1,7 +1,7 @@
 use super::channel::*;
 
 use chrono::{DateTime, Utc};
-use egg_mode::search::{self, ResultType};
+use egg_mode::user;
 use egg_mode::Token;
 use tokio::runtime::Runtime;
 
@@ -33,22 +33,10 @@ impl Channel for Twitter {
     }
 
     fn search(&self, name: SanitizedName) -> Result<Vec<ChannelInfo>, SearchError> {
-        let search = Runtime::new()
-            .unwrap()
-            .block_on(
-                search::search(name.0.to_string())
-                    .result_type(ResultType::Recent)
-                    .call(&self.token),
-            )
-            .unwrap();
-        for tweet in &search.statuses {
-            println!(
-                "(@{}) {}",
-                tweet.user.as_ref().unwrap().screen_name,
-                tweet.text
-            );
-        }
-        Ok(vec![])
+        let mut rt = Runtime::new().map_err(|err| {
+            SearchError::TechnicalError(format!("Failed to initialize tokio runtime: {:?}", err))
+        })?;
+        rt.block_on(user_search(name, &self.token))
     }
 
     fn fetch_updates(
@@ -58,5 +46,30 @@ impl Channel for Twitter {
         _last_fetched: Option<DateTime<Utc>>,
     ) -> Result<Vec<Update>, String> {
         unimplemented!()
+    }
+}
+
+async fn user_search(query: SanitizedName, token: &Token) -> Result<Vec<ChannelInfo>, SearchError> {
+    let results = user::search(query.0.to_string(), token)
+        .with_page_size(20)
+        .call()
+        .await;
+
+    match results {
+        Err(err) => Err(SearchError::TechnicalError(format!(
+            "Failed to call twitter: {:?}",
+            err
+        ))),
+        Ok(users) => {
+            let mut channel_infos = Vec::with_capacity(users.len());
+            for user in users.response {
+                channel_infos.push(ChannelInfo {
+                    name: user.name,
+                    url: format!("https://twitter.com/{}", user.screen_name),
+                    link: format!("https://twitter.com/{}", user.screen_name),
+                })
+            }
+            Ok(channel_infos)
+        }
     }
 }
