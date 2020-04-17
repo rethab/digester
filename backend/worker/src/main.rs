@@ -1,4 +1,5 @@
 use channels::github_release::GithubRelease;
+use channels::twitter::Twitter;
 use lib_channels as channels;
 use lib_db as db;
 use lib_digester as digester;
@@ -30,11 +31,12 @@ fn main() -> Result<(), String> {
     let opt = Opt::from_args();
     let db_conn = db::connection_from_str(&opt.database_uri)?;
     let github = GithubRelease::new(&opt.github_api_token)?;
+    let twitter = Twitter::new("")?;
     let sendgrid = digester::SendgridCredentials {
         api_key: opt.sendgrid_api_key,
     };
     println!("Running worker in {:?} mode", opt.app_env);
-    fetcher::App::new(&db_conn, github).run()?;
+    fetcher::App::new(&db_conn, github, twitter).run()?;
     digester::App::new(&db_conn, sendgrid, opt.app_env.into()).run()
 }
 
