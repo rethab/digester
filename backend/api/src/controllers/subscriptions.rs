@@ -1,23 +1,17 @@
-use lib_channels as channels;
 use lib_db as db;
 use lib_messaging as messaging;
 
 use super::super::subscriptions;
 use super::common::*;
-use channels::github_release::GithubRelease;
-use channels::twitter::Twitter;
 use chrono::naive::NaiveTime;
 use chrono::Utc;
 use chrono_tz::Tz;
 use db::{ChannelType, Day, Frequency, Timezone};
 use either::{Left, Right};
 use messaging::sendgrid::pending_subscriptions;
-use rocket::http::RawStr;
-use rocket::request::FromFormValue;
-use rocket::{Rocket, State};
+use rocket::Rocket;
 use rocket_contrib::json::{Json, JsonValue};
 use std::str::FromStr;
-use subscriptions::search;
 use uuid::Uuid;
 
 pub fn mount(rocket: Rocket) -> Rocket {
@@ -25,7 +19,6 @@ pub fn mount(rocket: Rocket) -> Rocket {
         "/subscriptions",
         routes![
             list,
-            search,
             add,
             show,
             update,
@@ -35,8 +28,6 @@ pub fn mount(rocket: Rocket) -> Rocket {
         ],
     )
 }
-
-pub struct GithubApiToken(pub String);
 
 #[derive(Deserialize, Debug, PartialEq)]
 struct NewSubscription {
@@ -142,41 +133,6 @@ impl Subscription {
     }
 }
 
-#[derive(Serialize)]
-struct Channel {
-    id: i32,
-    #[serde(rename = "type")]
-    channel_type: SearchChannelType,
-    name: String,
-    summary: Option<String>,
-    link: Option<String>,
-    verified: bool,
-}
-
-impl Channel {
-    fn from_db(c: db::Channel) -> Self {
-        Self {
-            id: c.id,
-            channel_type: SearchChannelType::from_db(c.channel_type),
-            name: c.name,
-            summary: None,
-            link: Some(c.link),
-            verified: c.verified,
-        }
-    }
-
-    fn from_list(l: db::List, channels: Vec<db::Channel>) -> Self {
-        Self {
-            id: l.id,
-            channel_type: SearchChannelType::List,
-            name: l.name,
-            summary: Some(format!("{} channels", channels.len())),
-            link: None,
-            verified: false,
-        }
-    }
-}
-
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 enum SearchChannelType {
     GithubRelease,
@@ -191,19 +147,6 @@ impl SearchChannelType {
             ChannelType::GithubRelease => SearchChannelType::GithubRelease,
             ChannelType::RssFeed => SearchChannelType::RssFeed,
             ChannelType::Twitter => SearchChannelType::Twitter,
-        }
-    }
-}
-
-impl<'v> FromFormValue<'v> for SearchChannelType {
-    type Error = String;
-    fn from_form_value(form_value: &'v RawStr) -> Result<SearchChannelType, String> {
-        match form_value.as_str() {
-            "GithubRelease" => Ok(SearchChannelType::GithubRelease),
-            "RssFeed" => Ok(SearchChannelType::RssFeed),
-            "Twitter" => Ok(SearchChannelType::Twitter),
-            "List" => Ok(SearchChannelType::List),
-            other => Err(format!("Invalid channel type: {}", other)),
         }
     }
 }
@@ -237,102 +180,6 @@ fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
             collected.into()
         }
     }
-}
-
-#[get("/search?<channel_type>&<query>")]
-fn search(
-    _session: Protected,
-    _r: RateLimited,
-    db: DigesterDbConn,
-    channel_type: SearchChannelType,
-    gh_token: State<GithubApiToken>,
-    query: &RawStr,
-) -> JsonResponse {
-    let query = match query.url_decode() {
-        Ok(query) => query,
-        Err(err) => {
-            eprintln!("Failed to decode raw string: '{}': {:?}", query, err);
-            return JsonResponse::InternalServerError;
-        }
-    };
-
-    // todo only initialize this if needed
-    let github: GithubRelease = match GithubRelease::new(&gh_token.0) {
-        Ok(github) => github,
-        Err(err) => {
-            eprintln!("Failed to resolve github client: {:?}", err);
-            return JsonResponse::InternalServerError;
-        }
-    };
-
-    let twitter: Twitter = match Twitter::new("") {
-        Ok(twitter) => twitter,
-        Err(err) => {
-            eprintln!("Failed to resolve twitter client: {:?}", err);
-            return JsonResponse::InternalServerError;
-        }
-    };
-
-    let channel_or_list = match channel_type {
-        SearchChannelType::List => Left(()),
-        SearchChannelType::GithubRelease => Right(ChannelType::GithubRelease),
-        SearchChannelType::Twitter => Right(ChannelType::Twitter),
-        SearchChannelType::RssFeed => Right(ChannelType::RssFeed),
-    };
-
-    let channels = match channel_or_list {
-        Left(()) => {
-            let lists = match db::lists_search(&db, &query) {
-                Ok(lists) => lists,
-                Err(err) => {
-                    eprintln!("Failed to search for lists by '{}': {:?}", query, err);
-                    return JsonResponse::InternalServerError;
-                }
-            };
-
-            let lists_with_channels = match db::lists_identity_zip_with_channels(&db, lists) {
-                Ok(lwc) => lwc,
-                Err(err) => {
-                    eprintln!("Failed to zip channels for lists: {}", err);
-                    return JsonResponse::InternalServerError;
-                }
-            };
-
-            lists_with_channels
-                .into_iter()
-                .map(|(list, _, channels)| Channel::from_list(list, channels))
-                .collect::<Vec<Channel>>()
-        }
-        Right(db_channel_type) => {
-            let channel_type = match db_channel_type {
-                db::ChannelType::GithubRelease => channels::ChannelType::GithubRelease,
-                db::ChannelType::RssFeed => channels::ChannelType::RssFeed,
-                db::ChannelType::Twitter => channels::ChannelType::Twitter,
-            };
-            let channel = channels::factory(channel_type, &github, &twitter);
-
-            use search::SearchError::*;
-            match search::search(&db.0, db_channel_type, channel, &query) {
-                Err(Unknown) => return JsonResponse::InternalServerError,
-                Err(InvalidInput) => return JsonResponse::BadRequest("Invalid Input".into()),
-                Err(NotFound) => {
-                    return JsonResponse::BadRequest(
-                        "This does not exist. Are you sure the input is correct?".into(),
-                    );
-                }
-                Err(Timeout) => {
-                    return JsonResponse::BadRequest(
-                        "We could not fetch your feed fast enough. Please try again later.".into(),
-                    );
-                }
-                Ok(channels) => channels
-                    .into_iter()
-                    .map(Channel::from_db)
-                    .collect::<Vec<Channel>>(),
-            }
-        }
-    };
-    JsonResponse::Ok(json!({ "channels": channels }))
 }
 
 #[post("/add", data = "<new_subscription>")]

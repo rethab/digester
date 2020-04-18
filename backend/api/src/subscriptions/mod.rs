@@ -5,8 +5,6 @@ use diesel::pg::PgConnection;
 use either::{Either, Left, Right};
 use lib_db as db;
 
-pub mod search;
-
 pub fn delete(db: &PgConnection, id: i32) -> Result<(), String> {
     db.build_transaction()
         .run(|| {
