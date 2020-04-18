@@ -2,6 +2,10 @@
   <div>
     <div class="text-center">
       <h1 class="title">Found {{channels.length}} Result(s)</h1>
+      <p
+        v-if="channelType == 'Twitter'"
+        class="font-italic caption"
+      >Protected accounts are not shown</p>
     </div>
     <v-card v-if="channels.length == 0" color="error" class="lighten-3">
       <v-card-text v-html="noResultsText" />
