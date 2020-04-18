@@ -150,6 +150,7 @@ struct Channel {
     name: String,
     summary: Option<String>,
     link: Option<String>,
+    verified: bool,
 }
 
 impl Channel {
@@ -160,6 +161,7 @@ impl Channel {
             name: c.name,
             summary: None,
             link: Some(c.link),
+            verified: c.verified,
         }
     }
 
@@ -170,6 +172,7 @@ impl Channel {
             name: l.name,
             summary: Some(format!("{} channels", channels.len())),
             link: None,
+            verified: false,
         }
     }
 }

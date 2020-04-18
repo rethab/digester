@@ -171,6 +171,7 @@ impl Channel for GithubRelease {
                             name: repo.to_string(),
                             link: repo.to_url(),
                             url: repo.to_url(),
+                            verified: false,
                         }]
                     })
             }

@@ -77,6 +77,7 @@ pub fn search(
             name: f.name.clone(),
             url: f.url.clone(),
             link: f.link.clone(),
+            verified: f.verified,
         })
         .collect();
 

@@ -20,6 +20,18 @@
         <v-list-item-content>
           <v-list-item-title style="word-break: break-word">
             {{channel.name}}
+            <v-tooltip top>
+              <template v-slot:activator="{ on }">
+                <v-icon
+                  v-if="channel.verified"
+                  v-on="on"
+                  small
+                  color="blue"
+                  class="mb-1"
+                >{{verifiedIcon}}</v-icon>
+              </template>
+              <span>Verified</span>
+            </v-tooltip>
             <span
               v-if="alreadyThere(channel)"
               class="font-italic grey--text caption"
@@ -50,7 +62,7 @@
 </template>
 
 <script>
-import { mdiPlus } from "@mdi/js";
+import { mdiPlus, mdiShieldCheck } from "@mdi/js";
 
 export default {
   props: {
@@ -76,7 +88,8 @@ export default {
   },
   data() {
     return {
-      plusIcon: mdiPlus
+      plusIcon: mdiPlus,
+      verifiedIcon: mdiShieldCheck
     };
   },
   computed: {
