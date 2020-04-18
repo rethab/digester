@@ -170,7 +170,7 @@ impl Channel for GithubRelease {
                         vec![ChannelInfo {
                             name: repo.to_string(),
                             link: repo.to_url(),
-                            url: repo.to_url(),
+                            ext_id: repo.to_string(),
                             verified: false,
                         }]
                     })
@@ -187,11 +187,10 @@ impl Channel for GithubRelease {
 
     fn fetch_updates(
         &self,
-        name: &str,
-        _url: &str,
+        repo_name: &str,
         last_fetched: Option<DateTime<Utc>>,
     ) -> Result<Vec<Update>, String> {
-        let repo = GithubRepository::parse(name)?;
+        let repo = GithubRepository::parse(repo_name)?;
         let query = self
             .client
             .get()

@@ -126,7 +126,6 @@ impl Channel for Rss {
 
     fn fetch_updates(
         &self,
-        _name: &str,
         url: &str,
         last_fetched: Option<DateTime<Utc>>,
     ) -> Result<Vec<Update>, String> {
@@ -269,13 +268,13 @@ fn fetch_channel_info(full_url: &Url, recursed: u8) -> Result<Vec<ChannelInfo>, 
         match parse_feed(response) {
             Ok(ParsedFeed::Rss(channel)) => Ok(vec![ChannelInfo {
                 name: channel.title().into(),
-                url: sane_url,
+                ext_id: sane_url,
                 link: channel.link().into(),
                 verified: false,
             }]),
             Ok(ParsedFeed::Atom(feed)) => Ok(vec![ChannelInfo {
                 name: feed.title().into(),
-                url: sane_url.clone(),
+                ext_id: sane_url.clone(),
                 link: atom_link(feed.links()).unwrap_or(sane_url),
                 verified: false,
             }]),
@@ -296,7 +295,7 @@ fn add_channel_info(feeds: &mut Vec<ChannelInfo>, new_feed: ChannelInfo) {
     for (index, feed) in feeds.iter().enumerate() {
         if
         // exactly the same, not even different type
-        feed.url == new_feed.url ||
+        feed.ext_id == new_feed.ext_id ||
         // same title and pointing to same website --> most likely same
         (feed.name == new_feed.name && feed.link == new_feed.link)
         {
@@ -320,7 +319,7 @@ fn add_channel_info(feeds: &mut Vec<ChannelInfo>, new_feed: ChannelInfo) {
 fn is_better(new_feed: &ChannelInfo, existing: &ChannelInfo) -> bool {
     let guess_atom = |feed: &ChannelInfo| {
         feed.name.to_ascii_lowercase().contains("atom")
-            || feed.url.to_ascii_lowercase().contains("atom")
+            || feed.ext_id.to_ascii_lowercase().contains("atom")
     };
 
     guess_atom(new_feed) && !guess_atom(existing)
@@ -608,7 +607,7 @@ mod tests {
         assert_eq!(
             ChannelInfo {
                 name: "The Verge -  All Posts".into(),
-                url: "https://theverge.com/rss/index.xml".into(),
+                ext_id: "https://theverge.com/rss/index.xml".into(),
                 link: "https://www.theverge.com/".into(),
                 verified: false,
             },
@@ -621,7 +620,7 @@ mod tests {
         assert_eq!(
             ChannelInfo {
                 name: "The Verge -  Front Pages".into(),
-                url: "https://www.theverge.com/rss/front-page/index.xml".into(),
+                ext_id: "https://www.theverge.com/rss/front-page/index.xml".into(),
                 link: "https://www.theverge.com/".into(),
                 verified: false,
             },
@@ -647,7 +646,7 @@ mod tests {
         assert_eq!(
             ChannelInfo {
                 name: "The Verge -  All Posts".into(),
-                url: "https://theverge.com/rss/index.xml".into(),
+                ext_id: "https://theverge.com/rss/index.xml".into(),
                 link: "https://www.theverge.com/".into(),
                 verified: false,
             },
@@ -665,7 +664,7 @@ mod tests {
         assert_eq!(
             ChannelInfo {
                 name: "Podcast – Software Engineering Daily".into(),
-                url: "https://softwareengineeringdaily.com/category/podcast/feed/".into(),
+                ext_id: "https://softwareengineeringdaily.com/category/podcast/feed/".into(),
                 link: "https://softwareengineeringdaily.com".into(),
                 verified: false,
             },
@@ -686,7 +685,7 @@ mod tests {
         assert_eq!(
             ChannelInfo {
                 name: "the morning paper".into(),
-                url: "https://blog.acolyer.org/feed/".into(),
+                ext_id: "https://blog.acolyer.org/feed/".into(),
                 link: "https://blog.acolyer.org".into(),
                 verified: false,
             },
@@ -699,7 +698,7 @@ mod tests {
         assert_eq!(
             ChannelInfo {
                 name: "Comments for the morning paper".into(),
-                url: "https://blog.acolyer.org/comments/feed/".into(),
+                ext_id: "https://blog.acolyer.org/comments/feed/".into(),
                 link: "https://blog.acolyer.org".into(),
                 verified: false,
             },
@@ -716,8 +715,8 @@ mod tests {
         assert_eq!(
             ChannelInfo {
                 name: "NYT > Top Stories".into(),
-                url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml".into(),
-                link: "https://www.nytimes.com?emc=rss&partner=rss".into(),
+                ext_id: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml".into(),
+                link: "https://www.nytimes.com".into(),
                 verified: false,
             },
             feed
@@ -736,7 +735,7 @@ mod tests {
         assert_eq!(
             ChannelInfo {
                 name: "Stories by Nikitonsky on Medium".into(),
-                url: "https://medium.com/feed/@nikitonsky".into(),
+                ext_id: "https://medium.com/feed/@nikitonsky".into(),
                 link: "https://medium.com/@nikitonsky?source=rss-5247cb846abe------2".into(),
                 verified: false,
             },
@@ -756,8 +755,9 @@ mod tests {
         assert_eq!(
             ChannelInfo {
                 name: "marktcheck".into(),
-                url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCxec_VgCE-5DUZ8MocKbEdg"
-                    .into(),
+                ext_id:
+                    "https://www.youtube.com/feeds/videos.xml?channel_id=UCxec_VgCE-5DUZ8MocKbEdg"
+                        .into(),
                 link: "https://www.youtube.com/channel/UCxec_VgCE-5DUZ8MocKbEdg".into(),
                 verified: false,
             },
@@ -774,7 +774,7 @@ mod tests {
         assert_eq!(
             ChannelInfo {
                 name: "200ok - Consultancy, Research Lab, Incubator".into(),
-                url: "https://200ok.ch/atom.xml".into(),
+                ext_id: "https://200ok.ch/atom.xml".into(),
                 link: "https://200ok.ch/".into(),
                 verified: false,
             },
@@ -804,7 +804,7 @@ mod tests {
         assert_eq!(
             ChannelInfo {
                 name: "Slashdot".into(),
-                url: "http://rss.slashdot.org/Slashdot/slashdotMain".into(),
+                ext_id: "http://rss.slashdot.org/Slashdot/slashdotMain".into(),
                 link: "https://slashdot.org/".into(),
                 verified: false,
             },
@@ -824,9 +824,7 @@ mod tests {
         // this blog uses 'Dublin Core Metadata Initiative' (dc:date)
         let url = "https://hasbrouck.org/blog/index.rdf";
         let rss = Rss {};
-        let updates = rss
-            .fetch_updates("The Practical Nomad", url, None)
-            .expect("Failed to fetch");
+        let updates = rss.fetch_updates(url, None).expect("Failed to fetch");
         assert_eq!(false, updates.is_empty())
     }
 
@@ -979,37 +977,37 @@ mod tests {
     fn compare_channel_infos() {
         let rss_hint_in_url = ChannelInfo {
             name: "blog a".into(),
-            url: "https://a.ch/rss.xml".into(),
+            ext_id: "https://a.ch/rss.xml".into(),
             link: "https://a.ch/".into(),
             verified: false,
         };
         let atom_hint_in_url = ChannelInfo {
             name: "blog a".into(),
-            url: "https://a.ch/atom.xml".into(),
+            ext_id: "https://a.ch/atom.xml".into(),
             link: "https://a.ch/".into(),
             verified: false,
         };
         let rss_hint_in_name = ChannelInfo {
             name: "blog a rss feed".into(),
-            url: "https://a.ch/feed.xml".into(),
+            ext_id: "https://a.ch/feed.xml".into(),
             link: "https://a.ch/".into(),
             verified: false,
         };
         let atom_hint_in_name = ChannelInfo {
             name: "blog a atom feed".into(),
-            url: "https://a.ch/feed.xml".into(),
+            ext_id: "https://a.ch/feed.xml".into(),
             link: "https://a.ch/".into(),
             verified: false,
         };
         let other_blog_with_no_hint = ChannelInfo {
             name: "blog b".into(),
-            url: "https://b.ch/feed.xml".into(),
+            ext_id: "https://b.ch/feed.xml".into(),
             link: "https://b.ch/".into(),
             verified: false,
         };
         let other_blog_with_rss_hint = ChannelInfo {
             name: "blog c rss feed".into(),
-            url: "https://c.ch/feed.xml".into(),
+            ext_id: "https://c.ch/feed.xml".into(),
             link: "https://c.ch/".into(),
             verified: false,
         };

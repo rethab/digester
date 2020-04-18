@@ -19,10 +19,10 @@ table! {
 table! {
     channels (id) {
         id -> Integer,
+        ext_id -> Text,
         channel_type -> Text,
         name -> Text,
         link -> Text,
-        url -> Text,
         verified -> Bool,
         last_fetched -> Nullable<Timestamptz>,
         inserted -> Timestamptz,

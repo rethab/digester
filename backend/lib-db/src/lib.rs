@@ -33,25 +33,6 @@ pub fn connection_from_str(uri: &str) -> Result<Connection, String> {
         .map(Connection)
 }
 
-pub fn channels_search(
-    conn: &PgConnection,
-    c_type: ChannelType,
-    query: &str,
-) -> Result<Vec<Channel>, String> {
-    use schema::channels::dsl::*;
-
-    let search_query = format!("%{}%", query);
-    channels
-        .filter(
-            channel_type.eq(c_type).and(
-                link.ilike(&search_query)
-                    .or(url.ilike(&search_query).or(name.ilike(&search_query))),
-            ),
-        )
-        .get_results(conn)
-        .map_err(|err| format!("Failed to fetch channels by query: {:?}", err))
-}
-
 pub fn channels_find_by_id(conn: &PgConnection, channel_id: i32) -> Result<Channel, String> {
     use schema::channels::dsl::*;
     channels
@@ -160,7 +141,8 @@ pub fn channels_insert_if_not_exists(
     let find = || -> Result<Option<Channel>, String> {
         channels
             .filter(
-                url.eq(&new_channel.url)
+                ext_id
+                    .eq(&new_channel.ext_id)
                     .and(channel_type.eq(&new_channel.channel_type)),
             )
             .load(conn)
@@ -182,10 +164,6 @@ pub fn channels_insert_if_not_exists(
         Ok(Some(channel)) => Ok(channel),
         Ok(None) => {
             use schema::channels;
-            println!(
-                "Didn't find url={}, type={:?}",
-                new_channel.url, new_channel.channel_type
-            );
             match diesel::insert_into(channels::table)
                 .values(&new_channel)
                 .returning(channels::all_columns)

@@ -28,87 +28,13 @@ enum ChannelType {
     List,
 }
 
-impl<'v> FromFormValue<'v> for ChannelType {
-    type Error = String;
-    fn from_form_value(form_value: &'v RawStr) -> Result<ChannelType, String> {
-        form_value.as_str().try_into()
-    }
-}
-
-impl<'v> FromParam<'v> for ChannelType {
-    type Error = String;
-    fn from_param(param: &'v RawStr) -> Result<ChannelType, String> {
-        param.as_str().try_into()
-    }
-}
-
-impl From<db::ChannelType> for ChannelType {
-    fn from(ct: db::ChannelType) -> ChannelType {
-        match ct {
-            db::ChannelType::GithubRelease => ChannelType::GithubRelease,
-            db::ChannelType::RssFeed => ChannelType::RssFeed,
-            db::ChannelType::Twitter => ChannelType::Twitter,
-        }
-    }
-}
-
-impl TryFrom<&str> for ChannelType {
-    type Error = String;
-
-    fn try_from(ct: &str) -> Result<ChannelType, String> {
-        match ct {
-            "GithubRelease" => Ok(ChannelType::GithubRelease),
-            "RssFeed" => Ok(ChannelType::RssFeed),
-            "Twitter" => Ok(ChannelType::Twitter),
-            "List" => Ok(ChannelType::List),
-            other => Err(format!("Invalid channel type: {}", other)),
-        }
-    }
-}
-
-impl From<channels::ChannelType> for ChannelType {
-    fn from(ct: channels::ChannelType) -> ChannelType {
-        match ct {
-            channels::ChannelType::GithubRelease => ChannelType::GithubRelease,
-            channels::ChannelType::RssFeed => ChannelType::RssFeed,
-            channels::ChannelType::Twitter => ChannelType::Twitter,
-        }
-    }
-}
-
-impl Into<JsonResponse> for Channel {
-    fn into(self) -> JsonResponse {
-        match serde_json::to_value(self.clone()) {
-            Ok(v) => JsonResponse::Ok(JsonValue(v)),
-            Err(err) => {
-                eprintln!(
-                    "Failed to convert Channel {:?} into JsonResponse: {:?}",
-                    self, err
-                );
-                JsonResponse::InternalServerError
-            }
-        }
-    }
-}
-
-impl Into<JsonResponse> for Vec<Channel> {
-    fn into(self) -> JsonResponse {
-        match serde_json::to_value(self) {
-            Ok(v) => JsonResponse::Ok(JsonValue(v)),
-            Err(err) => {
-                eprintln!(
-                    "Failed to convert Vec<Channel> into JsonResponse: {:?}",
-                    err
-                );
-                JsonResponse::InternalServerError
-            }
-        }
-    }
-}
-
 #[derive(Serialize, Clone, Debug, PartialEq)]
 struct Channel {
     id: Option<i32>,
+    /// this, in combination with the channel_type uniquely identifies a channel
+    /// ie. this must be unique in the specific channel (eg. a twitter handle or rss url)
+    #[serde(rename = "extId")]
+    ext_id: String,
     name: String,
     summary: Option<String>,
     #[serde(rename = "type")]
@@ -118,47 +44,6 @@ struct Channel {
     creator_id: Option<i32>,
     link: Option<String>,
     verified: bool,
-}
-
-impl Channel {
-    fn from_channel_info(c: ChannelInfo, ctype: channels::ChannelType) -> Channel {
-        Self {
-            id: None,
-            name: c.name,
-            summary: None,
-            channel_type: ctype.into(),
-            creator: None,
-            creator_id: None,
-            link: Some(c.link),
-            verified: c.verified,
-        }
-    }
-
-    fn from_channel(c: db::Channel) -> Channel {
-        Self {
-            id: Some(c.id),
-            name: c.name,
-            summary: None,
-            channel_type: c.channel_type.into(),
-            creator: None,
-            creator_id: None,
-            link: Some(c.link),
-            verified: c.verified,
-        }
-    }
-
-    fn from_list(l: db::List, i: db::Identity, channels: Vec<db::Channel>) -> Channel {
-        Self {
-            id: Some(l.id),
-            name: l.name,
-            channel_type: ChannelType::List,
-            summary: Some(format!("{} channels", channels.len())),
-            creator: Some(i.username),
-            creator_id: Some(i.user_id),
-            link: None,
-            verified: false,
-        }
-    }
 }
 
 #[get("/<channel_type>/<id>")]
@@ -242,55 +127,196 @@ fn search(
                 db::ChannelType::RssFeed => channels::ChannelType::RssFeed,
                 db::ChannelType::Twitter => channels::ChannelType::Twitter,
             };
-            // todo only initialize this if needed
-            let github: GithubRelease = match GithubRelease::new(&gh_token.0) {
-                Ok(github) => github,
-                Err(err) => {
-                    eprintln!("Failed to resolve github client: {:?}", err);
-                    return JsonResponse::InternalServerError;
-                }
-            };
+            match online_search(&gh_token, &query, channel_type) {
+                Err(err) => return err,
+                Ok(channels) => {
+                    if channels.is_empty() {
+                        let no_channels: Vec<Channel> = Vec::new();
+                        return JsonResponse::Ok(json!(no_channels));
+                    }
 
-            let twitter: Twitter = match Twitter::new("") {
-                Ok(twitter) => twitter,
-                Err(err) => {
-                    eprintln!("Failed to resolve twitter client: {:?}", err);
-                    return JsonResponse::InternalServerError;
-                }
-            };
-            let channel = channels::factory(&channel_type, &github, &twitter);
+                    let new_channels = channels
+                        .iter()
+                        .map(|f| db::NewChannel {
+                            channel_type: db_channel_type,
+                            name: f.name.clone(),
+                            ext_id: f.ext_id.clone(),
+                            link: f.link.clone(),
+                            verified: f.verified,
+                        })
+                        .collect();
 
-            let online_query = match channel.sanitize(&query) {
-                Err(err) => {
-                    eprintln!("Query is not a URL: {:?}", err);
-                    return JsonResponse::BadRequest("Invalid Input".into());
+                    match db::channels_insert_many(&db, new_channels) {
+                        Err(err) => {
+                            eprintln!("Failed to insert new channels: {:?}", err);
+                            JsonResponse::InternalServerError
+                        }
+                        Ok(db_channels) => JsonResponse::Ok(json!(db_channels
+                            .into_iter()
+                            .map(Channel::from_channel)
+                            .collect::<Vec<Channel>>())),
+                    }
                 }
-                Ok(oq) => oq,
-            };
-
-            match channel.search(online_query) {
-                Err(SearchError::ChannelNotFound(msg)) => {
-                    eprintln!("Channel not found: {}", msg);
-                    JsonResponse::BadRequest(
-                        "This does not exist. Are you sure the input is correct?".into(),
-                    )
-                }
-                Err(SearchError::TechnicalError(msg)) => {
-                    eprintln!("Technical error during search: {}", msg);
-                    JsonResponse::InternalServerError
-                }
-                Err(SearchError::Timeout(msg)) => {
-                    eprintln!("Timeout during online search: {}", msg);
-                    JsonResponse::BadRequest(
-                        "We could not fetch your feed fast enough. Please try again later.".into(),
-                    )
-                }
-                Ok(channels) => channels
-                    .into_iter()
-                    .map(|c| Channel::from_channel_info(c, channel_type.clone()))
-                    .collect::<Vec<Channel>>()
-                    .into(),
             }
+        }
+    }
+}
+
+fn online_search(
+    gh_token: &GithubApiToken,
+    query: &str,
+    channel_type: channels::ChannelType,
+) -> Result<Vec<ChannelInfo>, JsonResponse> {
+    // todo only initialize this if needed
+    let github: GithubRelease = match GithubRelease::new(&gh_token.0) {
+        Ok(github) => github,
+        Err(err) => {
+            eprintln!("Failed to resolve github client: {:?}", err);
+            return Err(JsonResponse::InternalServerError);
+        }
+    };
+
+    let twitter: Twitter = match Twitter::new("") {
+        Ok(twitter) => twitter,
+        Err(err) => {
+            eprintln!("Failed to resolve twitter client: {:?}", err);
+            return Err(JsonResponse::InternalServerError);
+        }
+    };
+    let channel = channels::factory(&channel_type, &github, &twitter);
+
+    let online_query = match channel.sanitize(&query) {
+        Err(err) => {
+            eprintln!("Query is not a URL: {:?}", err);
+            return Err(JsonResponse::BadRequest("Invalid Input".into()));
+        }
+        Ok(oq) => oq,
+    };
+
+    channel.search(online_query).map_err(|err| match err {
+        SearchError::ChannelNotFound(msg) => {
+            eprintln!("Channel not found: {}", msg);
+            JsonResponse::BadRequest(
+                "This does not exist. Are you sure the input is correct?".into(),
+            )
+        }
+        SearchError::TechnicalError(msg) => {
+            eprintln!("Technical error during search: {}", msg);
+            JsonResponse::InternalServerError
+        }
+        SearchError::Timeout(msg) => {
+            eprintln!("Timeout during online search: {}", msg);
+            JsonResponse::BadRequest(
+                "We could not fetch your feed fast enough. Please try again later.".into(),
+            )
+        }
+    })
+}
+
+impl<'v> FromFormValue<'v> for ChannelType {
+    type Error = String;
+    fn from_form_value(form_value: &'v RawStr) -> Result<ChannelType, String> {
+        form_value.as_str().try_into()
+    }
+}
+
+impl<'v> FromParam<'v> for ChannelType {
+    type Error = String;
+    fn from_param(param: &'v RawStr) -> Result<ChannelType, String> {
+        param.as_str().try_into()
+    }
+}
+
+impl From<db::ChannelType> for ChannelType {
+    fn from(ct: db::ChannelType) -> ChannelType {
+        match ct {
+            db::ChannelType::GithubRelease => ChannelType::GithubRelease,
+            db::ChannelType::RssFeed => ChannelType::RssFeed,
+            db::ChannelType::Twitter => ChannelType::Twitter,
+        }
+    }
+}
+
+impl TryFrom<&str> for ChannelType {
+    type Error = String;
+
+    fn try_from(ct: &str) -> Result<ChannelType, String> {
+        match ct {
+            "GithubRelease" => Ok(ChannelType::GithubRelease),
+            "RssFeed" => Ok(ChannelType::RssFeed),
+            "Twitter" => Ok(ChannelType::Twitter),
+            "List" => Ok(ChannelType::List),
+            other => Err(format!("Invalid channel type: {}", other)),
+        }
+    }
+}
+
+impl From<channels::ChannelType> for ChannelType {
+    fn from(ct: channels::ChannelType) -> ChannelType {
+        match ct {
+            channels::ChannelType::GithubRelease => ChannelType::GithubRelease,
+            channels::ChannelType::RssFeed => ChannelType::RssFeed,
+            channels::ChannelType::Twitter => ChannelType::Twitter,
+        }
+    }
+}
+
+impl Into<JsonResponse> for Channel {
+    fn into(self) -> JsonResponse {
+        match serde_json::to_value(self.clone()) {
+            Ok(v) => JsonResponse::Ok(JsonValue(v)),
+            Err(err) => {
+                eprintln!(
+                    "Failed to convert Channel {:?} into JsonResponse: {:?}",
+                    self, err
+                );
+                JsonResponse::InternalServerError
+            }
+        }
+    }
+}
+
+impl Into<JsonResponse> for Vec<Channel> {
+    fn into(self) -> JsonResponse {
+        match serde_json::to_value(self) {
+            Ok(v) => JsonResponse::Ok(JsonValue(v)),
+            Err(err) => {
+                eprintln!(
+                    "Failed to convert Vec<Channel> into JsonResponse: {:?}",
+                    err
+                );
+                JsonResponse::InternalServerError
+            }
+        }
+    }
+}
+
+impl Channel {
+    fn from_channel(c: db::Channel) -> Channel {
+        Self {
+            id: Some(c.id),
+            ext_id: c.ext_id,
+            name: c.name,
+            summary: None,
+            channel_type: c.channel_type.into(),
+            creator: None,
+            creator_id: None,
+            link: Some(c.link),
+            verified: c.verified,
+        }
+    }
+
+    fn from_list(l: db::List, i: db::Identity, channels: Vec<db::Channel>) -> Channel {
+        Self {
+            id: Some(l.id),
+            ext_id: format!("{}", l.id),
+            name: l.name,
+            channel_type: ChannelType::List,
+            summary: Some(format!("{} channels", channels.len())),
+            creator: Some(i.username),
+            creator_id: Some(i.user_id),
+            link: None,
+            verified: false,
         }
     }
 }
