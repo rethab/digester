@@ -8,6 +8,7 @@ use super::twitter::Twitter;
 
 /// A channel type is a certain source that we can pull updates
 /// from
+#[derive(Clone)]
 pub enum ChannelType {
     /// Fetch releases from a specific github repository
     GithubRelease,
@@ -118,7 +119,7 @@ pub trait Channel {
 
 /// Factory function to create the channel based on the channel type.
 pub fn factory<'a>(
-    channel_type: ChannelType,
+    channel_type: &ChannelType,
     github_release: &'a GithubRelease,
     twitter: &'a Twitter,
 ) -> &'a dyn Channel {

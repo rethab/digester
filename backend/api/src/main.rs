@@ -70,7 +70,7 @@ fn main() -> Result<(), String> {
         let name = "GITHUB_API_TOKEN";
         let api_token =
             env::var(name).unwrap_or_else(|_| panic!("Failed to read env variable {}", name));
-        Ok(rocket.manage(subscriptions::GithubApiToken(api_token)))
+        Ok(rocket.manage(channels::GithubApiToken(api_token)))
     });
 
     let mut rocket = rocket::ignite();
