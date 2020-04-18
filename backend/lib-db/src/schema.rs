@@ -23,6 +23,7 @@ table! {
         name -> Text,
         link -> Text,
         url -> Text,
+        verified -> Bool,
         last_fetched -> Nullable<Timestamptz>,
         inserted -> Timestamptz,
     }

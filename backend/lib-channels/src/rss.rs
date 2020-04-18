@@ -271,11 +271,13 @@ fn fetch_channel_info(full_url: &Url, recursed: u8) -> Result<Vec<ChannelInfo>, 
                 name: channel.title().into(),
                 url: sane_url,
                 link: channel.link().into(),
+                verified: false,
             }]),
             Ok(ParsedFeed::Atom(feed)) => Ok(vec![ChannelInfo {
                 name: feed.title().into(),
                 url: sane_url.clone(),
                 link: atom_link(feed.links()).unwrap_or(sane_url),
+                verified: false,
             }]),
             Err(err) => Err(FeedError::UnknownError(format!(
                 "Neither atom nor rss: {:?}",
@@ -608,6 +610,7 @@ mod tests {
                 name: "The Verge -  All Posts".into(),
                 url: "https://theverge.com/rss/index.xml".into(),
                 link: "https://www.theverge.com/".into(),
+                verified: false,
             },
             *all_posts
         );
@@ -620,6 +623,7 @@ mod tests {
                 name: "The Verge -  Front Pages".into(),
                 url: "https://www.theverge.com/rss/front-page/index.xml".into(),
                 link: "https://www.theverge.com/".into(),
+                verified: false,
             },
             *front_pages
         );
@@ -645,6 +649,7 @@ mod tests {
                 name: "The Verge -  All Posts".into(),
                 url: "https://theverge.com/rss/index.xml".into(),
                 link: "https://www.theverge.com/".into(),
+                verified: false,
             },
             *all_posts
         );
@@ -662,6 +667,7 @@ mod tests {
                 name: "Podcast – Software Engineering Daily".into(),
                 url: "https://softwareengineeringdaily.com/category/podcast/feed/".into(),
                 link: "https://softwareengineeringdaily.com".into(),
+                verified: false,
             },
             *all_posts
         );
@@ -682,6 +688,7 @@ mod tests {
                 name: "the morning paper".into(),
                 url: "https://blog.acolyer.org/feed/".into(),
                 link: "https://blog.acolyer.org".into(),
+                verified: false,
             },
             *feed
         );
@@ -694,6 +701,7 @@ mod tests {
                 name: "Comments for the morning paper".into(),
                 url: "https://blog.acolyer.org/comments/feed/".into(),
                 link: "https://blog.acolyer.org".into(),
+                verified: false,
             },
             *comments
         );
@@ -710,6 +718,7 @@ mod tests {
                 name: "NYT > Top Stories".into(),
                 url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml".into(),
                 link: "https://www.nytimes.com?emc=rss&partner=rss".into(),
+                verified: false,
             },
             feed
         );
@@ -729,6 +738,7 @@ mod tests {
                 name: "Stories by Nikitonsky on Medium".into(),
                 url: "https://medium.com/feed/@nikitonsky".into(),
                 link: "https://medium.com/@nikitonsky?source=rss-5247cb846abe------2".into(),
+                verified: false,
             },
             feed
         );
@@ -749,6 +759,7 @@ mod tests {
                 url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCxec_VgCE-5DUZ8MocKbEdg"
                     .into(),
                 link: "https://www.youtube.com/channel/UCxec_VgCE-5DUZ8MocKbEdg".into(),
+                verified: false,
             },
             feed
         );
@@ -765,6 +776,7 @@ mod tests {
                 name: "200ok - Consultancy, Research Lab, Incubator".into(),
                 url: "https://200ok.ch/atom.xml".into(),
                 link: "https://200ok.ch/".into(),
+                verified: false,
             },
             feed
         );
@@ -794,6 +806,7 @@ mod tests {
                 name: "Slashdot".into(),
                 url: "http://rss.slashdot.org/Slashdot/slashdotMain".into(),
                 link: "https://slashdot.org/".into(),
+                verified: false,
             },
             feed
         );
@@ -968,31 +981,37 @@ mod tests {
             name: "blog a".into(),
             url: "https://a.ch/rss.xml".into(),
             link: "https://a.ch/".into(),
+            verified: false,
         };
         let atom_hint_in_url = ChannelInfo {
             name: "blog a".into(),
             url: "https://a.ch/atom.xml".into(),
             link: "https://a.ch/".into(),
+            verified: false,
         };
         let rss_hint_in_name = ChannelInfo {
             name: "blog a rss feed".into(),
             url: "https://a.ch/feed.xml".into(),
             link: "https://a.ch/".into(),
+            verified: false,
         };
         let atom_hint_in_name = ChannelInfo {
             name: "blog a atom feed".into(),
             url: "https://a.ch/feed.xml".into(),
             link: "https://a.ch/".into(),
+            verified: false,
         };
         let other_blog_with_no_hint = ChannelInfo {
             name: "blog b".into(),
             url: "https://b.ch/feed.xml".into(),
             link: "https://b.ch/".into(),
+            verified: false,
         };
         let other_blog_with_rss_hint = ChannelInfo {
             name: "blog c rss feed".into(),
             url: "https://c.ch/feed.xml".into(),
             link: "https://c.ch/".into(),
+            verified: false,
         };
 
         // SCENARIO 1: Atom replaces Rss (hint in URL)

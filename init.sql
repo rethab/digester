@@ -28,6 +28,7 @@ CREATE TABLE channels (
   name VARCHAR NULL, -- name of the channel, eg. 'kubernetes/kubernetes'. format depends on type. we could have duplicates here: eg. a twitter user has a name and a handle. the name might not be unique
   link VARCHAR NOT NULL, -- link of the website eg. blog.acolyer.com or github.com/kubernetes/kubernetes
   url VARCHAR NOT NULL, -- ulr of the channel where we can fetch updates from eg. blog.acolyer.org/feed.xml
+  verified BOOL NOT NULL, -- if true, this twitter account is verified
   last_fetched TIMESTAMP WITH TIME ZONE NULL, -- last successful fetch
   inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(channel_type, url) -- cannot have channel twice

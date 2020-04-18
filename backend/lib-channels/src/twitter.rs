@@ -109,6 +109,7 @@ async fn user_search(query: SanitizedName, token: &Token) -> Result<Vec<ChannelI
                     // when changing this, make sure to also change the parse_screen_name
                     url: format!("https://twitter.com/{}", user.screen_name),
                     link: format!("https://twitter.com/{}", user.screen_name),
+                    verified: user.verified,
                 })
             }
             Ok(channel_infos)

@@ -67,6 +67,9 @@ pub struct ChannelInfo {
     /// link to the website about this channel
     /// (eg. https://blog.acolyer.org). something a human would visit.
     pub link: String,
+    /// if true, this channel is a verified account. currently only used
+    /// for twitter
+    pub verified: bool,
 }
 
 /// A channel is a thing where we can pull updates from.
