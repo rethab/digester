@@ -63,11 +63,12 @@ pub struct SanitizedName(pub String);
 pub struct ChannelInfo {
     /// human readable description of the channel (eg. "the morning paper")
     pub name: String,
-    /// url where we can pull updates from (eg. https://blog.acolyer.org/feed/rss.xml)
-    pub url: String,
     /// link to the website about this channel
     /// (eg. https://blog.acolyer.org). something a human would visit.
     pub link: String,
+    /// the id that identifies the channel externally. eg. a twitter
+    /// handle, a github repository name or a URL to an rss feed
+    pub ext_id: String,
     /// if true, this channel is a verified account. currently only used
     /// for twitter
     pub verified: bool,
@@ -111,8 +112,7 @@ pub trait Channel {
     /// last_fetched. If last_fetched is None, we never fetched from it.
     fn fetch_updates(
         &self,
-        name: &str,
-        url: &str,
+        ext_id: &str,
         last_fetched: Option<DateTime<Utc>>,
     ) -> Result<Vec<Update>, String>;
 }

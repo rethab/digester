@@ -38,10 +38,10 @@ pub struct User {
 #[derive(Clone, Queryable)]
 pub struct Channel {
     pub id: i32,
+    pub ext_id: String,
     pub channel_type: ChannelType,
     pub name: String,
     pub link: String,
-    pub url: String,
     pub verified: bool,
     pub last_fetched: Option<DateTime<Utc>>,
     pub inserted: DateTime<Utc>,
@@ -50,10 +50,10 @@ pub struct Channel {
 #[derive(Insertable, Debug)]
 #[table_name = "channels"]
 pub struct NewChannel {
+    pub ext_id: String,
     pub channel_type: ChannelType,
     pub name: String,
     pub link: String,
-    pub url: String,
     pub verified: bool,
 }
 

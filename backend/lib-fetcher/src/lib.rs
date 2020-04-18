@@ -48,8 +48,7 @@ impl App<'_> {
 
     fn fetch_articles(&self, channel: &Channel) -> Result<(), String> {
         let c = self.get_channel(channel);
-        let url = channel.url.clone();
-        let updates = c.fetch_updates(&channel.name, &url, channel.last_fetched)?;
+        let updates = c.fetch_updates(&channel.ext_id, channel.last_fetched)?;
 
         println!(
             "Found {} updates in {:?} channel {}",

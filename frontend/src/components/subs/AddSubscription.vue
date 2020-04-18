@@ -59,13 +59,13 @@ export default {
 
       let params = { channel_type: type, query: name };
       Api()
-        .get("subscriptions/search", {
+        .get("channels/search", {
           params: params,
           timeout: 6000 // default timeout is 4s, but here we need to query upstream..
         })
         .then(resp => {
           this.loading = false;
-          this.searchResults = resp.data.channels;
+          this.searchResults = resp.data;
 
           // make sure new ones appear first
           this.searchResults.sort((a, b) => {

@@ -42,14 +42,16 @@ impl Channel for Twitter {
 
     fn fetch_updates(
         &self,
-        _name: &str,
-        url: &str,
+        screen_name: &str,
         last_fetched: Option<DateTime<Utc>>,
     ) -> Result<Vec<Update>, String> {
-        let screen_name = parse_screen_name(url)?;
         let mut rt = Runtime::new()
             .map_err(|err| format!("Failed to initialize tokio runtime: {:?}", err))?;
-        rt.block_on(tweet_search(screen_name, last_fetched, &self.token))
+        rt.block_on(tweet_search(
+            screen_name.to_owned(),
+            last_fetched,
+            &self.token,
+        ))
     }
 }
 
@@ -106,9 +108,8 @@ async fn user_search(query: SanitizedName, token: &Token) -> Result<Vec<ChannelI
             for user in users.response {
                 if !user.protected {
                     channel_infos.push(ChannelInfo {
+                        ext_id: user.screen_name.clone(),
                         name: user.name,
-                        // when changing this, make sure to also change the parse_screen_name
-                        url: format!("https://twitter.com/{}", user.screen_name),
                         link: format!("https://twitter.com/{}", user.screen_name),
                         verified: user.verified,
                     })
@@ -116,52 +117,5 @@ async fn user_search(query: SanitizedName, token: &Token) -> Result<Vec<ChannelI
             }
             Ok(channel_infos)
         }
-    }
-}
-
-fn parse_screen_name(url: &str) -> Result<String, String> {
-    if url.len() < 20 {
-        return Err(format!(
-            "Such a short url cannot be twitter profile: {}",
-            url
-        ));
-    }
-    let (_, screen_name) = url.split_at(20);
-    if screen_name.contains("/") || screen_name.len() < 2 {
-        Err(format!("Cananot work back to screen_name from {}", url))
-    } else {
-        Ok(screen_name.into())
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn parse_valid_screen_name() {
-        assert_eq!(
-            "fastned_",
-            parse_screen_name("https://twitter.com/fastned_").unwrap()
-        );
-        assert_eq!(
-            "ladygaga",
-            parse_screen_name("https://twitter.com/ladygaga").unwrap()
-        );
-        assert_eq!(
-            "123as_df123",
-            parse_screen_name("https://twitter.com/123as_df123").unwrap()
-        );
-    }
-
-    #[test]
-    fn parse_invalid_screen_name() {
-        assert_eq!(true, parse_screen_name("https://twitter.com/").is_err());
-        assert_eq!(true, parse_screen_name("fastned_").is_err());
-        assert_eq!(true, parse_screen_name("https://twitter.com").is_err());
-        assert_eq!(
-            true,
-            parse_screen_name("https://twitter.com/foo/bar").is_err()
-        );
     }
 }
