@@ -124,24 +124,16 @@ impl Channel for Rss {
         fetch_channel_info(&url, 0).map_err(|e| e.into())
     }
 
-    fn fetch_updates(
-        &self,
-        url: &str,
-        last_fetched: Option<DateTime<Utc>>,
-    ) -> Result<Vec<Update>, String> {
+    fn fetch_updates(&self, url: &str) -> Result<Vec<Update>, String> {
         let resp = fetch_resource(url)
             .map_err(|err| format!("Failed to fetch url '{}': {:?}", url, err))?;
 
-        let updates = match parse_feed(resp) {
-            Ok(ParsedFeed::Rss(rss)) => rss_to_updates(&rss)?,
-            Ok(ParsedFeed::Atom(atom)) => atom_to_updates(&atom)?,
-            Err(err) => return Err(format!("Failed to parse '{}': {:?}", url, err)),
-        };
-
-        Ok(updates
-            .into_iter()
-            .filter(|u| !u.is_old(last_fetched))
-            .collect())
+        parse_feed(resp)
+            .map_err(|err| format!("Failed to parse '{}': {:?}", url, err))
+            .and_then(|feed| match feed {
+                ParsedFeed::Rss(rss) => rss_to_updates(&rss),
+                ParsedFeed::Atom(atom) => atom_to_updates(&atom),
+            })
     }
 }
 

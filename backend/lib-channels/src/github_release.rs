@@ -19,10 +19,7 @@ impl GithubRelease {
         Ok(GithubRelease { client: github })
     }
 
-    fn parse_releases_response(
-        json: Value,
-        last_fetched: Option<DateTime<Utc>>,
-    ) -> Result<Vec<Update>, String> {
+    fn parse_releases_response(json: Value) -> Result<Vec<Update>, String> {
         let cloned_json = json.clone();
         let releases = serde_json::from_value::<Vec<ReleaseResponse>>(json)
             .map_err(|err| format!("Failed to parse releases: {:?}, json: {}", err, cloned_json))?;
@@ -30,8 +27,7 @@ impl GithubRelease {
         for release in releases {
             let update_or: Result<Update, String> = release.try_into();
             match update_or {
-                Ok(update) if !update.is_old(last_fetched) => updates.push(update),
-                Ok(_) => {}
+                Ok(update) => updates.push(update),
                 Err(err) => return Err(format!("Failed to parse reponse: {}", err)),
             }
         }
@@ -185,11 +181,7 @@ impl Channel for GithubRelease {
         }
     }
 
-    fn fetch_updates(
-        &self,
-        repo_name: &str,
-        last_fetched: Option<DateTime<Utc>>,
-    ) -> Result<Vec<Update>, String> {
+    fn fetch_updates(&self, repo_name: &str) -> Result<Vec<Update>, String> {
         let repo = GithubRepository::parse(repo_name)?;
         let query = self
             .client
@@ -200,7 +192,7 @@ impl Channel for GithubRelease {
             .releases();
         match query.execute::<Value>() {
             Ok((_, status, Some(json))) if status == StatusCode::OK => {
-                GithubRelease::parse_releases_response(json, last_fetched)
+                GithubRelease::parse_releases_response(json)
             }
             other => Err(format!("Failed to fetch: {:?}", other)),
         }

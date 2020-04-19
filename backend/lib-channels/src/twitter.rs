@@ -1,6 +1,5 @@
 use super::channel::*;
 
-use chrono::{DateTime, Utc};
 use egg_mode::tweet;
 use egg_mode::user::{self, UserID};
 use egg_mode::Token;
@@ -40,26 +39,14 @@ impl Channel for Twitter {
         rt.block_on(user_search(name, &self.token))
     }
 
-    fn fetch_updates(
-        &self,
-        screen_name: &str,
-        last_fetched: Option<DateTime<Utc>>,
-    ) -> Result<Vec<Update>, String> {
+    fn fetch_updates(&self, screen_name: &str) -> Result<Vec<Update>, String> {
         let mut rt = Runtime::new()
             .map_err(|err| format!("Failed to initialize tokio runtime: {:?}", err))?;
-        rt.block_on(tweet_search(
-            screen_name.to_owned(),
-            last_fetched,
-            &self.token,
-        ))
+        rt.block_on(tweet_search(screen_name.to_owned(), &self.token))
     }
 }
 
-async fn tweet_search(
-    screen_name: String,
-    last_fetched: Option<DateTime<Utc>>,
-    token: &Token,
-) -> Result<Vec<Update>, String> {
+async fn tweet_search(screen_name: String, token: &Token) -> Result<Vec<Update>, String> {
     let result = tweet::user_timeline(
         UserID::ScreenName(screen_name.clone().into()),
         false, /* replies */
@@ -80,12 +67,10 @@ async fn tweet_search(
             for tweet in &*feed {
                 let update = Update {
                     title: tweet.text.clone(),
-                    url: format!("https://twitter.com/{}/{}", screen_name, tweet.id),
+                    url: format!("https://twitter.com/{}/status/{}", screen_name, tweet.id),
                     published: tweet.created_at,
                 };
-                if !update.is_old(last_fetched) {
-                    updates.push(update);
-                }
+                updates.push(update);
             }
             Ok(updates)
         }

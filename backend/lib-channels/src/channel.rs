@@ -20,7 +20,7 @@ pub enum ChannelType {
 
 /// An update is a new thing from a channel. In RSS terminology, this
 /// would be an item.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Update {
     /// The title of the update could be the title of a blog post
     /// or the name/version of the new release
@@ -106,15 +106,12 @@ pub trait Channel {
     /// infos about the various feeds associated with that website
     fn search(&self, query: SanitizedName) -> Result<Vec<ChannelInfo>, SearchError>;
 
-    /// Fetches updates from the channel. The parameter last_fetched
-    /// incates the last time we fetched from this channel. This method
-    /// must not return any updates that were published before the
-    /// last_fetched. If last_fetched is None, we never fetched from it.
-    fn fetch_updates(
-        &self,
-        ext_id: &str,
-        last_fetched: Option<DateTime<Utc>>,
-    ) -> Result<Vec<Update>, String>;
+    /// Fetches all available updates from the channel. The channel can decide
+    /// what a reasonable amount is. The amount should be enought, however, to
+    /// cover about a week worth of updates.
+    /// This is to ensure that if digester dives for a couple of days, we'd still
+    /// get all updates for the weekly digests.
+    fn fetch_updates(&self, ext_id: &str) -> Result<Vec<Update>, String>;
 }
 
 /// Factory function to create the channel based on the channel type.
