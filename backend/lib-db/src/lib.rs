@@ -213,6 +213,25 @@ pub fn updates_insert_new(conn: &Connection, update: &NewUpdate) -> Result<(), I
         .map(|_| ())
 }
 
+pub fn updates_find_newest_by_channel(
+    conn: &Connection,
+    channel_id: i32,
+) -> Result<Option<Update>, String> {
+    use schema::updates;
+    updates::table
+        .filter(updates::channel_id.eq(channel_id))
+        .order_by(updates::inserted.desc())
+        .limit(1)
+        .load(&conn.0)
+        .map(|us| us.into_iter().next())
+        .map_err(|err| {
+            format!(
+                "Failed to find newest update by channel {}: {:?}",
+                channel_id, err
+            )
+        })
+}
+
 pub fn updates_find_new(
     conn: &Connection,
     chan_id: i32,
@@ -220,7 +239,8 @@ pub fn updates_find_new(
 ) -> Result<Vec<Update>, String> {
     use schema::updates::dsl::*;
     updates
-        .filter(channel_id.eq(chan_id).and(published.gt(since)))
+        // use inserted, because published cannot be trusted (see fetcher/lib.rs)
+        .filter(channel_id.eq(chan_id).and(inserted.gt(since)))
         .load(&conn.0)
         .map_err(|err| format!("Failed to load updates: {:?}", err))
 }
