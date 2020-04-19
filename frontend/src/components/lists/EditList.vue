@@ -125,7 +125,7 @@ export default {
       this.loading = true;
 
       Api()
-        .get("subscriptions/search", {
+        .get("channels/search", {
           params: params,
           timeout: 6000 // default timeout is 4s, but here we need to query upstream..
         })
@@ -134,13 +134,12 @@ export default {
 
           // shortcut
           const oneNewResult =
-            resp.data.channels.length === 1 &&
-            !this.alreadyInList(resp.data.channels[0]);
+            resp.data.length === 1 && !this.alreadyInList(resp.data[0]);
 
           if (oneNewResult) {
-            this.addChannel(resp.data.channels[0]);
+            this.addChannel(resp.data[0]);
           } else {
-            this.searchResults = resp.data.channels;
+            this.searchResults = resp.data;
           }
         })
         .catch(err => {

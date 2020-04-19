@@ -73,6 +73,17 @@ fn main() -> Result<(), String> {
         Ok(rocket.manage(channels::GithubApiToken(api_token)))
     });
 
+    let twitter_tokens = AdHoc::on_attach("Twitter Tokens", |rocket| {
+        let read_env = |name: &'static str| {
+            env::var(name).unwrap_or_else(|_| panic!("Failed to read env variable {}", name))
+        };
+        Ok(rocket.manage(channels::TwitterTokens {
+            api_key: read_env("TWITTER_API_KEY"),
+            api_secret_key: read_env("TWITTER_API_SECRET_KEY"),
+            access_token: read_env("TWITTER_ACCESS_TOKEN"),
+            access_token_secret: read_env("TWITTER_ACCESS_TOKEN_SECRET"),
+        }))
+    });
     let mut rocket = rocket::ignite();
 
     let cors_fairing = cors_fairing(rocket.config())?;
@@ -91,6 +102,7 @@ fn main() -> Result<(), String> {
         .attach(github_identity_provider)
         .attach(facebook_identity_provider)
         .attach(github_api_token)
+        .attach(twitter_tokens)
         .register(catchers![
             internal_error,
             not_found,

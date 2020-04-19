@@ -20,6 +20,13 @@ pub fn mount(rocket: Rocket) -> Rocket {
 
 pub struct GithubApiToken(pub String);
 
+pub struct TwitterTokens {
+    pub api_key: String,
+    pub api_secret_key: String,
+    pub access_token: String,
+    pub access_token_secret: String,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 enum ChannelType {
     RssFeed,
@@ -80,6 +87,7 @@ fn search(
     db: DigesterDbConn,
     channel_type: ChannelType,
     gh_token: State<GithubApiToken>,
+    twitter_tokens: State<TwitterTokens>,
     query: &RawStr,
 ) -> JsonResponse {
     let query = match query.url_decode() {
@@ -127,7 +135,7 @@ fn search(
                 db::ChannelType::RssFeed => channels::ChannelType::RssFeed,
                 db::ChannelType::Twitter => channels::ChannelType::Twitter,
             };
-            match online_search(&gh_token, &query, channel_type) {
+            match online_search(&gh_token, &twitter_tokens, &query, channel_type) {
                 Err(err) => return err,
                 Ok(channels) => {
                     if channels.is_empty() {
@@ -164,6 +172,7 @@ fn search(
 
 fn online_search(
     gh_token: &GithubApiToken,
+    twitter_tokens: &TwitterTokens,
     query: &str,
     channel_type: channels::ChannelType,
 ) -> Result<Vec<ChannelInfo>, JsonResponse> {
@@ -176,7 +185,12 @@ fn online_search(
         }
     };
 
-    let twitter: Twitter = match Twitter::new("") {
+    let twitter: Twitter = match Twitter::new(
+        &twitter_tokens.api_key,
+        &twitter_tokens.api_secret_key,
+        &twitter_tokens.access_token,
+        &twitter_tokens.access_token_secret,
+    ) {
         Ok(twitter) => twitter,
         Err(err) => {
             eprintln!("Failed to resolve twitter client: {:?}", err);

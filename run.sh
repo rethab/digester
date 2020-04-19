@@ -17,7 +17,15 @@ function loop_worker() {
 
 function run_worker(){
   pushd backend/worker
-  cargo run -- --github-api-token "$GITHUB_API_TOKEN" --database-uri "$POSTGRES_CONNECTION" --sendgrid-api-key "$SENDGRID_API_KEY" --app-env dev
+  cargo run -- \
+    --github-api-token "$GITHUB_API_TOKEN" \
+    --database-uri "$POSTGRES_CONNECTION" \
+    --sendgrid-api-key "$SENDGRID_API_KEY" \
+    --twitter-api-key "$TWITTER_API_KEY" \
+    --twitter-api-secret-key "$TWITTER_API_SECRET_KEY" \
+    --twitter-access-token "$TWITTER_ACCESS_TOKEN" \
+    --twitter-access-token-secret "$TWITTER_ACCESS_TOKEN_SECRET" \
+    --app-env dev
   popd
 }
 

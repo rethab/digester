@@ -13,6 +13,14 @@ struct Opt {
     #[structopt(long)]
     github_api_token: String,
     #[structopt(long)]
+    twitter_api_key: String,
+    #[structopt(long)]
+    twitter_api_secret_key: String,
+    #[structopt(long)]
+    twitter_access_token: String,
+    #[structopt(long)]
+    twitter_access_token_secret: String,
+    #[structopt(long)]
     database_uri: String,
     #[structopt(long)]
     sendgrid_api_key: String,
@@ -31,7 +39,12 @@ fn main() -> Result<(), String> {
     let opt = Opt::from_args();
     let db_conn = db::connection_from_str(&opt.database_uri)?;
     let github = GithubRelease::new(&opt.github_api_token)?;
-    let twitter = Twitter::new("")?;
+    let twitter = Twitter::new(
+        &opt.twitter_api_key,
+        &opt.twitter_api_secret_key,
+        &opt.twitter_access_token,
+        &opt.twitter_access_token_secret,
+    )?;
     let sendgrid = digester::SendgridCredentials {
         api_key: opt.sendgrid_api_key,
     };

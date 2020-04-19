@@ -10,15 +10,15 @@ pub struct Twitter {
 }
 
 impl Twitter {
-    pub fn new(_api_token: &str) -> Result<Twitter, String> {
-        let con_token = egg_mode::KeyPair::new(
-            "jRnAWOvekQxdISOza67q8wQ3h",
-            "YveBg4qocPHfR2MqPGbdneW3vn8lgqzPn8BXPXmmfHUzefDxgU",
-        );
-        let access_token = egg_mode::KeyPair::new(
-            "1216769639667130374-0tluDWdgmuzoWbhYmCHF8tFkzcU7Re",
-            "LRUXb2p5ot1imqQ67sb8IBxcm8L4m8mLIz2oFnGBZZTD7",
-        );
+    pub fn new(
+        api_key: &str,
+        api_secret_key: &str,
+        access_token: &str,
+        access_token_secret: &str,
+    ) -> Result<Twitter, String> {
+        let con_token = egg_mode::KeyPair::new(api_key.to_owned(), api_secret_key.to_owned());
+        let access_token =
+            egg_mode::KeyPair::new(access_token.to_owned(), access_token_secret.to_owned());
         let token = egg_mode::Token::Access {
             consumer: con_token,
             access: access_token,
