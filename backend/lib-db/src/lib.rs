@@ -353,7 +353,11 @@ pub fn updates_delete_old_by_channel_id(
 
     let delete_before = Utc::now() - retain_updates_duration;
     let ids_to_delete = updates::table
-        .filter(updates::inserted.lt(delete_before))
+        .filter(
+            updates::inserted
+                .lt(delete_before)
+                .and(updates::channel_id.eq(channel_id)),
+        )
         .select(updates::id)
         .order_by(updates::inserted.desc())
         .offset(1) // need to retain one to compare against when fetching updates

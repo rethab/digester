@@ -27,15 +27,31 @@ impl App<'_> {
     pub fn run(&self) -> Result<(), String> {
         let mut err = String::new();
 
+        let start = Utc::now();
         if let Err(cleaner_err) = self.run_cleaner() {
             err.push_str(&format!("Cleaner failed: {}", cleaner_err))
+        } else {
+            let duration = Utc::now() - start;
+            println!(
+                "Cleaner done. Took {}m {}s",
+                duration.num_minutes(),
+                duration.num_seconds()
+            );
         }
 
+        let start = Utc::now();
         if let Err(fetcher_err) = self.run_fetcher() {
             if !err.is_empty() {
                 err.push_str(", ")
             }
             err.push_str(&format!("Fetcher failed: {}", fetcher_err))
+        } else {
+            let duration = Utc::now() - start;
+            println!(
+                "Fetcher done. Took {}m {}s",
+                duration.num_minutes(),
+                duration.num_seconds()
+            );
         }
 
         if err.is_empty() {
@@ -142,7 +158,7 @@ impl App<'_> {
             println!("Nothing to clean");
             return Ok(());
         } else {
-            println!("Something to clean: {:?}", channels.len());
+            println!("Something to clean: {:?} channels", channels.len());
         }
 
         // since we allow at most 'weekly' digests, we need to retain
