@@ -1,6 +1,6 @@
 FROM digester-worker-integration/base:latest as build
 
-FROM ubuntu:disco
+FROM ubuntu:bionic
 
 ENV DEBIAN_FRONTEND=noninteractive
 
