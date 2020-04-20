@@ -30,6 +30,7 @@ CREATE TABLE channels (
   link VARCHAR NOT NULL, -- link of the website eg. blog.acolyer.com or github.com/kubernetes/kubernetes
   verified BOOL NOT NULL, -- if true, this twitter account is verified
   last_fetched TIMESTAMP WITH TIME ZONE NULL, -- last successful fetch
+  last_cleaned TIMESTAMP WITH TIME ZONE NULL, -- last time we cleaned old updates, deleted inexistent tweets etc
   inserted TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(channel_type, ext_id) -- cannot have channel twice
 );
@@ -37,6 +38,7 @@ CREATE TABLE channels (
 CREATE TABLE updates (
   id BIGSERIAL PRIMARY KEY,
   channel_id INT REFERENCES channels(id),
+  ext_id VARCHAR NULL, -- identifies update in external system (currently only used for tweet id)
   title VARCHAR NOT NULL,
   url VARCHAR NULL, -- direct link to update
   published TIMESTAMP WITH TIME ZONE NULL, -- when the update was published

@@ -22,6 +22,8 @@ pub enum ChannelType {
 /// would be an item.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Update {
+    /// id in the channel where the update was fetched from (eg. a tweet's id)
+    pub ext_id: Option<String>,
     /// The title of the update could be the title of a blog post
     /// or the name/version of the new release
     pub title: String,

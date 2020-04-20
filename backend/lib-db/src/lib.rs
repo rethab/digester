@@ -10,7 +10,9 @@ use diesel::result;
 use diesel::result::Error;
 use diesel::sql_types::BigInt;
 use either::{Either, Left, Right};
+use std::collections::HashMap;
 use std::env;
+use std::iter::FromIterator;
 
 pub struct Connection(pub PgConnection);
 
@@ -77,6 +79,29 @@ pub fn channels_find_by_last_fetched(
         .map_err(|err| {
             format!(
                 "Failed to run query in channels_find_by_last_fetched: {:?}",
+                err
+            )
+        })
+}
+
+pub fn channels_find_by_last_cleaned(
+    conn: &Connection,
+    clean_frequency: Duration,
+) -> Result<Vec<Channel>, String> {
+    use schema::channels::dsl::*;
+
+    let since_last_cleaned = Utc::now() - clean_frequency;
+
+    channels
+        .filter(
+            last_cleaned
+                .lt(since_last_cleaned)
+                .or(last_cleaned.is_null()),
+        )
+        .load::<Channel>(&conn.0)
+        .map_err(|err| {
+            format!(
+                "Failed to run query in channels_find_by_last_cleaned: {:?}",
                 err
             )
         })
@@ -203,6 +228,24 @@ pub fn channels_update_last_fetched(conn: &Connection, channel: &Channel) -> Res
         .map(|_| ())
 }
 
+pub fn channels_update_last_cleaned_by_ids(
+    conn: &Connection,
+    channel_ids: Vec<i32>,
+) -> Result<(), String> {
+    use diesel::expression::dsl::now;
+    use schema::channels::dsl::*;
+    diesel::update(channels.filter(id.eq_any(channel_ids.clone())))
+        .set(last_cleaned.eq(now))
+        .execute(&conn.0)
+        .map_err(|err| {
+            format!(
+                "failed to update last_cleaned field for channels {:?}: {:?}",
+                channel_ids, err
+            )
+        })
+        .map(|_| ())
+}
+
 pub fn updates_insert_new(conn: &Connection, update: &NewUpdate) -> Result<(), InsertError> {
     use schema::updates;
 
@@ -245,6 +288,29 @@ pub fn updates_find_new(
         .map_err(|err| format!("Failed to load updates: {:?}", err))
 }
 
+pub fn updates_find_ext_ids_by_channel_ids(
+    conn: &Connection,
+    channel_ids: &[i32],
+) -> Result<HashMap<i64, String>, String> {
+    use schema::updates;
+    updates::table
+        .filter(updates::channel_id.eq_any(channel_ids))
+        .select((updates::id, updates::ext_id))
+        .load::<(i64, Option<String>)>(&conn.0)
+        .map(|us| {
+            HashMap::from_iter(
+                us.into_iter()
+                    .flat_map(|(id, maybe_ext_id)| maybe_ext_id.map(|ext_id| (id, ext_id))),
+            )
+        })
+        .map_err(|err| {
+            format!(
+                "Failed to fetch updates by channel_id {:?}: {:?}",
+                channel_ids, err
+            )
+        })
+}
+
 pub fn updates_find_by_user_id(
     conn: &PgConnection,
     user_id: i32,
@@ -274,6 +340,39 @@ pub fn updates_find_by_user_id(
         .select((updates::all_columns, channels::all_columns))
         .load::<(Update, Channel)>(conn)
         .map_err(|err| format!("Failed to load updates by id: {:?}", err))
+}
+
+pub fn updates_delete_old_by_channel_id(
+    conn: &Connection,
+    channel_id: i32,
+    retain_updates_duration: Duration,
+) -> Result<usize, String> {
+    use schema::updates;
+    // need to run two queries, because subqueries with the same table are
+    // not supported in diesel: https://github.com/diesel-rs/diesel/issues/1369
+
+    let delete_before = Utc::now() - retain_updates_duration;
+    let ids_to_delete = updates::table
+        .filter(updates::inserted.lt(delete_before))
+        .select(updates::id)
+        .order_by(updates::inserted.desc())
+        .offset(1) // need to retain one to compare against when fetching updates
+        .load::<i64>(&conn.0)
+        .map_err(|err| {
+            format!(
+                "Failed to fetch updates before {:?} for channel_id {}: {:?}",
+                retain_updates_duration, channel_id, err
+            )
+        })?;
+    updates_delete_by_ids(conn, ids_to_delete)
+}
+
+pub fn updates_delete_by_ids(conn: &Connection, ids: Vec<i64>) -> Result<usize, String> {
+    use schema::updates;
+    diesel::delete(updates::table)
+        .filter(updates::id.eq_any(ids.clone()))
+        .execute(&conn.0)
+        .map_err(|err| format!("Failed to delete update ids {:?}: {:?}", ids, err))
 }
 
 pub fn subscriptions_find_by_id_user_id(

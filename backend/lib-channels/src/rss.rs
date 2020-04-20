@@ -141,6 +141,7 @@ fn rss_to_updates(channel: &RssChannel) -> Result<Vec<Update>, String> {
     let mut updates = Vec::with_capacity(channel.items().len());
     for item in channel.items() {
         let update = Update {
+            ext_id: None,
             title: item
                 .title()
                 .ok_or_else(|| format!("No title for {:?}", item))?
@@ -165,6 +166,7 @@ fn atom_to_updates(feed: &Feed) -> Result<Vec<Update>, String> {
     let mut updates = Vec::with_capacity(feed.entries().len());
     for entry in feed.entries() {
         let update = Update {
+            ext_id: None,
             title: entry.title().into(),
             url: atom_link(entry.links()).unwrap_or_else(|| format!("No links for {:?}", entry)),
             published: entry
@@ -816,7 +818,7 @@ mod tests {
         // this blog uses 'Dublin Core Metadata Initiative' (dc:date)
         let url = "https://hasbrouck.org/blog/index.rdf";
         let rss = Rss {};
-        let updates = rss.fetch_updates(url, None).expect("Failed to fetch");
+        let updates = rss.fetch_updates(url).expect("Failed to fetch");
         assert_eq!(false, updates.is_empty())
     }
 

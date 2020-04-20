@@ -25,6 +25,7 @@ table! {
         link -> Text,
         verified -> Bool,
         last_fetched -> Nullable<Timestamptz>,
+        last_cleaned -> Nullable<Timestamptz>,
         inserted -> Timestamptz,
     }
 }
@@ -33,6 +34,7 @@ table! {
     updates (id) {
         id -> BigInt,
         channel_id -> Integer,
+        ext_id -> Nullable<Text>,
         title -> Text,
         url -> Text,
         published -> Timestamptz,
