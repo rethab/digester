@@ -44,7 +44,17 @@ pub struct Channel {
     pub link: String,
     pub verified: bool,
     pub last_fetched: Option<DateTime<Utc>>,
+    pub last_cleaned: Option<DateTime<Utc>>,
     pub inserted: DateTime<Utc>,
+}
+
+impl Channel {
+    pub fn is_twitter(&self) -> bool {
+        match self.channel_type {
+            ChannelType::Twitter => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Insertable, Debug)]
@@ -61,6 +71,7 @@ pub struct NewChannel {
 #[table_name = "updates"]
 pub struct NewUpdate {
     pub channel_id: i32,
+    pub ext_id: Option<String>,
     pub title: String,
     pub url: String,
     pub published: DateTime<Utc>,
@@ -70,6 +81,7 @@ pub struct NewUpdate {
 pub struct Update {
     pub id: i64,
     pub channel_id: i32,
+    pub ext_id: Option<String>,
     pub title: String,
     pub url: String,
     pub published: DateTime<Utc>,

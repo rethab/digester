@@ -73,6 +73,7 @@ impl TryInto<Update> for ReleaseResponse {
             .unwrap_or(self.tag_name);
 
         Ok(Update {
+            ext_id: None,
             title,
             url: self.html_url,
             published,
@@ -208,32 +209,9 @@ mod test {
     #[test]
     fn parse_one_release() {
         let val: Value = serde_json::from_str(RELEASES_RESPONSE).expect("Failed to parse json");
-        let updates = GithubRelease::parse_releases_response(val, None)
-            .expect("Failed to parse into updates");
+        let updates =
+            GithubRelease::parse_releases_response(val).expect("Failed to parse into updates");
         assert_eq!(1, updates.len())
-    }
-
-    #[test]
-    fn take_new_release() {
-        let val: Value = serde_json::from_str(RELEASES_RESPONSE).expect("Failed to parse json");
-        let updates = GithubRelease::parse_releases_response(
-            val,
-            Some(
-                DateTime::parse_from_rfc3339("2019-12-11T18:40:50Z")
-                    .unwrap()
-                    .with_timezone(&Utc),
-            ), // one second before the release was published
-        )
-        .expect("Failed to parse into updates");
-        assert_eq!(1, updates.len())
-    }
-
-    #[test]
-    fn ignore_old_release() {
-        let val: Value = serde_json::from_str(RELEASES_RESPONSE).expect("Failed to parse json");
-        let updates = GithubRelease::parse_releases_response(val, Some(Utc::now()))
-            .expect("Failed to parse into updates");
-        assert_eq!(0, updates.len())
     }
 
     #[test]

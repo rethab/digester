@@ -25,9 +25,30 @@ impl App<'_> {
     }
 
     pub fn run(&self) -> Result<(), String> {
+        let mut err = String::new();
+
+        if let Err(cleaner_err) = self.run_cleaner() {
+            err.push_str(&format!("Cleaner failed: {}", cleaner_err))
+        }
+
+        if let Err(fetcher_err) = self.run_fetcher() {
+            if !err.is_empty() {
+                err.push_str(", ")
+            }
+            err.push_str(&format!("Fetcher failed: {}", fetcher_err))
+        }
+
+        if err.is_empty() {
+            Ok(())
+        } else {
+            Err(err)
+        }
+    }
+
+    fn run_fetcher(&self) -> Result<(), String> {
         let fetch_frequency = Duration::hours(6);
 
-        let channels = self.find_due_channels(fetch_frequency)?;
+        let channels = self.find_fetch_due_channels(fetch_frequency)?;
 
         if channels.is_empty() {
             println!("Found no channels to update");
@@ -43,7 +64,10 @@ impl App<'_> {
         Ok(())
     }
 
-    fn find_due_channels(&self, fetch_frequency: Duration) -> Result<Vec<db::Channel>, String> {
+    fn find_fetch_due_channels(
+        &self,
+        fetch_frequency: Duration,
+    ) -> Result<Vec<db::Channel>, String> {
         db::channels_find_by_last_fetched(&self.db, fetch_frequency)
     }
 
@@ -63,6 +87,7 @@ impl App<'_> {
         for update in updates {
             let new_update = db::NewUpdate {
                 channel_id: channel.id,
+                ext_id: update.ext_id,
                 title: update.title,
                 url: update.url,
                 published: update.published,
@@ -106,6 +131,138 @@ impl App<'_> {
                 db::channels_update_last_fetched(&self.db, channel)?;
                 Ok(())
             }
+        }
+    }
+
+    fn run_cleaner(&self) -> Result<(), String> {
+        let clean_frequency = Duration::hours(24);
+        let channels = self.find_clean_due_channels(clean_frequency)?;
+
+        if channels.is_empty() {
+            println!("Nothing to clean");
+            return Ok(());
+        } else {
+            println!("Something to clean: {:?}", channels.len());
+        }
+
+        // since we allow at most 'weekly' digests, we need to retain
+        // at least one week worth of data. the other week is to be safe
+        // (eg. if digester dives and we need to back-process)
+        let retain_updates_duration = Duration::weeks(2);
+        for channel in channels.iter() {
+            self.delete_old_updates(channel, retain_updates_duration)?;
+        }
+
+        let twitter_channels = channels
+            .clone()
+            .into_iter()
+            .filter(|c| c.is_twitter())
+            .collect();
+        self.delete_deleted_tweets(twitter_channels)?;
+
+        self.update_last_cleaned(channels);
+
+        Ok(())
+    }
+
+    fn find_clean_due_channels(
+        &self,
+        clean_frequency: Duration,
+    ) -> Result<Vec<db::Channel>, String> {
+        db::channels_find_by_last_cleaned(&self.db, clean_frequency)
+    }
+
+    fn delete_old_updates(
+        &self,
+        channel: &db::Channel,
+        retain_updates_duration: Duration,
+    ) -> Result<(), String> {
+        // note that we fetch updates that are newer than the newest one we have
+        // so when deleting, we need to retain at least one
+        db::updates_delete_old_by_channel_id(&self.db, channel.id, retain_updates_duration).map(
+            |n| {
+                if n > 0 {
+                    println!(
+                        "Deleted {} updates for Channel '{:?}':  {}",
+                        n, channel.channel_type, channel.name
+                    );
+                }
+                ()
+            },
+        )
+    }
+
+    fn delete_deleted_tweets(&self, channels: Vec<db::Channel>) -> Result<(), String> {
+        // on avg. 2 tweets per day (random estimate, please improve :D) and cleaning up
+        // tweets that are older than two weeks means 28 tweets per channel. fetching
+        // 40 channels in batch means ~1000 updates, which we batch in 100 to twitter
+        // therefore, per batch:
+        //   -> ~8kb data returned from the db
+        //   -> 10 requests to twitter
+        for channel_batch in channels.chunks(40) {
+            let channel_ids = channel_batch
+                .into_iter()
+                .map(|c| c.id)
+                .collect::<Vec<i32>>();
+            let updates = db::updates_find_ext_ids_by_channel_ids(&self.db, &channel_ids)?;
+            let tweet_ids: Vec<String> = updates.values().cloned().collect();
+            let tweet_ids_int: Vec<u64> = tweet_ids
+                .iter()
+                .flat_map(|ext_id| {
+                    ext_id
+                        .parse::<u64>()
+                        .map_err(|err| format!("ext_id '{}' is not an u64: {:?}", ext_id, err))
+                        .ok()
+                })
+                .collect();
+
+            match self.channel_twitter.find_to_delete(tweet_ids_int.clone()) {
+                Ok(tweet_ids_to_delete) => {
+                    if !tweet_ids_to_delete.is_empty() {
+                        let update_ids_to_delete = tweet_ids_to_delete
+                            .clone()
+                            .into_iter()
+                            .flat_map(|tweet_id| {
+                                let tweet_id_str = tweet_id.to_string();
+                                updates
+                                    .iter()
+                                    .find(|(_, ext_id)| **ext_id == tweet_id_str)
+                                    .map(|(id, _)| id)
+                            })
+                            .cloned()
+                            .collect();
+                        match db::updates_delete_by_ids(&self.db, update_ids_to_delete) {
+                            Ok(n_deleted) => {
+                                println!(
+                                    "Deleted {} tweets: {:?} (from channels {:?})",
+                                    n_deleted, tweet_ids_to_delete, channel_ids
+                                );
+                            }
+                            Err(err) => eprintln!(
+                                "Failed to delete tweets {:?}: {:?}",
+                                tweet_ids_to_delete, err
+                            ),
+                        }
+                    }
+                }
+                Err(err) => {
+                    return Err(format!(
+                        "Failed to ask twitter for deleted tweets for updates {:?}: {:?}",
+                        tweet_ids_int, err
+                    ))
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn update_last_cleaned(&self, channels: Vec<db::Channel>) {
+        let channel_ids: Vec<i32> = channels.into_iter().map(|c| c.id).collect();
+        if let Err(err) = db::channels_update_last_cleaned_by_ids(&self.db, channel_ids.clone()) {
+            eprintln!(
+                "Failed to update last_cleaned for channels {:?}: {:?}",
+                channel_ids, err
+            );
         }
     }
 }
