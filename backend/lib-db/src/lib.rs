@@ -283,10 +283,10 @@ pub fn updates_find_new(
     use schema::updates::dsl::*;
     let query = match published_or_inserted_since {
         Left(p) => updates
-            .filter(channel_id.eq(chan_id).and(published.eq(p)))
+            .filter(channel_id.eq(chan_id).and(published.gt(p)))
             .load(&conn.0),
         Right(i) => updates
-            .filter(channel_id.eq(chan_id).and(inserted.eq(i)))
+            .filter(channel_id.eq(chan_id).and(inserted.gt(i)))
             .load(&conn.0),
     };
     query.map_err(|err| format!("Failed to load updates: {:?}", err))
