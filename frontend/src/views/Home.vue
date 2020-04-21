@@ -22,18 +22,33 @@
       </v-col>
     </v-row>
 
+    <v-row justify="center">
+      <v-col class="text-center" sm="6" md="3">
+        <v-btn @click="$vuetify.goTo('#howitworks')" class="mx-4" color="primary" large>how it works</v-btn>
+      </v-col>
+      <v-col class="text-center" sm="6" md="3">
+        <v-btn
+          @click="$vuetify.goTo('#login')"
+          class="mx-4"
+          color="secondary"
+          outlined
+          large
+        >try for free</v-btn>
+      </v-col>
+    </v-row>
+
     <LandingPageCard
       :img-src="require('@/assets/following_the_idea.svg')"
       :img-left="true"
       title="What is Digester?"
-      content="With digester, you'll get weekly (or daily) e-mails with a summary of what happened.<br /><br /> Like a blog? Add a subscription and get all posts directly to your inbox.<br /><br />Want to stay on top of Open Source software? Get weekly updates on what new versions were released by your favorite Github projects."
+      content="Want to follow a Blog? A Twitter profile? A Github project?<br /><br />Knowing when new posts are published can be cumbersome and spending too much time on Twitter is no good. <br /><br />Digester is here to help: Create subscriptions for a Blogs, Twitter profiles or Github projects and receive weekly (or daily) updates directly in your E-Mail inbox."
     />
 
     <LandingPageCard
       :img-src="require('@/assets/focus_working.svg')"
       :img-left="false"
       title="Bundle Topics with Lists"
-      content="Lists are collections of Blogs and Github projects.<br /><br />Say you are intersted in mobile development. By subscribing to the mobile development list, you'll receive a weekly digest on what happened in the world of mobile. A new blog post about flutter? A new release of Swift? All part of your digest!<br /><br />You can even create your own lists and share them with your friends."
+      content="Lists are collections of Blogs, Twitter profiles and Github projects.<br /><br />Say you are intersted in mobile development. By subscribing to the mobile development list, you'll receive a weekly digest on what happened in the world of mobile. A new Blog post about flutter? A new release of Swift? All part of your digest!<br /><br />You can even create your own lists and share them with your friends."
     />
 
     <section id="howitworks">
