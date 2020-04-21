@@ -1,5 +1,6 @@
 use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Utc, Weekday};
 use chrono_tz::Tz;
+use either::{Either, Left, Right};
 use lib_db as db;
 use lib_db::{Digest, Frequency, InsertDigest, Subscription, User};
 use lib_messaging as messaging;
@@ -160,11 +161,7 @@ impl App<'_> {
     ) -> Result<Option<SendgridMessage>, String> {
         let mut sendgrid_subscriptions = Vec::with_capacity(d_and_s.len());
         for (digest, subscription, channel_id) in &d_and_s {
-            // we send new updates since the last digest or since
-            // when the subscription was created if this is the first digest
-            let updates_since = db::digests_find_previous(&self.db_conn, &digest)?
-                .and_then(|d| d.sent)
-                .unwrap_or(subscription.inserted);
+            let updates_since = self.updates_since(&digest, &subscription)?;
             let updates = db::updates_find_new(&self.db_conn, *channel_id, updates_since)?;
             if !updates.is_empty() {
                 let channel = db::channels_find_by_id(&self.db_conn.0, *channel_id)?;
@@ -204,6 +201,37 @@ impl App<'_> {
         }
     }
 
+    fn updates_since(
+        &self,
+        digest: &Digest,
+        subscription: &Subscription,
+    ) -> Result<Either<DateTime<Utc>, DateTime<Utc>>, String> {
+        // Strategy:
+        // if this is the first digest, we use the date the subscription was inserted and
+        // compare that against the published date.
+        // if we sent a digest before, we use that date and compare it against the inserted
+        // date of the updates.
+        //
+        // Reason:
+        // In general, we want to use the 'inserted' dates of updates, because that is more
+        // precise (blogs can be published eg. at 9am and set their publish date to 1am, etc..).
+        // However if we use the 'inserted' with channels that are newly added, then we will
+        // send too many updates, because the first time we fetch, we fetch a week worth of backlog.
+        //
+        // Example Scenario:
+        // - User created a daily subscription for previously unknown channel A yesterday
+        // - We inserted a digest for today
+        // - We fetched updates from channel A about one week back
+        // - Today, we send a digest. Included updates are those between when the subscription was
+        //   created and the update was published.
+        // - Tomorrow we send a digest again. Included updates are those between today (last digest)
+        //   and when the update was inserted.
+        match db::digests_find_previous(&self.db_conn, &digest)?.and_then(|d| d.sent) {
+            Some(last_digest_sent) => Ok(Right(last_digest_sent)),
+            None => Ok(Left(subscription.inserted)),
+        }
+    }
+
     fn create_message_for_lists(
         &self,
         user: &User,
@@ -216,11 +244,7 @@ impl App<'_> {
             Some((list, _)) => list,
         };
 
-        // we send new updates since the last digest or since
-        // when the subscription was created if this is the first digest
-        let updates_since = db::digests_find_previous(&self.db_conn, digest)?
-            .and_then(|d| d.sent)
-            .unwrap_or(sub.inserted);
+        let updates_since = self.updates_since(&digest, &sub)?;
 
         let channels = db::channels_find_by_list_id(&self.db_conn.0, list_id)?;
 

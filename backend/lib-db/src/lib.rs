@@ -278,14 +278,18 @@ pub fn updates_find_newest_by_channel(
 pub fn updates_find_new(
     conn: &Connection,
     chan_id: i32,
-    since: DateTime<Utc>,
+    published_or_inserted_since: Either<DateTime<Utc>, DateTime<Utc>>,
 ) -> Result<Vec<Update>, String> {
     use schema::updates::dsl::*;
-    updates
-        // use inserted, because published cannot be trusted (see fetcher/lib.rs)
-        .filter(channel_id.eq(chan_id).and(inserted.gt(since)))
-        .load(&conn.0)
-        .map_err(|err| format!("Failed to load updates: {:?}", err))
+    let query = match published_or_inserted_since {
+        Left(p) => updates
+            .filter(channel_id.eq(chan_id).and(published.eq(p)))
+            .load(&conn.0),
+        Right(i) => updates
+            .filter(channel_id.eq(chan_id).and(inserted.eq(i)))
+            .load(&conn.0),
+    };
+    query.map_err(|err| format!("Failed to load updates: {:?}", err))
 }
 
 pub fn updates_find_ext_ids_by_channel_ids(
