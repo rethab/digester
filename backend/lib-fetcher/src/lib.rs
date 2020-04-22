@@ -6,6 +6,7 @@ use channels::rss::Rss;
 use channels::twitter::Twitter;
 use channels::{Channel, Update};
 use chrono::{DateTime, Duration, Utc};
+use std::collections::HashMap;
 
 pub struct App<'a> {
     channel_github_release: GithubRelease,
@@ -232,44 +233,56 @@ impl App<'_> {
                 })
                 .collect();
 
-            match self.channel_twitter.find_to_delete(tweet_ids_int.clone()) {
-                Ok(tweet_ids_to_delete) => {
-                    if !tweet_ids_to_delete.is_empty() {
-                        let update_ids_to_delete = tweet_ids_to_delete
-                            .clone()
-                            .into_iter()
-                            .flat_map(|tweet_id| {
-                                let tweet_id_str = tweet_id.to_string();
-                                updates
-                                    .iter()
-                                    .find(|(_, ext_id)| **ext_id == tweet_id_str)
-                                    .map(|(id, _)| id)
-                            })
-                            .cloned()
-                            .collect();
-                        match db::updates_delete_by_ids(&self.db, update_ids_to_delete) {
-                            Ok(n_deleted) => {
-                                println!(
-                                    "Deleted {} tweets: {:?} (from channels {:?})",
-                                    n_deleted, tweet_ids_to_delete, channel_ids
-                                );
-                            }
-                            Err(err) => eprintln!(
-                                "Failed to delete tweets {:?}: {:?}",
-                                tweet_ids_to_delete, err
-                            ),
-                        }
-                    }
-                }
-                Err(err) => {
-                    return Err(format!(
-                        "Failed to ask twitter for deleted tweets for updates {:?}: {:?}",
-                        tweet_ids_int, err
-                    ))
-                }
+            for batch_of_tweets in tweet_ids_int.chunks(100) {
+                println!(
+                    "Checking {} tweets whether they were deleted",
+                    batch_of_tweets.len()
+                );
+                self.check_and_update_tweets(batch_of_tweets, &updates)?;
             }
         }
         Ok(())
+    }
+
+    fn check_and_update_tweets(
+        &self,
+        tweet_ids_int: &[u64],
+        updates: &HashMap<i64, String>,
+    ) -> Result<(), String> {
+        match self.channel_twitter.find_to_delete(tweet_ids_int.to_vec()) {
+            Ok(tweet_ids_to_delete) => {
+                if !tweet_ids_to_delete.is_empty() {
+                    let update_ids_to_delete = tweet_ids_to_delete
+                        .clone()
+                        .into_iter()
+                        .flat_map(|tweet_id| {
+                            let tweet_id_str = tweet_id.to_string();
+                            updates
+                                .iter()
+                                .find(|(_, ext_id)| **ext_id == tweet_id_str)
+                                .map(|(id, _)| id)
+                        })
+                        .cloned()
+                        .collect();
+                    match db::updates_delete_by_ids(&self.db, update_ids_to_delete) {
+                        Ok(n_deleted) => {
+                            println!("Deleted {} tweets: {:?}", n_deleted, tweet_ids_to_delete);
+                        }
+                        Err(err) => eprintln!(
+                            "Failed to delete tweets {:?}: {:?}",
+                            tweet_ids_to_delete, err
+                        ),
+                    }
+                    Ok(())
+                } else {
+                    Ok(())
+                }
+            }
+            Err(err) => Err(format!(
+                "Failed to ask twitter for deleted tweets for updates {:?}: {:?}",
+                tweet_ids_int, err
+            )),
+        }
     }
 
     fn update_last_cleaned(&self, channels: Vec<db::Channel>) {
