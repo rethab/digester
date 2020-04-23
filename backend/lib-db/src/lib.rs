@@ -43,6 +43,28 @@ pub fn channels_find_by_id(conn: &PgConnection, channel_id: i32) -> Result<Chann
         .map_err(|err| format!("Failed to fetch channel with id {}: {:?}", channel_id, err))
 }
 
+pub fn channels_find_by_ext_id(
+    conn: &PgConnection,
+    channel_type: ChannelType,
+    ext_id: &str,
+) -> Result<Channel, String> {
+    use schema::channels;
+    channels::table
+        .filter(
+            channels::ext_id
+                .eq(ext_id)
+                .and(channels::channel_type.eq(channel_type)),
+        )
+        .limit(1)
+        .get_result(conn)
+        .map_err(|err| {
+            format!(
+                "Failed to fetch {:?} channel with ext_id {}: {:?}",
+                channel_type, ext_id, err
+            )
+        })
+}
+
 pub fn channels_find_by_id_opt(
     conn: &PgConnection,
     channel_id: i32,

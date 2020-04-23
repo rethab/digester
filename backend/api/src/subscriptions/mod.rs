@@ -1,6 +1,6 @@
 use super::iam::UserId;
 use chrono::naive::NaiveTime;
-use db::{Day, Frequency};
+use db::{ChannelType, Day, Frequency};
 use diesel::pg::PgConnection;
 use either::{Either, Left, Right};
 use lib_db as db;
@@ -97,5 +97,36 @@ pub fn add(
             })?;
             Ok((sub, Left(channel)))
         }
+    }
+}
+
+pub fn add_default_subscription(db: &PgConnection, user_id: UserId, email: &str) {
+    let channel_name = "digesterapp";
+    let channel = match db::channels_find_by_ext_id(&db, ChannelType::Twitter, channel_name) {
+        Ok(channel) => channel,
+        Err(err) => {
+            eprintln!("Failed to fetch {} channel: {:?}", channel_name, err);
+            return;
+        }
+    };
+
+    let subscription = db::NewSubscription {
+        email: email.to_owned(),
+        timezone: None,
+        channel_id: Some(channel.id),
+        list_id: None,
+        user_id: Some(user_id.0),
+        frequency: Frequency::Weekly,
+        day: Some(Day::Mon),
+        time: NaiveTime::from_hms(10, 0, 0),
+    };
+
+    match db::subscriptions_insert(&db, subscription) {
+        Err(db::InsertError::Unknown(err)) => eprintln!(
+            "Failed to insert default subscription for user {}: {}",
+            user_id, err
+        ),
+        Err(db::InsertError::Duplicate) => {}
+        Ok(_) => {}
     }
 }

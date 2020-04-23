@@ -14,6 +14,7 @@ pub mod github;
 pub struct User {
     id: i32,
     username: String,
+    pub email: String,
     pub first_login: bool,
 }
 
@@ -22,6 +23,7 @@ impl User {
         User {
             id: user.id,
             username: identity.username,
+            email: identity.email,
             first_login,
         }
     }

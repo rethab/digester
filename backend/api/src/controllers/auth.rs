@@ -4,6 +4,7 @@ use iam::facebook::Facebook;
 use iam::github::Github;
 use iam::IdentityProvider;
 
+use super::super::subscriptions;
 use super::common::*;
 
 use rocket::http::{Cookie, Cookies, SameSite};
@@ -95,10 +96,14 @@ fn oauth_exchange<P: IdentityProvider + Sync + Send>(
         Ok((user, session)) => {
             let cookie = create_session_cookie(Some(session.id));
             cookies.add(cookie);
+
+            subscriptions::add_default_subscription(&db.0, session.user_id, &user.email);
+
             JsonResponse::Ok(json!({
                 "username": session.username,
                 "userId": session.user_id.0,
                 // on the first login, we're trying to automatically set the timezone.
+                // notably, this is false if this is the first login with a second identity for the same user
                 "first_login": user.first_login,
                 // we need to pass an access token back, because vue-authenticate looks at the
                 // response and wants to extract the access token and store it in some storage.
