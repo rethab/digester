@@ -39,12 +39,14 @@
         <router-view />
       </v-container>
     </v-content>
+    <Footer />
   </v-app>
 </template>
 
 <script>
 import { mdiAccount } from "@mdi/js";
 import Navigation from "@/components/Navigation.vue";
+import Footer from "@/components/Footer.vue";
 import OfflineSnackbar from "@/components/common/OfflineSnackbar.vue";
 import LogoutBtn from "@/components/auth/LogoutBtn.vue";
 
@@ -53,6 +55,7 @@ export default {
 
   components: {
     Navigation,
+    Footer,
     OfflineSnackbar,
     LogoutBtn
   },

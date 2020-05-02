@@ -2,6 +2,7 @@ import Vue from 'vue'
 import VueRouter from 'vue-router'
 import store from '@/store/index.js';
 import Home from '@/views/Home.vue'
+import Privacy from '@/views/Privacy.vue'
 import Cockpit from '@/views/Cockpit.vue'
 import ActivateSubscription from '@/views/ActivateSubscription.vue'
 import Subscriptions from '@/views/Subscriptions.vue'
@@ -23,6 +24,11 @@ const routes = [
     path: '/',
     name: 'home',
     component: Home
+  },
+  {
+    path: '/privacy',
+    name: 'privacy',
+    component: Privacy
   },
   {
     path: '/cockpit',
