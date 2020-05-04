@@ -101,7 +101,7 @@ export default {
           this[loadingName] = false;
 
           const query = resp.data.first_login ? { firstLogin: true } : {};
-          this.$router.push({ name: "cockpit", query: query });
+          this.$router.push({ name: "subscriptions", query: query });
         })
         .catch(err => {
           const popupClosed = err.message === "Auth popup window closed";

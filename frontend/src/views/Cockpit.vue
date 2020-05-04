@@ -7,9 +7,6 @@
       </v-col>
     </v-row>
 
-    <InitializeTimezone v-if="firstLogin" />
-    <TimezoneCheck v-else />
-
     <v-row>
       <v-col cols="12" sm="6">
         <CockpitCard
@@ -49,18 +46,9 @@
 
 <script>
 import CockpitCard from "@/components/CockpitCard.vue";
-import TimezoneCheck from "@/components/settings/TimezoneCheck.vue";
-import InitializeTimezone from "@/components/settings/InitializeTimezone.vue";
 export default {
   components: {
-    CockpitCard,
-    TimezoneCheck,
-    InitializeTimezone
-  },
-  computed: {
-    firstLogin() {
-      return this.$route.query.firstLogin;
-    }
+    CockpitCard
   }
 };
 </script>
