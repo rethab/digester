@@ -1,51 +1,52 @@
 <template>
-  <v-container>
-    <v-row>
-      <v-col cols="12" md="6">
-        <p>Privacy Policy</p>
-        <p class="overline grey--text">
-          <span class="font-weight-bold">Information we collect:</span>&nbsp;
-          <span>When using this site, your IP address is recorded for statistics. When logging in, your e-mail address is stored in our database. That e-mail address is used to send digests to, but not shared with any third party whatsoever.</span>
-        </p>
-        <p class="overline grey--text">
-          <span class="font-weight-bold">Cookie Usage:</span>&nbsp;
-          <span>When logging in, a cookie is used to identify (remember) you. This cookie is functionally necessary.</span>
-        </p>
-      </v-col>
-      <v-col cols="12" md="6" :order="this.mobile ? 'first' : 'last'">
-        <h2 class="title">Available Login Methods</h2>
-        <v-checkbox v-model="cookieConsent" v-if="showConsentBox">
-          <template v-slot:label>
-            <span class="body-2">
-              I agree to the
-              <strong>Privacy Policy</strong> and the use of
-              <strong>Cookies</strong>
-            </span>
-          </template>
-        </v-checkbox>
-        <v-row>
-          <v-col cols="12" md="6" class="justify-center">
-            <FacebookLoginBtn
-              v-on:authenticate="authenticate('facebook')"
-              :loading="facebookLoading"
-              :disabled="!cookieConsent"
-            />
-          </v-col>
-          <v-col cols="12" :md="6" class="justify-center">
-            <GithubLoginBtn
-              v-on:authenticate="authenticate('github')"
-              :loading="githubLoading"
-              :disabled="!cookieConsent"
-            />
-          </v-col>
-        </v-row>
+  <v-card class="mx-auto" max-width="460px" flat>
+    <v-card-text class="pr-0 pl-1">
+      <v-row align="center" v-if="showConsentBox">
+        <v-checkbox v-model="cookieConsent" hide-details class="mt-0 pt-0" />I agree to the
+        <router-link
+          target="_blank"
+          to="/terms"
+          style="color: inherit"
+          class="ml-1 font-weight-bold"
+        >Terms & Conditions</router-link>
+        <span class="mx-1">and</span>
+        <router-link
+          to="/privacy"
+          target="_blank"
+          style="color: inherit"
+          class="font-weight-bold"
+        >Privacy Policy</router-link>
+      </v-row>
+      <v-row>
         <v-snackbar v-model="toomanyrequests" :timeout="10000" :top="true">
           Our hamsters are turning their wheels as fast they can, but they are currently having some trouble catching up. Please try again in a few minutes.
           <v-btn text @click="snackbar = false" color="error">Close</v-btn>
         </v-snackbar>
-      </v-col>
-    </v-row>
-  </v-container>
+      </v-row>
+    </v-card-text>
+    <v-card-actions>
+      <FacebookLoginBtn
+        v-on:authenticate="authenticate('facebook')"
+        :loading="facebookLoading"
+        :disabled="!cookieConsent"
+      />
+      <v-spacer></v-spacer>
+      <GithubLoginBtn
+        v-on:authenticate="authenticate('github')"
+        :loading="githubLoading"
+        :disabled="!cookieConsent"
+      />
+    </v-card-actions>
+    <v-card-text>
+      <p>
+        Are you neither on Facebook nor on Github? More options are coming soon, but please let us know which one you prefer at
+        <a
+          href="mailto:info@digester.app"
+          style="color: inherit"
+        >info@digester.app</a>
+      </p>
+    </v-card-text>
+  </v-card>
 </template>
 
 <script>

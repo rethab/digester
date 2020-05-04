@@ -29,6 +29,7 @@
           <v-icon>{{ accountIcon }}</v-icon>
           {{ username }}
         </router-link>
+        <router-link v-else to="/auth/login" class="white--text" style="text-decoration: none">Login</router-link>
       </div>
     </v-app-bar>
 

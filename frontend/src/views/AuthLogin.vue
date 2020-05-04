@@ -1,13 +1,15 @@
 <template>
-  <v-container>
-    <v-row justify="center">
-      <v-col class="text-center">
-        <h1 class="display-2 font-weight-medium">Login</h1>
-      </v-col>
-    </v-row>
-    <ErrorCard v-if="error" :title="error.title" :message="error.message" />
-    <AuthLogin />
-  </v-container>
+  <div>
+    <v-container>
+      <v-row justify="center">
+        <v-col class="text-center">
+          <h1 class="display-2 font-weight-medium">Login or Sign Up</h1>
+        </v-col>
+      </v-row>
+      <ErrorCard v-if="error" :title="error.title" :message="error.message" />
+      <AuthLogin />
+    </v-container>
+  </div>
 </template>
 
 <script>

@@ -1,6 +1,6 @@
 <template>
   <v-row class="mt-6" align="center" justify="center">
-    <v-col cols="9" class="text-center">
+    <v-col class="text-center">
       <h1 class="display-1 font-weight-regular">How It Works</h1>
       <p
         class="mt-3 title font-weight-regular font-italic"

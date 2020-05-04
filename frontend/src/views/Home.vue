@@ -57,7 +57,7 @@
 
     <section id="login">
       <v-row class="text-center mt-6" justify="center">
-        <v-col cols="9">
+        <v-col>
           <h1 class="display-1 font-weight-regular">Try Now For Free</h1>
           <div v-if="!isAuthenticated">
             <AuthLogin />
