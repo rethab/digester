@@ -18,8 +18,7 @@
 export default {
   props: {
     channelId: {
-      type: Number,
-      required: true
+      type: Number
     },
     channelLink: {
       type: String
