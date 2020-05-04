@@ -50,11 +50,8 @@
       :img-src="require('@/assets/social_dashboard.svg')"
       :img-left="false"
       title="Why use Digester?"
-      content="How often do you get a notification on your phone at an inconvenient time? Whether it is a meeting at work or dinner with friends, apps are trying to get your attention.<br /><br />Digester is the opposite: It brings calmness to your days by bundling all the updates and sending you a digest when <i>you</i> want it."
+      content="How often do you get a notification on your phone at an inconvenient time? Whether it is a meeting at work or dinner with friends, apps are trying to get your attention.<br /><br />Digester is the opposite: It turns your all-day distractions into consolidated daily or weekly E-Mails. Stay focussed without missing important updates or news!"
     />
-    <!--
-      content="There are tons of interesting things out there in the internet. Hundreds of apps ensure you get a push notification as soon as the US president writes tweet.<br /><br />Digester is the opposite: It brings calmness to your days by bundling all the updates and sending you an update when <i>you</i> want it.<br /><br />Fancy reading the NY Times every day at 7am? Start using digester today!"
-      -->
 
     <section id="howitworks">
       <HowItWorksCard />
