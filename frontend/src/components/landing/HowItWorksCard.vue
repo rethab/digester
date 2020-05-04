@@ -1,10 +1,7 @@
 <template>
   <v-row class="mt-6" align="center" justify="center">
     <v-col class="text-center">
-      <h1 class="display-1 font-weight-regular">How It Works</h1>
-      <p
-        class="mt-3 title font-weight-regular font-italic"
-      >Create Subscription. Receive Digests. Relax.</p>
+      <h1 class="display-1 font-weight-regular mb-2">How It Works</h1>
       <v-card elevation="12">
         <v-carousel light show-arrows-on-hover hide-delimiter-background cycle :height="height">
           <v-carousel-item>
