@@ -1,5 +1,5 @@
 <template>
-  <v-card :to="link" color="secondary" class="lighten-4" height="190px">
+  <v-card :to="link" color="secondary" :class="`lighten-${lighten}`" height="190px">
     <v-card-title>{{title}}</v-card-title>
     <v-card-subtitle class="text--secondary">..{{subtitle}}</v-card-subtitle>
     <v-card-text class="text--primary">
@@ -15,6 +15,10 @@
 <script>
 export default {
   props: {
+    lighten: {
+      type: Number,
+      required: true
+    },
     title: {
       type: String,
       required: true
