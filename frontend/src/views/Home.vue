@@ -24,34 +24,37 @@
 
     <v-row justify="center">
       <v-col class="text-center" sm="6" md="3">
-        <v-btn @click="$vuetify.goTo('#howitworks')" class="mx-4" color="primary" large>how it works</v-btn>
-      </v-col>
-      <v-col class="text-center" sm="6" md="3">
         <v-btn
-          @click="$vuetify.goTo('#login')"
+          @click="$vuetify.goTo('#howitworks')"
           class="mx-4"
           color="secondary"
           outlined
           large
-        >try now</v-btn>
+        >how it works</v-btn>
+      </v-col>
+      <v-col class="text-center" sm="6" md="3">
+        <v-btn @click="$vuetify.goTo('#login')" class="mx-4" color="primary" large>try now</v-btn>
         <br />
         <span class="caption font-weight-light">(it's free)</span>
       </v-col>
     </v-row>
 
     <LandingPageCard
-      :img-src="require('@/assets/following_the_idea.svg')"
+      :img-src="require('@/assets/focus_working.svg')"
       :img-left="true"
       title="What is Digester?"
-      content="Want to follow a Blog? A Twitter profile? A Github project?<br /><br />Knowing when new posts are published can be cumbersome and spending too much time on Twitter is no good. <br /><br />Digester is here to help: Create subscriptions for a Blogs, Twitter profiles or Github projects and receive weekly (or daily) updates directly in your E-Mail inbox."
+      content="Create subscriptions for Blogs, Twitter profiles or Github projects and receive weekly (or daily) updates directly in your E-Mail inbox.<br /><br />Fancy reading the NY Times every day at 7am? Start using digester today!"
     />
 
     <LandingPageCard
-      :img-src="require('@/assets/focus_working.svg')"
+      :img-src="require('@/assets/social_dashboard.svg')"
       :img-left="false"
-      title="Bundle Topics with Lists"
-      content="Lists are collections of Blogs, Twitter profiles and Github projects.<br /><br />Say you are intersted in mobile development. By subscribing to the mobile development list, you'll receive a weekly digest on what happened in the world of mobile. A new Blog post about flutter? A new release of Swift? All part of your digest!<br /><br />You can even create your own lists and share them with your friends."
+      title="Why use Digester?"
+      content="How often do you get a notification on your phone at an inconvenient time? Whether it is a meeting at work or dinner with friends, apps are trying to get your attention.<br /><br />Digester is the opposite: It brings calmness to your days by bundling all the updates and sending you a digest when <i>you</i> want it."
     />
+    <!--
+      content="There are tons of interesting things out there in the internet. Hundreds of apps ensure you get a push notification as soon as the US president writes tweet.<br /><br />Digester is the opposite: It brings calmness to your days by bundling all the updates and sending you an update when <i>you</i> want it.<br /><br />Fancy reading the NY Times every day at 7am? Start using digester today!"
+      -->
 
     <section id="howitworks">
       <HowItWorksCard />
