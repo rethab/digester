@@ -33,7 +33,9 @@
           color="secondary"
           outlined
           large
-        >try for free</v-btn>
+        >try now</v-btn>
+        <br />
+        <span class="caption font-weight-light">(it's free)</span>
       </v-col>
     </v-row>
 
@@ -58,7 +60,7 @@
     <section id="login">
       <v-row class="text-center mt-6" justify="center">
         <v-col>
-          <h1 class="display-1 font-weight-regular">Try Now For Free</h1>
+          <h1 class="display-1 font-weight-regular">Try Now</h1>
           <div v-if="!isAuthenticated">
             <AuthLogin />
           </div>
