@@ -5,8 +5,11 @@
       <p
         class="mt-3 title font-weight-regular font-italic"
       >Create Subscription. Receive Digests. Relax.</p>
-      <v-card elevation="24">
+      <v-card elevation="12">
         <v-carousel light show-arrows-on-hover hide-delimiter-background cycle :height="height">
+          <v-carousel-item>
+            <v-img contain :src="searchImgSrc"></v-img>
+          </v-carousel-item>
           <v-carousel-item>
             <v-img contain :src="subImgSrc"></v-img>
           </v-carousel-item>
@@ -30,6 +33,9 @@ export default {
     suffix() {
       return this.mobile ? "mobile" : "desktop";
     },
+    searchImgSrc() {
+      return require("@/assets/landing-search-" + this.suffix + ".png");
+    },
     subImgSrc() {
       return require("@/assets/landing-sub-" + this.suffix + ".png");
     },
@@ -38,7 +44,7 @@ export default {
     },
     height() {
       const small = this.$vuetify.breakpoint.mdAndDown;
-      return small ? "350" : "700";
+      return small ? "400" : "700";
     }
   }
 };

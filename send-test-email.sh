@@ -19,21 +19,19 @@ https://api.sendgrid.com/v3/mail/send \
     {
       "to": [
         {
-          "email": "rethab@pm.me",
-          "name": "Anonymous Panter"
+          "email": "digesterapp@outlook.com",
+          "name": "Reto"
         }
       ],
 
       "dynamic_template_data": {
-        "subject": "Test digest",
+        "subject": "Digests from Lady Gaga and NY Times",
         "subscriptions": [
-	        {"title": "kubernetes/kubernetes", "updates": [
-            {"url": "https://google.nl", "title": "v1.18.0-alpha.1"},
-            {"url": "https://google.nl", "title": "v1.14.10"}
+          {"title": "NYT > Top Stores", "updates": [
+            {"url": "https://google.nl", "title": "What Does Modern Love Mean in a Pandemic?"}
           ]},
-          {"title": "golang/tools", "updates": [
-            {"url": "https://google.nl", "title": "gopls/v0.2.2"},
-            {"url": "https://google.nl", "title": "gopls/v0.1.6"}
+	  {"title": "Lady Gaga", "updates": [
+            {"url": "https://google.nl", "title": "I have always wanted to build a company that would support charitable efforts. Starting today, @houslabs will donate $1 from every paid transaction on houslabs.com to @BTWFoundation"}
           ]}
         ]
       }
