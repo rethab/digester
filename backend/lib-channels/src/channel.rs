@@ -137,6 +137,7 @@ mod tests {
     #[test]
     fn is_old_with_none() {
         let u = Update {
+            ext_id: None,
             title: "T".into(),
             url: "U".into(),
             published: Utc::now(),
@@ -147,6 +148,7 @@ mod tests {
     #[test]
     fn is_old_with_long_past() {
         let u = Update {
+            ext_id: None,
             title: "T".into(),
             url: "U".into(),
             published: Utc::now(),
@@ -160,6 +162,7 @@ mod tests {
     #[test]
     fn is_old_with_recent() {
         let u = Update {
+            ext_id: None,
             title: "T".into(),
             url: "U".into(),
             published: Utc.ymd(1990, 10, 10).and_hms(1, 1, 1),

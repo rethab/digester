@@ -40,7 +40,7 @@ pub fn add(
 ) -> Result<RichSubscription, AddError> {
     use AddError::*;
 
-    let identity = db::identities_find_by_user_id(&db, user_id.0).map_err(Unknown)?;
+    let identity = db::identities_find_by_user_id(&db, user_id.into()).map_err(Unknown)?;
 
     match channel_type {
         SearchChannelType::List(list_id) => {
@@ -56,7 +56,7 @@ pub fn add(
                 timezone: None,
                 channel_id: None,
                 list_id: Some(list.id),
-                user_id: Some(identity.user_id),
+                user_id: Some(identity.user_id.into()),
                 frequency,
                 day,
                 time,
@@ -84,7 +84,7 @@ pub fn add(
                 timezone: None,
                 channel_id: Some(channel.id),
                 list_id: None,
-                user_id: Some(identity.user_id),
+                user_id: Some(identity.user_id.into()),
                 frequency,
                 day,
                 time,
@@ -115,7 +115,7 @@ pub fn add_default_subscription(db: &PgConnection, user_id: UserId, email: &str)
         timezone: None,
         channel_id: Some(channel.id),
         list_id: None,
-        user_id: Some(user_id.0),
+        user_id: Some(user_id.into()),
         frequency: Frequency::Weekly,
         day: Some(Day::Mon),
         time: NaiveTime::from_hms(10, 0, 0),

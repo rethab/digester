@@ -2,6 +2,7 @@ use lib_channels as channels;
 use lib_db as db;
 
 use super::common::*;
+use crate::iam::UserId;
 use channels::github_release::GithubRelease;
 use channels::twitter::Twitter;
 use channels::*;
@@ -48,7 +49,7 @@ struct Channel {
     channel_type: ChannelType,
     creator: Option<String>,
     #[serde(rename = "creatorId")]
-    creator_id: Option<i32>,
+    creator_id: Option<UserId>,
     link: Option<String>,
     verified: bool,
 }
@@ -328,7 +329,7 @@ impl Channel {
             channel_type: ChannelType::List,
             summary: Some(format!("{} channels", channels.len())),
             creator: Some(i.username),
-            creator_id: Some(i.user_id),
+            creator_id: Some(UserId::from(i.user_id)),
             link: None,
             verified: false,
         }

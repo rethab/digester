@@ -339,7 +339,7 @@ pub fn updates_find_ext_ids_by_channel_ids(
 
 pub fn updates_find_by_user_id(
     conn: &PgConnection,
-    user_id: i32,
+    user_id: UserId,
     offset: u32,
     limit: u32,
 ) -> Result<Vec<(Update, Channel)>, String> {
@@ -408,7 +408,7 @@ pub fn updates_delete_by_ids(conn: &Connection, ids: Vec<i64>) -> Result<usize, 
 pub fn subscriptions_find_by_id_user_id(
     conn: &PgConnection,
     id: i32,
-    user_id: i32,
+    user_id: UserId,
 ) -> Result<Option<RichSubscription>, String> {
     use schema::subscriptions;
 
@@ -466,7 +466,7 @@ pub fn subscriptions_find_without_due_digest(
 
 pub fn subscriptions_find_by_user_id(
     conn: &PgConnection,
-    user_id: i32,
+    user_id: UserId,
 ) -> Result<Vec<RichSubscription>, String> {
     use schema::subscriptions;
 
@@ -549,7 +549,7 @@ pub fn subscriptions_update(
         .map_err(|err| format!("Failed to update single subscription: {:?}", err))
 }
 
-pub fn subscriptions_delete_by_user_id(conn: &PgConnection, user_id: i32) -> Result<(), Error> {
+pub fn subscriptions_delete_by_user_id(conn: &PgConnection, user_id: UserId) -> Result<(), Error> {
     // note that this can fail if we are creating digests at the same time
     use schema::digests;
     use schema::subscriptions;
@@ -768,7 +768,11 @@ pub fn users_find_by_username(conn: &PgConnection, username: &str) -> Result<Use
         .map_err(|err| format!("Failed to fetch user username {}: {}", username, err))
 }
 
-pub fn users_update_timezone(conn: &PgConnection, user_id: i32, new_tz: Tz) -> Result<(), String> {
+pub fn users_update_timezone(
+    conn: &PgConnection,
+    user_id: UserId,
+    new_tz: Tz,
+) -> Result<(), String> {
     use schema::users::dsl::*;
     diesel::update(users.find(user_id))
         .set(timezone.eq(Timezone(new_tz)))
@@ -777,7 +781,7 @@ pub fn users_update_timezone(conn: &PgConnection, user_id: i32, new_tz: Tz) -> R
         .map(|_| ())
 }
 
-pub fn users_find_by_id(conn: &PgConnection, user_id: i32) -> Result<User, String> {
+pub fn users_find_by_id(conn: &PgConnection, user_id: UserId) -> Result<User, String> {
     use schema::users::dsl::*;
     users
         .find(user_id)
@@ -785,7 +789,7 @@ pub fn users_find_by_id(conn: &PgConnection, user_id: i32) -> Result<User, Strin
         .map_err(|err| format!("Failed to fetch user {}: {:?}", user_id, err))
 }
 
-pub fn users_find_by_id0(conn: &Connection, user_id: i32) -> Result<User, String> {
+pub fn users_find_by_id0(conn: &Connection, user_id: UserId) -> Result<User, String> {
     users_find_by_id(&conn.0, user_id)
 }
 
@@ -820,7 +824,7 @@ pub fn users_insert(
     Ok((user, identity))
 }
 
-pub fn users_delete_by_id(conn: &PgConnection, user_id: i32) -> Result<(), Error> {
+pub fn users_delete_by_id(conn: &PgConnection, user_id: UserId) -> Result<(), Error> {
     use schema::identities;
     use schema::users;
 
@@ -833,7 +837,7 @@ pub fn users_delete_by_id(conn: &PgConnection, user_id: i32) -> Result<(), Error
 
 pub fn identities_find_by_user_id(
     conn: &PgConnection,
-    id_of_user: i32,
+    id_of_user: UserId,
 ) -> Result<Identity, String> {
     use schema::identities::dsl::*;
     identities
@@ -849,7 +853,7 @@ pub fn identities_find_by_user_id(
 
 pub fn identities_find_by_user_ids(
     conn: &PgConnection,
-    ids_of_users: &[i32],
+    ids_of_users: &[UserId],
 ) -> Result<Vec<Identity>, String> {
     use schema::identities::dsl::*;
     identities
@@ -919,7 +923,10 @@ fn lists_zip_with_identities(
     conn: &PgConnection,
     lists: Vec<List>,
 ) -> Result<Vec<(List, Identity)>, String> {
-    let user_ids = lists.iter().map(|l: &List| l.creator).collect::<Vec<i32>>();
+    let user_ids = lists
+        .iter()
+        .map(|l: &List| l.creator)
+        .collect::<Vec<UserId>>();
     let identities = identities_find_by_user_ids(conn, &user_ids).map_err(|err| {
         format!(
             "Failed to fetch identities for user ids: {:?}: {:?}",
@@ -940,7 +947,7 @@ fn lists_zip_with_identities(
     Ok(results)
 }
 
-fn find_identity(identities: &[Identity], user_id: i32) -> Option<Identity> {
+fn find_identity(identities: &[Identity], user_id: UserId) -> Option<Identity> {
     for identity in identities {
         if identity.user_id == user_id {
             return Some(identity.clone());
@@ -951,7 +958,7 @@ fn find_identity(identities: &[Identity], user_id: i32) -> Option<Identity> {
 
 pub fn lists_find(
     conn: &PgConnection,
-    creator_id: Option<i32>,
+    creator_id: Option<UserId>,
 ) -> Result<Vec<(List, Identity)>, String> {
     use schema::lists::dsl::*;
     let results = match creator_id {
@@ -999,14 +1006,14 @@ pub fn lists_find_by_id(
     }
 }
 
-pub fn lists_find_by_user_id(conn: &PgConnection, user_id: i32) -> Result<Vec<List>, Error> {
+pub fn lists_find_by_user_id(conn: &PgConnection, user_id: UserId) -> Result<Vec<List>, Error> {
     use schema::lists::dsl::*;
     lists.filter(creator.eq(user_id)).get_results(conn)
 }
 
 pub fn lists_find_with_other_subscribers(
     conn: &PgConnection,
-    user_id: i32,
+    user_id: UserId,
 ) -> Result<Vec<List>, Error> {
     use schema::lists;
     use schema::subscriptions;
@@ -1076,7 +1083,7 @@ pub fn lists_update_name(conn: &PgConnection, list: List) -> Result<List, String
 pub fn lists_move_creator(
     conn: &PgConnection,
     list_ids: &[i32],
-    new_creator: i32,
+    new_creator: UserId,
 ) -> Result<(), Error> {
     use schema::lists::dsl::*;
     diesel::update(lists.filter(id.eq_any(list_ids)))

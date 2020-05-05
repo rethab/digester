@@ -1,10 +1,11 @@
 use super::schema::*;
 use chrono::naive::NaiveTime;
 use chrono::{DateTime, Utc};
+use diesel::backend::Backend;
 use diesel::deserialize::{self, FromSql};
 use diesel::pg::Pg;
 use diesel::serialize::{self, IsNull, Output, ToSql};
-use diesel::sql_types::Text;
+use diesel::sql_types::{Integer, Text};
 use diesel::*;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
@@ -14,7 +15,7 @@ pub struct Identity {
     pub id: i32,
     pub provider: String,
     pub pid: String,
-    pub user_id: i32,
+    pub user_id: UserId,
     pub email: String,
     pub username: String,
 }
@@ -24,14 +25,14 @@ pub struct Identity {
 pub struct NewIdentity {
     pub provider: String,
     pub pid: String,
-    pub user_id: i32,
+    pub user_id: UserId,
     pub email: String,
     pub username: String,
 }
 
 #[derive(Queryable)]
 pub struct User {
-    pub id: i32,
+    pub id: UserId,
     pub timezone: Option<Timezone>,
 }
 
@@ -137,7 +138,7 @@ pub struct Subscription {
     pub timezone: Option<Timezone>,
     pub channel_id: Option<i32>,
     pub list_id: Option<i32>,
-    pub user_id: Option<i32>,
+    pub user_id: Option<UserId>,
     pub frequency: Frequency,
     pub day: Option<Day>,
     pub time: NaiveTime,
@@ -151,7 +152,7 @@ pub struct NewSubscription {
     pub timezone: Option<Timezone>,
     pub channel_id: Option<i32>,
     pub list_id: Option<i32>,
-    pub user_id: Option<i32>,
+    pub user_id: Option<UserId>,
     pub frequency: Frequency,
     pub day: Option<Day>,
     pub time: NaiveTime,
@@ -203,7 +204,7 @@ pub struct Digest {
 pub struct List {
     pub id: i32,
     pub name: String,
-    pub creator: i32,
+    pub creator: UserId,
     pub inserted: DateTime<Utc>,
 }
 
@@ -211,7 +212,7 @@ pub struct List {
 #[table_name = "lists"]
 pub struct NewList {
     pub name: String,
-    pub creator: i32,
+    pub creator: UserId,
 }
 
 #[derive(Insertable, Debug)]
@@ -219,6 +220,38 @@ pub struct NewList {
 pub struct NewListChannel {
     pub list_id: i32,
     pub channel_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
+#[sql_type = "Integer"]
+pub struct UserId(pub i32);
+
+impl<DB> ToSql<Integer, DB> for UserId
+where
+    DB: Backend,
+    i32: ToSql<Integer, DB>,
+{
+    fn to_sql<W: Write>(&self, out: &mut Output<W, DB>) -> serialize::Result {
+        i32::to_sql(&self.0, out)?;
+        Ok(IsNull::No)
+    }
+}
+
+impl<DB> FromSql<Integer, DB> for UserId
+where
+    DB: Backend,
+    i32: FromSql<Integer, DB>,
+{
+    fn from_sql(maybe_bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
+        let user_id = i32::from_sql(maybe_bytes)?;
+        Ok(UserId(user_id))
+    }
+}
+
+impl std::fmt::Display for UserId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, FromSqlRow, AsExpression)]

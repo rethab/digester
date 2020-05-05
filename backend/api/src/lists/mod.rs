@@ -32,7 +32,10 @@ pub fn delete(db: &PgConnection, list_id: i32, user_id: UserId) -> Result<(), De
     let list = get_own_list(&db, user_id, list_id)?;
     println!("Deleting list with id {} for user_id {}", list.id, user_id);
     if let Ok(subscriptions) = db::subscriptions_find_by_list_id(&db, list.id) {
-        if subscriptions.iter().any(|s| s.user_id != Some(user_id.0)) {
+        if subscriptions
+            .iter()
+            .any(|s| s.user_id != Some(user_id.into()))
+        {
             return Err(DeleteError::OtherSubscriptions);
         } else {
             for sub in subscriptions {
@@ -73,7 +76,7 @@ pub fn add(
 
     let new_list = db::NewList {
         name: list_name,
-        creator: user_id.0,
+        creator: user_id.into(),
     };
     match db::lists_insert(&db, &new_list) {
         Ok(list) => {
@@ -83,7 +86,7 @@ pub fn add(
                     user_id, list.id, err
                 )
             }
-            db::identities_find_by_user_id(&db, list.creator)
+            db::identities_find_by_user_id(&db, list.creator.into())
                 .map_err(|err| {
                     AddError::UnknownError(format!(
                         "Creator {} for list {} not found in DB: {}",
@@ -101,13 +104,13 @@ pub fn add(
 
 fn subscribe_user(db: &PgConnection, user_id: UserId, list: &db::List) -> Result<(), String> {
     use db::InsertError::*;
-    let identity = db::identities_find_by_user_id(&db, user_id.0)?;
+    let identity = db::identities_find_by_user_id(&db, user_id.into())?;
     let new_sub = db::NewSubscription {
         email: identity.email,
         timezone: None,
         channel_id: None,
         list_id: Some(list.id),
-        user_id: Some(identity.user_id),
+        user_id: Some(identity.user_id.into()),
         frequency: db::Frequency::Weekly,
         day: Some(db::Day::Sat),
         time: NaiveTime::from_hms(9, 0, 0),
@@ -131,7 +134,7 @@ pub fn get_own_list(db: &PgConnection, user_id: UserId, list_id: i32) -> Result<
         }
     };
 
-    if list.creator != user_id.0 {
+    if list.creator != user_id.into() {
         Err(Error::Authorization)
     } else {
         Ok(list)

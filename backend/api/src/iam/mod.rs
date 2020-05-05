@@ -1,4 +1,5 @@
 use rocket_contrib::databases::redis::Connection as RedisConnection;
+use serde::{Serialize, Serializer};
 use time::Duration;
 
 use diesel::pg::PgConnection;
@@ -21,7 +22,7 @@ pub struct User {
 impl User {
     fn from_db(user: db::User, identity: db::Identity, first_login: bool) -> User {
         User {
-            id: user.id,
+            id: user.id.0,
             username: identity.username,
             email: identity.email,
             first_login,
@@ -36,12 +37,33 @@ pub struct ProviderUserInfo {
     username: String,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UserId(pub i32);
 
 impl std::fmt::Display for UserId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl From<db::UserId> for UserId {
+    fn from(user_id: db::UserId) -> UserId {
+        UserId(user_id.0)
+    }
+}
+
+impl Into<db::UserId> for UserId {
+    fn into(self) -> db::UserId {
+        db::UserId(self.0)
+    }
+}
+
+impl Serialize for UserId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_i32(self.0)
     }
 }
 
@@ -244,8 +266,8 @@ fn delete_account_with_dependencies(db: &PgConnection, user_id: UserId) -> Resul
     db.build_transaction()
         .run(|| {
             // move lists
-            let lists = db::lists_find_with_other_subscribers(db, user_id.0)?;
-            if lists.iter().any(|l| l.creator != user_id.0) {
+            let lists = db::lists_find_with_other_subscribers(db, user_id.into())?;
+            if lists.iter().any(|l| l.creator != user_id.into()) {
                 eprintln!("At least one list does not actually belong to {}", user_id);
                 return Err(diesel::result::Error::NotFound);
             }
@@ -257,15 +279,15 @@ fn delete_account_with_dependencies(db: &PgConnection, user_id: UserId) -> Resul
             );
 
             // delete subscriptions
-            db::subscriptions_delete_by_user_id(db, user_id.0)?;
+            db::subscriptions_delete_by_user_id(db, user_id.into())?;
 
             // delete lists
-            for list in db::lists_find_by_user_id(db, user_id.0)? {
+            for list in db::lists_find_by_user_id(db, user_id.into())? {
                 db::lists_delete_by_id(db, list.id)?;
             }
 
             // delete user
-            db::users_delete_by_id(db, user_id.0)
+            db::users_delete_by_id(db, user_id.into())
         })
         .map_err(|err| {
             DeleteError::Unknown(format!(

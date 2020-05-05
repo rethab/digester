@@ -46,7 +46,7 @@ struct List {
     name: String,
     creator: String,
     #[serde(rename = "creatorId")]
-    creator_id: i32,
+    creator_id: UserId,
     channels: Vec<Channel>,
 }
 
@@ -87,12 +87,12 @@ impl Into<JsonResponse> for Vec<List> {
 }
 
 impl List {
-    fn from_db(l: db::List, user: db::Identity, channels: Vec<db::Channel>) -> List {
+    fn from_db(l: db::List, identity: db::Identity, channels: Vec<db::Channel>) -> List {
         List {
             id: l.id,
             name: l.name,
-            creator: user.username,
-            creator_id: user.id,
+            creator: identity.username,
+            creator_id: UserId::from(identity.user_id),
             channels: channels
                 .into_iter()
                 .map(Channel::from_db)
@@ -121,7 +121,7 @@ fn list(session: Option<Protected>, db: DigesterDbConn, own: Option<bool>) -> Js
         },
         _ => None,
     };
-    let lists = match db::lists_find(&db, maybe_creator_id.map(|c| c.0)) {
+    let lists = match db::lists_find(&db, maybe_creator_id.map(|c| c.into())) {
         Ok(lists) => lists,
         Err(err) => {
             eprintln!("Failed to fetch lists from db {:?}", err);

@@ -154,11 +154,11 @@ impl SearchChannelType {
 #[get("/")]
 fn list(session: Protected, db: DigesterDbConn) -> JsonResponse {
     let user_id = session.0.user_id;
-    match db::subscriptions_find_by_user_id(&db, user_id.0) {
+    match db::subscriptions_find_by_user_id(&db, user_id.into()) {
         Err(err) => {
             eprintln!(
                 "Failed to load subscriptions for user {}: {:?}",
-                user_id.0, err
+                user_id, err
             );
             JsonResponse::InternalServerError
         }
@@ -428,7 +428,7 @@ struct UpdatedSubscription {
 #[get("/<id>")]
 fn show(session: Protected, db: DigesterDbConn, id: i32) -> JsonResponse {
     let (sub, channel_or_list) =
-        match db::subscriptions_find_by_id_user_id(&db.0, id, session.0.user_id.0) {
+        match db::subscriptions_find_by_id_user_id(&db.0, id, session.0.user_id.into()) {
             Ok(Some((sub, channel_or_list))) => (sub, channel_or_list),
             Ok(None) => return JsonResponse::NotFound,
             Err(_) => return JsonResponse::InternalServerError,
@@ -457,7 +457,7 @@ fn update(
     updated_subscription: Json<UpdatedSubscription>,
 ) -> JsonResponse {
     let (original, channel_or_list) =
-        match db::subscriptions_find_by_id_user_id(&db.0, id, session.0.user_id.0) {
+        match db::subscriptions_find_by_id_user_id(&db.0, id, session.0.user_id.into()) {
             Ok(Some((sub, channel_or_list))) => (sub, channel_or_list),
             Ok(None) => return JsonResponse::NotFound,
             Err(_) => return JsonResponse::InternalServerError,
@@ -483,7 +483,7 @@ fn update(
 
 #[delete("/<id>")]
 fn delete(session: Protected, db: DigesterDbConn, id: i32) -> JsonResponse {
-    let sub = match db::subscriptions_find_by_id_user_id(&db.0, id, session.0.user_id.0) {
+    let sub = match db::subscriptions_find_by_id_user_id(&db.0, id, session.0.user_id.into()) {
         Ok(Some((sub, _))) => sub,
         Ok(None) => return JsonResponse::NotFound,
         Err(_) => return JsonResponse::InternalServerError,
@@ -493,7 +493,7 @@ fn delete(session: Protected, db: DigesterDbConn, id: i32) -> JsonResponse {
         Err(err) => {
             eprintln!(
                 "Failed to delete subscription {} for user {}: {}",
-                id, session.0.user_id.0, err
+                id, session.0.user_id, err
             );
             JsonResponse::InternalServerError
         }
