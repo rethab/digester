@@ -1,0 +1,28 @@
+Meta:
+- Do I have a clear point?
+- Point:
+  - the modern way to consume news is unhealty?
+  - news are interrupting?
+- Topic:
+- Theme:
+- Research: Quotations
+- Opening: Must be a hook to read more
+- Ending: echoes introduction, most memorable detail, call to action
+
+
+
+Digester: End constant Interruptions!
+
+One of my favorite hobbies is to get up early on a sunny weekend morning, drink and coffee and read a newspaper or some blog articles. In fact, before I moved to a country where the local magazines are in a language I don't understand, I would even go to a cafe and read the local news. I like this way of reading, because I know I'll have time to look up more related information on Wikipedia, read the referenced blog post as well.
+
+In today's world, this is not how news are consumed anymore. Applications make sure stories are pushed to you as they happen regardless of whether they are important[1]. In slack, your busy coworker (aka "top poster in #random") is making sure you never run out of links to click on. But do you actually read them? Do you click on the notifications on your phone and read the entire article? Is there even anything beyond the headline? And if you do, do you feel good about it? Shouldn't you be focusing on work?
+
+Well perhaps your job is just boring, but chances are constant interruptions -- be it slack, push notifications or that random newsletter at 11am -- are just plain distracting. If you could choose when to be interrupted, would you pick the middle of the day? Or during a dinner with friends? I'm arguing that this is not at all what we actually want. I, for one, am faced with the dilemma of wanting to read beyond the headline but I also have an interesting job.
+
+So what do I do? I tried pocket[2] for a while, but that just led a large accumulated list of articles I'll never read. The epiphany came with one of my favorite blogs: The morning paper[3] is published every morning around 8am. This is the worst time for me to read a paper, because 8am more or less coincides with the start of my work. So I was thinking: What if there was a service that held all the issues back until Saturday morning and only then sent all of them combined as one e-mail?
+
+This is how digester was born. Digester allows me to subscribe to a blog and define the frequency at which I want to receive updates. For the morning paper, I configured it to send me a weekly digest on Saturday morning at 8am -- just in time for me to start reading on a sunny morning with a coffee.
+
+1. https://www.youtube.com/watch?v=kxatzHnl7Q8
+2. Pocket lets you save articles to read them later: https://getpocket.com
+3. The Morning Paper: a short summary every weekday of an important, influential, topical or otherwise interesting paper in the field of computer science: https://blog.acolyer.org
