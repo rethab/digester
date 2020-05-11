@@ -92,12 +92,15 @@ impl App<'_> {
         let c = self.get_channel(channel);
         let last_known_update = db::updates_find_newest_by_channel(self.db, channel.id)?;
         let all_updates = c.fetch_updates(&channel.ext_id)?;
+        let n_all_updates = all_updates.len();
         let updates = filter_new_updates(all_updates, last_known_update);
 
         println!(
-            "Found {} updates in {:?} channel {}",
+            "Found {} new updates (total {}) in {:?} channel {} ({})",
             updates.len(),
+            n_all_updates,
             channel.channel_type,
+            channel.ext_id,
             channel.name
         );
 
