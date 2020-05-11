@@ -148,6 +148,7 @@ fn rss_to_updates(channel: &RssChannel) -> Result<Vec<Update>, String> {
                 .to_owned(),
             url: item
                 .link()
+                .map(|l| make_absolute(channel.link(), l))
                 .ok_or_else(|| format!("No url for {:?}", item))?
                 .to_owned(),
             published: item
@@ -168,7 +169,8 @@ fn atom_to_updates(feed: &Feed) -> Result<Vec<Update>, String> {
         let update = Update {
             ext_id: None,
             title: entry.title().into(),
-            url: atom_link(entry.links()).unwrap_or_else(|| format!("No links for {:?}", entry)),
+            url: atom_article_link(feed.links(), entry.links())
+                .unwrap_or_else(|| format!("No links for {:?}", entry)),
             published: entry
                 .published()
                 .cloned()
@@ -178,6 +180,14 @@ fn atom_to_updates(feed: &Feed) -> Result<Vec<Update>, String> {
         updates.push(update);
     }
     Ok(updates)
+}
+
+fn make_absolute(feed_link: &str, url: &str) -> String {
+    if url.starts_with("/") {
+        format!("{}{}", feed_link, url)
+    } else {
+        url.into()
+    }
 }
 
 #[derive(Debug)]
@@ -550,6 +560,20 @@ fn c_type(resp: &Response) -> String {
         .to_owned()
 }
 
+fn atom_article_link(
+    feed_links: &[atom_syndication::Link],
+    item_links: &[atom_syndication::Link],
+) -> Option<String> {
+    let feed_link = atom_link(feed_links);
+    let item_link = atom_link(item_links);
+
+    match item_link {
+        None => None,
+        Some(link) if link.starts_with("/") => feed_link.map(|fl| make_absolute(&fl, &link)),
+        Some(link) => Some(link),
+    }
+}
+
 fn atom_link(links: &[atom_syndication::Link]) -> Option<String> {
     let mut found_link: Option<String> = None;
     for link in links {
@@ -591,6 +615,7 @@ fn parse_pub_date(datetime: &str) -> Result<DateTime<Utc>, String> {
 mod tests {
     use super::*;
     use chrono::TimeZone;
+    use reqwest::blocking::get;
 
     #[test]
     fn fetch_atom_theverge_indirect() {
@@ -823,6 +848,24 @@ mod tests {
         let rss = Rss {};
         let updates = rss.fetch_updates(url).expect("Failed to fetch");
         assert_eq!(false, updates.is_empty())
+    }
+
+    #[test]
+    fn fetch_updates_with_relative_links() {
+        let url = "https://blog.appsignal.com/feed.xml";
+        let rss = Rss {};
+        let updates = rss.fetch_updates(url).expect("Failed to fetch");
+        let post_url = &updates[0].url;
+        assert_eq!(200, get(post_url).expect("Failed to fetch").status())
+    }
+
+    #[test]
+    fn fetch_updates_with_absolute_links() {
+        let url = "https://200ok.ch/rss.xml";
+        let rss = Rss {};
+        let updates = rss.fetch_updates(url).expect("Failed to fetch");
+        let post_url = &updates[0].url;
+        assert_eq!(200, get(post_url).expect("Failed to fetch").status())
     }
 
     #[test]
