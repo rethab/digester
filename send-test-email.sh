@@ -27,7 +27,7 @@ https://api.sendgrid.com/v3/mail/send \
       "dynamic_template_data": {
         "subject": "Digests from Lady Gaga and NY Times",
         "subscriptions": [
-          {"title": "NYT > Top Stores", "updates": [
+          {"title": "NYT > Top Stories", "updates": [
             {"url": "https://google.nl", "title": "What Does Modern Love Mean in a Pandemic?"}
           ]},
 	  {"title": "Lady Gaga", "updates": [
