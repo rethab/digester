@@ -2,7 +2,7 @@ use super::channel::*;
 
 use atom_syndication::Error as AtomError;
 use atom_syndication::Feed;
-use chrono::naive::NaiveDateTime;
+use chrono::naive::{NaiveDate, NaiveDateTime};
 use chrono::{DateTime, Utc};
 use core::time::Duration;
 use kuchiki::iter::{Descendants, Elements, Select};
@@ -579,6 +579,9 @@ fn parse_pub_date(datetime: &str) -> Result<DateTime<Utc>, String> {
         .map(|dt| dt.with_timezone(&Utc))
         .or_else(|_| {
             NaiveDateTime::parse_from_str(datetime, "%a, %d %b %Y %H:%M:%S")
+                .or_else(|_| {
+                    NaiveDate::parse_from_str(datetime, "%Y-%m-%d").map(|d| d.and_hms(0, 0, 0))
+                })
                 .map(|naive| DateTime::from_utc(naive, Utc))
         })
         .map_err(|parse_err| format!("Failed to parse date '{}' {:?}", datetime, parse_err))
@@ -964,6 +967,13 @@ mod tests {
 
         let actual = parse_pub_date("2020-01-31T10:51:50Z").expect("Failed to parse date");
         let expected = Utc.ymd(2020, 1, 31).and_hms(10, 51, 50);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn parse_datetime_date_only() {
+        let actual = parse_pub_date("2020-01-31").expect("Failed to parse date");
+        let expected = Utc.ymd(2020, 1, 31).and_hms(0, 0, 0);
         assert_eq!(expected, actual);
     }
 
