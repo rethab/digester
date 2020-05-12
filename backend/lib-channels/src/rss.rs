@@ -600,6 +600,7 @@ fn rss_dc_date(item: &RssItem) -> Option<&str> {
 fn parse_pub_date(datetime: &str) -> Result<DateTime<Utc>, String> {
     DateTime::parse_from_rfc2822(datetime)
         .or_else(|_| DateTime::parse_from_rfc3339(datetime))
+        .or_else(|_| DateTime::parse_from_str(datetime, "%Y-%m-%d %H:%M:%S%.3f %z"))
         .map(|dt| dt.with_timezone(&Utc))
         .or_else(|_| {
             NaiveDateTime::parse_from_str(datetime, "%a, %d %b %Y %H:%M:%S")
@@ -1010,6 +1011,13 @@ mod tests {
 
         let actual = parse_pub_date("2020-01-31T10:51:50Z").expect("Failed to parse date");
         let expected = Utc.ymd(2020, 1, 31).and_hms(10, 51, 50);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn parse_datetime_with_spaces() {
+        let actual = parse_pub_date("2020-05-12 11:09:25 +0800").expect("Failed to parse date");
+        let expected = Utc.ymd(2020, 5, 12).and_hms(3, 9, 25);
         assert_eq!(expected, actual);
     }
 
