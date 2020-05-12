@@ -81,8 +81,9 @@ impl App<'_> {
                 }
                 Some(user_id) => {
                     let user = db::users_find_by_id0(&self.db_conn, user_id)?;
-                    user.timezone.map(|tz| tz.0).unwrap_or({
-                        eprintln!("User {} has no timezone, using UTC", user.id);
+                    let user_id = user.id;
+                    user.timezone.map(|tz| tz.0).unwrap_or_else(|| {
+                        eprintln!("User {} has no timezone, using UTC", user_id);
                         Tz::UTC
                     })
                 }
