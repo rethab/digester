@@ -140,25 +140,31 @@ impl Channel for Rss {
 fn rss_to_updates(channel: &RssChannel) -> Result<Vec<Update>, String> {
     let mut updates = Vec::with_capacity(channel.items().len());
     for item in channel.items() {
-        let update = Update {
-            ext_id: None,
-            title: item
-                .title()
-                .ok_or_else(|| format!("No title for {:?}", item))?
-                .to_owned(),
-            url: item
-                .link()
-                .map(|l| make_absolute(channel.link(), l))
-                .ok_or_else(|| format!("No url for {:?}", item))?
-                .to_owned(),
-            published: item
-                .pub_date()
-                .or_else(|| rss_dc_date(&item))
-                .ok_or(format!("Neither pub_date nor dc:date for {:?}", item))
-                .and_then(parse_pub_date)?,
-        };
-
-        updates.push(update);
+        let maybe_date = item.pub_date().or_else(|| rss_dc_date(&item));
+        match maybe_date {
+            None => println!(
+                "Neither pub_date nor dc:date for item {} in channel {} ({})",
+                item.title().unwrap_or("???"),
+                channel.title(),
+                channel.link()
+            ),
+            Some(date) => {
+                let update = Update {
+                    ext_id: None,
+                    title: item
+                        .title()
+                        .ok_or_else(|| format!("No title for {:?}", item))?
+                        .to_owned(),
+                    url: item
+                        .link()
+                        .map(|l| make_absolute(channel.link(), l))
+                        .ok_or_else(|| format!("No url for {:?}", item))?
+                        .to_owned(),
+                    published: parse_pub_date(date)?,
+                };
+                updates.push(update);
+            }
+        }
     }
     Ok(updates)
 }
@@ -840,6 +846,15 @@ mod tests {
         let url = Url::parse("http://hasbrouck.org/blog/index.rdf").unwrap();
         let feeds = fetch_channel_info(&url, 0).unwrap();
         assert_eq!(1, feeds.len())
+    }
+
+    #[test]
+    fn fetch_partial_updates_with_dates() {
+        // the rss feed contains meta articles which are missing the pubDate field
+        let url = "https://webkid.io/rss.xml";
+        let rss = Rss {};
+        let updates = rss.fetch_updates(url).expect("Failed to fetch");
+        assert_eq!(false, updates.is_empty())
     }
 
     #[test]
