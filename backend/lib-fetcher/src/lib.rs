@@ -142,8 +142,8 @@ impl App<'_> {
         match sync_result {
             Err(err) => {
                 eprintln!(
-                    "update_last_sync for {}: failures are not handled yet: {:?}",
-                    channel.name, err
+                    "update_last_sync for {} (name='{}', exit_id='{}'): failures are not handled yet: {:?}",
+                    channel.id, channel.name, channel.ext_id, err
                 );
                 Ok(())
             }
