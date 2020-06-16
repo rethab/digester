@@ -82,6 +82,15 @@ function run_psql_stg() {
   psql "$DATABASE_URL"?sslmode=require
 }
 
+function run_psql_prod() {
+  local env="prod";
+
+  local dbstring;
+  dbstring=$(heroku config --app digester-api-$env | awk '/DATABASE_URL/{print $2}');
+
+  docker run --interactive --tty=true postgres:12.1 psql "$dbstring?sslmode=require"
+}
+
 function run_redis() {
   type redli >/dev/null || { echo "Missing redli. Install with $CMD install_redli"; exit 1; };
   redli
@@ -149,7 +158,7 @@ function run_sanity_check() {
   popd
 
   # update .bashrc
-  sed -i "s/^DIGESTER_RUN_WORDLIST=.*/DIGESTER_RUN_WORDLIST=\"worker worker-loop api fe db kill-db build-db psql psql-stg redis install-redli logs-db sanity pull-stg-cfg api-stg prod-backup\"/g" ~/.bashrc
+  sed -i "s/^DIGESTER_RUN_WORDLIST=.*/DIGESTER_RUN_WORDLIST=\"worker worker-loop api fe db kill-db build-db psql psql-stg psql-prod redis install-redli logs-db sanity pull-stg-cfg api-stg prod-backup\"/g" ~/.bashrc
   echo "You might have to reload your .bashrc"
 
   # check this script
@@ -169,6 +178,7 @@ case $CMD in
   psql)          run_psql ;;
   psql-cont)     run_psql_container ;;
   psql-stg)      run_psql_stg ;;
+  psql-prod)     run_psql_prod ;;
   redis)         run_redis ;;
   install-redli) install_redli ;;
   logs-db)       run_db_logs ;;
