@@ -258,10 +258,11 @@ fn fetch_channel_info(full_url: &Url, recursed: u8) -> Result<Vec<ChannelInfo>, 
         // if we didn't prevent this, we might recurse forever if a page
         // points to itself (maliciously or not..)
         if recursed > 2 {
-            return Err(FeedError::TechnicalError(format!(
+            println!(
                 "Url {} points to html, but we already recursed {}",
                 sane_url, recursed
-            )));
+            );
+            return Ok(Vec::new());
         }
         let mut feeds = Vec::new();
         let body = response.text()?;
@@ -384,48 +385,69 @@ fn extract_feeds_from_html(url: &Url, html: &str) -> Result<Vec<Url>, FeedError>
 
     let document = kuchiki::parse_html().one(html);
 
-    let link_tags = match document.select("link") {
+    // meta rss/atom links
+    match document.select("link") {
         Err(err) => {
             return Err(FeedError::TechnicalError(format!(
                 "failed to extract links from document: {:?}",
                 err,
             )))
         }
-        Ok(tags) => tags,
+        Ok(link_tags) => {
+            let head_links = extract_feeds_from_html_link(link_tags);
+            if !head_links.is_empty() {
+                return Ok(mk_urls(head_links));
+            }
+        }
     };
 
-    let head_links = extract_feeds_from_html_link(link_tags);
-    if !head_links.is_empty() {
-        return Ok(mk_urls(head_links));
-    }
-
-    let div_tags = match document.select("div[data-rss-url]") {
+    match document.select("div[data-rss-url]") {
         Err(err) => {
             return Err(FeedError::TechnicalError(format!(
                 "failed to extract div[data-rss-url] from document: {:?}",
                 err,
             )))
         }
-        Ok(tags) => tags,
+        Ok(div_tags) => {
+            let div_links = extract_feeds_from_html_attribute(div_tags, "data-rss-url");
+            if !div_links.is_empty() {
+                return Ok(mk_urls(div_links));
+            }
+        }
     };
 
-    let div_links = extract_feeds_from_html_attribute(div_tags, "data-rss-url");
-    if !div_links.is_empty() {
-        return Ok(mk_urls(div_links));
-    }
-
-    let meta_tags = match document.select("meta[property='article:author']") {
+    match document.select("meta[property='article:author']") {
         Err(err) => {
             return Err(FeedError::TechnicalError(format!(
                 "failed to extract meta[property='article:author'] from document: {:?}",
                 err,
             )))
         }
-        Ok(tags) => tags,
+        Ok(meta_tags) => {
+            let meta_tags = extract_feeds_from_html_attribute(meta_tags, "content");
+            if !meta_tags.is_empty() {
+                return Ok(mk_urls(meta_tags));
+            }
+        }
     };
 
-    let meta_tags = extract_feeds_from_html_attribute(meta_tags, "content");
-    Ok(mk_urls(meta_tags))
+    // fuzzy search in html body links (eg. <a href="myfeed.xml">RSS</a>)
+    match document.select("a") {
+        Err(err) => {
+            return Err(FeedError::TechnicalError(format!(
+                "failed to extract ankers from document: {:?}",
+                err,
+            )))
+        }
+        Ok(a_tags) => {
+            let links = extract_potential_feed_link(a_tags);
+            if !links.is_empty() {
+                return Ok(mk_urls(links));
+            }
+        }
+    }
+
+    Ok(Vec::new())
 }
 
 fn extract_feeds_from_html_attribute(
@@ -468,6 +490,31 @@ fn extract_feeds_from_html_link(link_tags: Select<Elements<Descendants>>) -> Vec
                     links.push(href.into());
                 } else {
                     eprintln!("link/rss tag without href. attributes: {:?}", attributes);
+                }
+            }
+        }
+    }
+
+    links
+}
+
+fn extract_potential_feed_link(anker_tags: Select<Elements<Descendants>>) -> Vec<String> {
+    let fuzzy_feed_match =
+        |ct: &str| -> bool { ct.contains("rss") || ct.contains("feed") || ct.contains("atom") };
+
+    let mut links: Vec<String> = Vec::new();
+    for anker in anker_tags {
+        let node: &kuchiki::NodeRef = anker.as_node();
+        if let Some(kuchiki::ElementData { attributes, .. }) = node.as_element() {
+            let a1 = attributes.borrow();
+            let mut attrs = a1
+                .get("href")
+                .into_iter()
+                .chain(a1.get("title").into_iter())
+                .chain(a1.get("class").into_iter());
+            if attrs.any(fuzzy_feed_match) {
+                if let Some(href) = a1.get("href") {
+                    links.push(href.into());
                 }
             }
         }
@@ -660,7 +707,8 @@ mod tests {
     #[test]
     fn fetch_refuse_to_recurse() {
         let url = Url::parse("https://theverge.com").unwrap();
-        assert_eq!(true, fetch_channel_info(&url, 3).is_err())
+        let feeds = fetch_channel_info(&url, 3).expect("Failed to fetch feeds");
+        assert_eq!(0, feeds.len())
     }
 
     #[test]
@@ -819,6 +867,16 @@ mod tests {
     }
 
     #[test]
+    fn fetch_rss_nos_even_when_recursion_limit_is_reached() {
+        // points to feeds html page, which points feeds as well as itself. this
+        // is to ensure that even if we reach the recursion limit, the feeds
+        // that have been found are returned.
+        let url = Url::parse("https://nos.nl").unwrap();
+        let feeds = fetch_channel_info(&url, 0).expect("Failed to fetch feeds");
+        assert!(feeds.len() > 5);
+    }
+
+    #[test]
     fn fetch_rss_artima_xrss_direct() {
         let url = Url::parse("https://www.artima.com/weblogs/feeds/bloggers/guido.rss").unwrap();
         let feeds = fetch_channel_info(&url, 0).unwrap();
@@ -965,6 +1023,49 @@ mod tests {
         assert_eq!(1, feeds.len());
         assert_eq!(
             Url::parse("https://medium.com/@nikitonsky").unwrap(),
+            feeds[0],
+        );
+    }
+
+    #[test]
+    fn extract_links_from_a_hrefs() {
+        let html = r"
+          <!DOCTYPE html><html lang='en'><head></head><body>
+          <app-root ng-version='5.2.2'><site-gtm><div class='wrapper'><use></use><a _ngcontent-c17='' href='https://cloudblog.withgoogle.com/rss/'><span _ngcontent-c17=''>RSS Feed</span><svg _ngcontent-c17='' aria-hidden='true' ><use _ngcontent-c17='' xlink:href='#mi-rss-feed' xmlns:xlink='http://www.w3.org/1999/xlink'></use></svg></a></div></site-gtm></app-root>
+          <h1>TiDB and TiKV Blog<a class='rss' href='/blog/index.xml' title='RSS Feed'><svg xmlns='http://www.w3.org/2000/svg' width='13' height='17' viewBox=''><g fill=''><path d=''/><path d=''/></g></svg></a></h1>
+          <div class='col-sm-6'> <h3><a class='float-right' href='https://www.keycloak.org/rss.xml'><img src='resources/images/rss.png'/></a></h3> </div>
+          </body></html>
+        ";
+        let base_url = Url::parse("https://pingcap.com/blog/").unwrap();
+        let feeds = extract_feeds_from_html(&base_url, html).expect("Failed to parse");
+        assert_eq!(3, feeds.len());
+        assert_eq!(
+            Url::parse("https://cloudblog.withgoogle.com/rss/").unwrap(),
+            feeds[0],
+        );
+        assert_eq!(
+            Url::parse("https://pingcap.com/blog/index.xml").unwrap(),
+            feeds[1],
+        );
+        assert_eq!(
+            Url::parse("https://www.keycloak.org/rss.xml").unwrap(),
+            feeds[2],
+        );
+    }
+
+    #[test]
+    fn prefer_links_from_meta_over_ahrefs() {
+        let html = r"
+          <!DOCTYPE html><html lang='en'>
+          <head><link rel='alternate' type='application/rss+xml' title='Feed' href='https://blog.acolyer.org/feed/' /></head>
+          <body><h1>TiDB and TiKV Blog<a class='rss' href='/blog/index.xml' title='RSS Feed'><svg xmlns='http://www.w3.org/2000/svg' width='13' height='17' viewBox=''><g fill=''><path d=''/><path d=''/></g></svg></a></h1></body>
+          </html>
+        ";
+        let base_url = Url::parse("https://blog.acolyer.org").unwrap();
+        let feeds = extract_feeds_from_html(&base_url, html).expect("Failed to parse");
+        assert_eq!(1, feeds.len());
+        assert_eq!(
+            Url::parse("https://blog.acolyer.org/feed/").unwrap(),
             feeds[0],
         );
     }
