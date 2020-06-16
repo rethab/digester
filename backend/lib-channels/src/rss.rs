@@ -316,7 +316,7 @@ fn add_channel_info(feeds: &mut Vec<ChannelInfo>, new_feed: ChannelInfo) {
 
     if let Some(index) = maybe_duplicate {
         if is_better(&new_feed, &feeds[index]) {
-            std::mem::replace(&mut feeds[index], new_feed);
+            feeds[index] = new_feed;
         } else {
             println!("Ignoring duplicate feed: {:?}", new_feed);
         }

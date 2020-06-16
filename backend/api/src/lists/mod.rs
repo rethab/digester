@@ -86,7 +86,7 @@ pub fn add(
                     user_id, list.id, err
                 )
             }
-            db::identities_find_by_user_id(&db, list.creator.into())
+            db::identities_find_by_user_id(&db, list.creator)
                 .map_err(|err| {
                     AddError::UnknownError(format!(
                         "Creator {} for list {} not found in DB: {}",
@@ -110,7 +110,7 @@ fn subscribe_user(db: &PgConnection, user_id: UserId, list: &db::List) -> Result
         timezone: None,
         channel_id: None,
         list_id: Some(list.id),
-        user_id: Some(identity.user_id.into()),
+        user_id: Some(identity.user_id),
         frequency: db::Frequency::Weekly,
         day: Some(db::Day::Sat),
         time: NaiveTime::from_hms(9, 0, 0),

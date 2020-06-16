@@ -137,7 +137,7 @@ fn search(
                 db::ChannelType::Twitter => channels::ChannelType::Twitter,
             };
             match online_search(&gh_token, &twitter_tokens, &query, channel_type) {
-                Err(err) => return err,
+                Err(err) => err,
                 Ok(channels) => {
                     if channels.is_empty() {
                         let no_channels: Vec<Channel> = Vec::new();

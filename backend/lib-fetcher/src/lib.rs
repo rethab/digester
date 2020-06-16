@@ -207,7 +207,6 @@ impl App<'_> {
                         n, channel.channel_type, channel.name
                     );
                 }
-                ()
             },
         )
     }
@@ -220,10 +219,7 @@ impl App<'_> {
         //   -> ~8kb data returned from the db
         //   -> 10 requests to twitter
         for channel_batch in channels.chunks(40) {
-            let channel_ids = channel_batch
-                .into_iter()
-                .map(|c| c.id)
-                .collect::<Vec<i32>>();
+            let channel_ids = channel_batch.iter().map(|c| c.id).collect::<Vec<i32>>();
             let updates = db::updates_find_ext_ids_by_channel_ids(&self.db, &channel_ids)?;
             let tweet_ids: Vec<String> = updates.values().cloned().collect();
             let tweet_ids_int: Vec<u64> = tweet_ids
