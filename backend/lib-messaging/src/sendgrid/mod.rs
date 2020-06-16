@@ -4,6 +4,7 @@ use serde::Serialize;
 
 pub mod digests;
 pub mod pending_subscriptions;
+pub mod welcome;
 
 pub struct NEVec<T> {
     head: T,
@@ -36,11 +37,7 @@ pub struct SendgridCredentials {
     pub api_key: String,
 }
 
-pub fn send_email(
-    cred: &SendgridCredentials,
-    messages: NEVec<SendgridMessage>,
-) -> Result<(), String> {
-    let request = SendgridRequest::new(messages);
+pub fn send_email(cred: &SendgridCredentials, request: SendgridRequest) -> Result<(), String> {
     let result = Client::new()
         .post("https://api.sendgrid.com/v3/mail/send")
         .header(AUTHORIZATION, format!("Bearer {}", cred.api_key))
@@ -66,7 +63,7 @@ pub struct SendgridRequest {
 }
 
 impl SendgridRequest {
-    pub fn new(messages: NEVec<SendgridMessage>) -> SendgridRequest {
+    pub fn new_digests_request(messages: NEVec<SendgridMessage>) -> SendgridRequest {
         SendgridRequest {
             from: SendgridFrom {
                 email: "info@digester.app".into(),
@@ -74,6 +71,17 @@ impl SendgridRequest {
             },
             template_id: "d-f83856fe31b94f05bff5b81679e56ef0".into(),
             personalizations: messages.into(),
+        }
+    }
+
+    pub fn new_welcome_request(message: SendgridMessage) -> SendgridRequest {
+        SendgridRequest {
+            from: SendgridFrom {
+                email: "info@digester.app".into(),
+                name: "Digester".into(),
+            },
+            template_id: "d-4ecfbf0d40ca4116b5d9486369df9f92".into(),
+            personalizations: vec![message],
         }
     }
 }
@@ -93,11 +101,11 @@ struct SendgridTo {
 #[derive(Serialize)]
 pub struct SendgridMessage {
     to: Vec<SendgridTo>,
-    dynamic_template_data: SendgridTemplateData,
+    dynamic_template_data: Option<SendgridTemplateData>,
 }
 
 impl SendgridMessage {
-    pub fn new(
+    pub fn new_digests_message(
         recipient_email: String,
         subject: String,
         subscriptions: Vec<SendgridSubscription>,
@@ -107,10 +115,20 @@ impl SendgridMessage {
                 email: recipient_email.clone(),
                 name: recipient_email,
             }],
-            dynamic_template_data: SendgridTemplateData {
+            dynamic_template_data: Some(SendgridTemplateData {
                 subject,
                 subscriptions,
-            },
+            }),
+        }
+    }
+
+    pub fn new_welcome_message(recipient_email: &str) -> SendgridMessage {
+        SendgridMessage {
+            to: vec![SendgridTo {
+                email: recipient_email.to_owned(),
+                name: recipient_email.to_owned(),
+            }],
+            dynamic_template_data: None,
         }
     }
 }

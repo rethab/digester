@@ -18,6 +18,8 @@ use api::controllers::settings;
 use api::controllers::subscriptions;
 use api::controllers::updates;
 
+use lib_messaging::sendgrid;
+
 #[catch(500)]
 fn internal_error() -> JsonResponse {
     JsonResponse::InternalServerError
@@ -73,6 +75,13 @@ fn main() -> Result<(), String> {
         Ok(rocket.manage(channels::GithubApiToken(api_token)))
     });
 
+    let sendgrid_api_key = AdHoc::on_attach("Sendgrid Api Key", |rocket| {
+        let name = "SENDGRID_API_KEY";
+        let api_key =
+            env::var(name).unwrap_or_else(|_| panic!("Failed to read env variable {}", name));
+        Ok(rocket.manage(sendgrid::SendgridCredentials { api_key }))
+    });
+
     let twitter_tokens = AdHoc::on_attach("Twitter Tokens", |rocket| {
         let read_env = |name: &'static str| {
             env::var(name).unwrap_or_else(|_| panic!("Failed to read env variable {}", name))
@@ -103,6 +112,7 @@ fn main() -> Result<(), String> {
         .attach(facebook_identity_provider)
         .attach(github_api_token)
         .attach(twitter_tokens)
+        .attach(sendgrid_api_key)
         .register(catchers![
             internal_error,
             not_found,

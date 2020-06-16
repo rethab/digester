@@ -149,7 +149,8 @@ impl App<'_> {
         }
 
         if let Some(ne_messages) = NEVec::from_vec(messages) {
-            messaging::sendgrid::send_email(&self.sendgrid, ne_messages)
+            let request = SendgridRequest::new_digests_request(ne_messages);
+            messaging::sendgrid::send_email(&self.sendgrid, request)
         } else {
             Ok(())
         }
@@ -194,7 +195,7 @@ impl App<'_> {
             let subject =
                 digests::create_subject(&self.env.clone().into(), &sendgrid_subscriptions);
             let recipient = d_and_s[0].1.email.clone();
-            Ok(Some(SendgridMessage::new(
+            Ok(Some(SendgridMessage::new_digests_message(
                 recipient,
                 subject,
                 sendgrid_subscriptions,
@@ -280,7 +281,7 @@ impl App<'_> {
             );
             let subject = digests::create_subject_for_list(&self.env.clone().into(), &list.name);
             let recipient = sub.email.clone();
-            Ok(Some(SendgridMessage::new(
+            Ok(Some(SendgridMessage::new_digests_message(
                 recipient,
                 subject,
                 sendgrid_subscriptions,

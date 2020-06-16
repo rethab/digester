@@ -7,6 +7,8 @@ use iam::IdentityProvider;
 use super::super::subscriptions;
 use super::common::*;
 
+use lib_messaging::sendgrid::{self, SendgridCredentials};
+
 use rocket::http::{Cookie, Cookies, SameSite};
 use rocket::{self, Rocket, State};
 
@@ -61,6 +63,7 @@ struct CodeRequest {
 #[post("/github", data = "<oauth_data>")]
 fn github_oauth_exchange(
     db: DigesterDbConn,
+    sendgrid: State<SendgridCredentials>,
     redis: Redis,
     cookies: Cookies,
     oauth_data: Json<CodeRequest>,
@@ -68,12 +71,13 @@ fn github_oauth_exchange(
     _r: RateLimited,
 ) -> JsonResponse {
     let code = iam::AuthorizationCode(oauth_data.0.code);
-    oauth_exchange::<Github>(db, redis, cookies, provider, code)
+    oauth_exchange::<Github>(db, sendgrid, redis, cookies, provider, code)
 }
 
 #[post("/facebook", data = "<oauth_data>")]
 fn facebook_oauth_exchange(
     db: DigesterDbConn,
+    sendgrid: State<SendgridCredentials>,
     redis: Redis,
     cookies: Cookies,
     oauth_data: Json<CodeRequest>,
@@ -81,11 +85,12 @@ fn facebook_oauth_exchange(
     _r: RateLimited,
 ) -> JsonResponse {
     let code = iam::AuthorizationCode(oauth_data.0.code);
-    oauth_exchange::<Facebook>(db, redis, cookies, provider, code)
+    oauth_exchange::<Facebook>(db, sendgrid, redis, cookies, provider, code)
 }
 
 fn oauth_exchange<P: IdentityProvider + Sync + Send>(
     db: DigesterDbConn,
+    sendgrid: State<SendgridCredentials>,
     mut redis: Redis,
     mut cookies: Cookies,
     provider: State<P>,
@@ -97,7 +102,10 @@ fn oauth_exchange<P: IdentityProvider + Sync + Send>(
             let cookie = create_session_cookie(Some(session.id));
             cookies.add(cookie);
 
-            subscriptions::add_default_subscription(&db.0, session.user_id, &user.email);
+            if user.first_login {
+                subscriptions::add_default_subscription(&db.0, session.user_id, &user.email);
+                sendgrid::welcome::send_welcome_email(&sendgrid, &user.email);
+            }
 
             JsonResponse::Ok(json!({
                 "username": session.username,

@@ -189,7 +189,7 @@ fn atom_to_updates(feed: &Feed) -> Result<Vec<Update>, String> {
 }
 
 fn make_absolute(feed_link: &str, url: &str) -> String {
-    if url.starts_with("/") {
+    if url.starts_with('/') {
         format!("{}{}", feed_link, url)
     } else {
         url.into()
@@ -575,7 +575,7 @@ fn atom_article_link(
 
     match item_link {
         None => None,
-        Some(link) if link.starts_with("/") => feed_link.map(|fl| make_absolute(&fl, &link)),
+        Some(link) if link.starts_with('/') => feed_link.map(|fl| make_absolute(&fl, &link)),
         Some(link) => Some(link),
     }
 }
