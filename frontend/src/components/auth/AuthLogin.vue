@@ -99,8 +99,13 @@ export default {
         })
         .then(resp => {
           this[loadingName] = false;
+          const firstLogin = resp.data.first_login;
 
-          const query = resp.data.first_login ? { firstLogin: true } : {};
+          if (firstLogin) {
+            window.fathom.trackGoal(process.env.VUE_APP_FATHOM_SIGNUP, 0);
+          }
+
+          const query = firstLogin ? { firstLogin: true } : {};
           this.$router.push({ name: "subscriptions", query: query });
         })
         .catch(err => {
