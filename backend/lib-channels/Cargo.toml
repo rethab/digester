@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 chrono = "0.4"
 rss = { version = "1.9" , default-features = false }
-atom_syndication = "0.8"
+atom_syndication = "0.9"
 url = "2.1"
 reqwest = { version = "0.10", features = ["blocking", "gzip"] }
 egg-mode = "0.14.0"

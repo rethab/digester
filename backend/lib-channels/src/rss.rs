@@ -732,6 +732,13 @@ mod tests {
     }
 
     #[test]
+    fn fetch_atom_laravel_direct() {
+        let url = Url::parse("https://blog.laravel.com/feed").unwrap();
+        let feeds = fetch_channel_info(&url, 0).expect("Failed to fetch feeds");
+        assert!(feeds.len() > 0);
+    }
+
+    #[test]
     fn fetch_rss_sedaily_direct() {
         let url =
             Url::parse("https://softwareengineeringdaily.com/category/podcast/feed/").unwrap();
