@@ -5,6 +5,7 @@
         <v-list-item-title class="title">
           <router-link
             :to="isAuthenticated ? '/cockpit' : '/'"
+            :title="isAuthenticated ? 'Cockpit' : 'Home'"
             style="text-decoration:none"
             class="black--text"
           >Digester</router-link>
@@ -13,7 +14,7 @@
       </v-list-item-content>
     </v-list-item>
     <v-divider></v-divider>
-    <v-list-item link v-if="!isAuthenticated" to="/auth/login">
+    <v-list-item link title="Login" v-if="!isAuthenticated" to="/auth/login">
       <v-list-item-icon>
         <v-icon>{{ accountIcon }}</v-icon>
       </v-list-item-icon>
@@ -38,7 +39,7 @@
       </v-list-item-content>
     </v-list-item>
     <v-divider></v-divider>
-    <v-list-group no-action sub-group v-if="isAuthenticated" >
+    <v-list-group no-action sub-group v-if="isAuthenticated">
       <template v-slot:activator>
         <v-list-item-title>Advanced</v-list-item-title>
       </template>

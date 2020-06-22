@@ -14,6 +14,7 @@
       <v-toolbar-title>
         <router-link
           :to="isAuthenticated ? '/cockpit' : '/'"
+          :title="isAuthenticated ? 'Cockpit' : 'Home'"
           class="white--text"
           style="text-decoration:none"
         >Digester</router-link>
@@ -29,7 +30,13 @@
           <v-icon>{{ accountIcon }}</v-icon>
           {{ username }}
         </router-link>
-        <router-link v-else to="/auth/login" class="white--text" style="text-decoration: none">Login</router-link>
+        <router-link
+          title="Login"
+          v-else
+          to="/auth/login"
+          class="white--text"
+          style="text-decoration: none"
+        >Login</router-link>
       </div>
     </v-app-bar>
 

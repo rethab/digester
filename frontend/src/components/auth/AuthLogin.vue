@@ -5,6 +5,7 @@
         <v-checkbox v-model="cookieConsent" hide-details class="mt-0 pt-0" />I agree to the
         <router-link
           target="_blank"
+          title="Terms & Conditions"
           to="/terms"
           style="color: inherit"
           class="ml-1 font-weight-bold"
@@ -12,6 +13,7 @@
         <span class="mx-1">and</span>
         <router-link
           to="/privacy"
+          title="Privacy Policy"
           target="_blank"
           style="color: inherit"
           class="font-weight-bold"
@@ -27,12 +29,14 @@
     <v-card-actions>
       <FacebookLoginBtn
         v-on:authenticate="authenticate('facebook')"
+        title="Login with Facebook"
         :loading="facebookLoading"
         :disabled="!cookieConsent"
       />
       <v-spacer></v-spacer>
       <GithubLoginBtn
         v-on:authenticate="authenticate('github')"
+        title="Login with Github"
         :loading="githubLoading"
         :disabled="!cookieConsent"
       />
@@ -41,6 +45,7 @@
       <p>
         Are you neither on Facebook nor on Github? More options are coming soon, but please let us know which one you prefer at
         <a
+          title="Contact Support via E-Mail"
           href="mailto:info@digester.app"
           style="color: inherit"
         >info@digester.app</a>

@@ -2,7 +2,7 @@
   <v-container>
     <v-row justify="center">
       <v-col class="text-center">
-        <h1 class="display-2 font-weight-medium">Introducing Digester</h1>
+        <h1 class="display-2 font-weight-medium">Create Free Subscriptions for Twitter, Blogs, etc</h1>
         <p class="title mt-5 font-weight-regular font-italic d-flex justify-center">
           <vue-typed-js
             :strings="['weekly', 'daily']"
@@ -26,6 +26,7 @@
       <v-col class="text-center" sm="6" md="3">
         <v-btn
           @click="$vuetify.goTo('#howitworks')"
+          title="How it Works"
           class="mx-4"
           color="secondary"
           outlined
@@ -33,7 +34,13 @@
         >how it works</v-btn>
       </v-col>
       <v-col class="text-center" sm="6" md="3">
-        <v-btn @click="$vuetify.goTo('#login')" class="mx-4" color="primary" large>try now</v-btn>
+        <v-btn
+          @click="$vuetify.goTo('#login')"
+          title="Login"
+          class="mx-4"
+          color="primary"
+          large
+        >try now</v-btn>
         <br />
         <span class="caption font-weight-light">(it's free)</span>
       </v-col>
