@@ -47,7 +47,7 @@
     </v-row>
 
     <LandingPageCard
-      :img-src="require('@/assets/focus_working.svg')"
+      :img-src="require('@/assets/multitasking.svg')"
       :img-left="true"
       title="What is Digester?"
       content="Create subscriptions for Blogs, Twitter profiles or Github projects and receive weekly (or daily) updates directly in your E-Mail inbox.<br /><br />Fancy reading the NY Times every day at 7am? Start using digester today!"
