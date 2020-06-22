@@ -100,13 +100,18 @@ export default {
         .then(resp => {
           this[loadingName] = false;
           const firstLogin = resp.data.first_login;
+          const redirect = this.$route.query.redirect;
 
           if (firstLogin) {
             window.fathom.trackGoal(process.env.VUE_APP_FATHOM_SIGNUP, 0);
           }
 
-          const query = firstLogin ? { firstLogin: true } : {};
-          this.$router.push({ name: "subscriptions", query: query });
+          if (redirect) {
+            this.$router.push(redirect);
+          } else {
+            const query = firstLogin ? { firstLogin: true } : {};
+            this.$router.push({ name: "subscriptions", query: query });
+          }
         })
         .catch(err => {
           const popupClosed = err.message === "Auth popup window closed";

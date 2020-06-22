@@ -62,7 +62,12 @@ const routes = [
   {
     path: '/subscribe/:type/:id',
     name: 'subscription-subscribe',
-    component: Subscribe
+    component: Subscribe,
+    // for anonymous subscriptions, this flag will have to be false
+    // but for now we need it to be true, because otherwise the user
+    // won't be redirect to the login page if we send around links to
+    // subscribe to specific channels.
+    meta: { requiresAuth: true }
   },
   {
     path: '/lists',
@@ -122,7 +127,7 @@ const router = new VueRouter({
 router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!store.getters.isAuthenticated) {
-      next({ name: 'auth-login', query: { requireAuth: true } })
+      next({ name: 'auth-login', query: { requireAuth: true, redirect: window.location.pathname } })
     } else {
       next()
     }
