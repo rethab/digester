@@ -84,7 +84,7 @@ export default {
       snackbar: false,
 
       channel: new Channel(
-        preferences().getChannelType() || "Twitter",
+        preferences().channelType || "Twitter",
         this.initialValue
       ),
 
@@ -109,7 +109,7 @@ export default {
     submit() {
       this.clearErrors();
       if (this.validate()) {
-        preferences().setChannelType(this.channel.type);
+        preferences().channelType = this.channel.type;
         this.$emit("search", this.channel.type, this.channel.name);
       }
     },

@@ -9,11 +9,31 @@ export default () => {
     }
 
     return {
-        getChannelType() {
+        get channelType() {
             return get('channelType')
         },
-        setChannelType(value) {
+        set channelType(value) {
             return set('channelType', value)
         },
+        frequency: {
+            get frequency() {
+                return get('frequency.frequency')
+            },
+            set frequency(value) {
+                return set('frequency.frequency', value)
+            },
+            get day() {
+                return get('frequency.day')
+            },
+            set day(value) {
+                return set('frequency.day', value)
+            },
+            get time() {
+                return get('frequency.time')
+            },
+            set time(value) {
+                return set('frequency.time', value)
+            },
+        }
     }
 }

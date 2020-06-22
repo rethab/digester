@@ -29,6 +29,7 @@ import ChannelLink from "@/components/common/ChannelLink.vue";
 import TopSnackbar from "@/components/common/TopSnackbar.vue";
 import FrequencySelection from "@/components/subs/FrequencySelection.vue";
 import Channel from "@/models/Channel.js";
+import preferences from "@/services/preferences.js";
 export default {
   components: {
     ChannelIcon,
@@ -45,9 +46,9 @@ export default {
   data() {
     return {
       frequency: {
-        frequency: "Weekly",
-        day: "Sat",
-        time: "09:00:00"
+        frequency: preferences().frequency.frequency || "Weekly",
+        day: preferences().frequency.day || "Sat",
+        time: preferences().frequency.time || "09:00:00"
       },
 
       topSnackbar: null,
@@ -90,6 +91,10 @@ export default {
       }
 
       this.loading = true;
+
+      preferences().frequency.frequency = this.frequency.frequency;
+      preferences().frequency.day = this.frequency.day;
+      preferences().frequency.time = this.frequency.time;
 
       let subPromise = this.isAuthenticated
         ? this.subscribeUser()
