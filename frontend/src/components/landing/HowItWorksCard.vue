@@ -1,7 +1,7 @@
 <template>
   <v-row class="mt-6" align="center" justify="center">
     <v-col class="text-center">
-      <h1 class="display-1 font-weight-regular mb-2">How It Works</h1>
+      <h2 class="display-1 font-weight-regular mb-2">How It Works</h2>
       <v-card elevation="12">
         <v-carousel light show-arrows-on-hover hide-delimiter-background cycle :height="height">
           <v-carousel-item>

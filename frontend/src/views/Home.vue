@@ -60,7 +60,7 @@
     <section id="login">
       <v-row class="text-center mt-6" justify="center">
         <v-col>
-          <h1 class="display-1 font-weight-regular">Try Now</h1>
+          <h2 class="display-1 font-weight-regular">Try Now</h2>
           <div v-if="!isAuthenticated">
             <AuthLogin />
           </div>
