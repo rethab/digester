@@ -60,6 +60,7 @@
 <script>
 import ChannelInput from "@/components/channels/ChannelInput.vue";
 import Channel from "@/models/Channel.js";
+import preferences from "@/services/preferences.js";
 import { mdiHelpCircleOutline } from "@mdi/js";
 export default {
   components: {
@@ -82,7 +83,10 @@ export default {
 
       snackbar: false,
 
-      channel: new Channel("Twitter", this.initialValue),
+      channel: new Channel(
+        preferences().getChannelType() || "Twitter",
+        this.initialValue
+      ),
 
       nameErrors: [],
 
@@ -105,6 +109,7 @@ export default {
     submit() {
       this.clearErrors();
       if (this.validate()) {
+        preferences().setChannelType(this.channel.type);
         this.$emit("search", this.channel.type, this.channel.name);
       }
     },
