@@ -90,6 +90,7 @@ export default {
             "<li>Salesforce (US): <a href='https://www.salesforce.com/company/privacy/' style='color: inherit' target='_blank'>Privacy Policy</a></li>" +
             "<li>SolarWinds Worldwide, LLC (US): <a href='https://solarwinds.com/legal/privacy' style='color: inherit' target='_blank'>Privacy Policy</a></li>" +
             "<li>Twilio Inc (US): <a href='https://www.twilio.com/legal/privacy' style='color: inherit' target='_blank'>Privacy Policy</a></li>" +
+            "<li>Conva Ventures Inc. (US): <a href='https://usefathom.com/privacy' style='color: inherit' target='_blank'>Privacy Policy</a></li>" +
             "</ul>"
         },
         {
@@ -121,7 +122,7 @@ export default {
         {
           title: "Changes to our privacy policy",
           content:
-            "Digester keeps its privacy policy under regular review and places any updates on this web page. This privacy policy was last updated on 3 May 2020."
+            "Digester keeps its privacy policy under regular review and places any updates on this web page. This privacy policy was last updated on 23 June 2020."
         },
         {
           title: "How to contact us",
