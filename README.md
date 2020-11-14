@@ -10,11 +10,9 @@ Digester is a pretty straightforward web application with a frontend (Vue.js) an
 ## Local Dev
 Take a look at the `run.sh` script, as I use that to do most common tasks.
 
-You can start the frontend with `./run.sh fe`.
-
-You can start the api with `./run.sh api` and the worker with `./run.sh worker`.
-
-You can start the api with `./run.sh api` and the worker with `./run.sh worker`.
+- Start frontend: `./run.sh fe`
+- Start backend/api: `./run.sh api` (entry point: https://github.com/rethab/digester/blob/develop/backend/api/src/main.rs#L58)
+- Start backend/worker: `./run.sh worker` (entry point: https://github.com/rethab/digester/blob/develop/backend/worker/src/main.rs#L38)
 
 
 ## Update Cargo/Clippy/RLS
