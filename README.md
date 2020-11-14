@@ -1,7 +1,7 @@
 # Digester
 
 ## Status
-Please note that this is not actively maintain and therefore may very well not actually work as is.
+Please note that this is not actively maintained and therefore may very well not actually work as is.
 
 ## Info
 
